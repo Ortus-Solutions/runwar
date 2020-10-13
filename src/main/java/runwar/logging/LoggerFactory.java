@@ -13,7 +13,6 @@ import org.apache.log4j.LogManager;
 import org.apache.log4j.Logger;
 import org.apache.log4j.PatternLayout;
 import org.apache.log4j.RollingFileAppender;
-import com.jcabi.log.MulticolorLayout;
 
 public class LoggerFactory {
 
@@ -26,18 +25,17 @@ public class LoggerFactory {
     private static volatile List<Logger> urlrewriteLoggers;
     private static volatile RollingFileAppender rewriteLogAppender;
     private static volatile ConsoleAppender consoleAppender;
+    private static ServerOptions serverOptions;
 
-    public static synchronized void configure(ServerOptions serverOptions) {
+    public static synchronized void configure(ServerOptions options) {
 
         Logger.getRootLogger().getLoggerRepository().resetConfiguration();
-
+        serverOptions = options;
         logLevel = serverOptions.logLevel().toUpperCase();
-        logPattern = "%color{%m%n}";
         appenders = new ArrayList<>();
         loggers = new ArrayList<>();
         Level level = Level.toLevel(logLevel);
-
-        consoleAppender = consoleAppender(logPattern);
+        consoleAppender = consoleAppender(serverOptions.getLogPattern());
         appenders.add(consoleAppender);
         Logger.getRootLogger().setLevel(Level.WARN);
         Logger.getRootLogger().addAppender(consoleAppender);
@@ -54,13 +52,13 @@ public class LoggerFactory {
         Logger UNDERTOW_LOG = Logger.getLogger("io.undertow.servlet");
         loggers.add(UNDERTOW_LOG);
 
-        Logger UNDERTOW_REQUEST_LOG = Logger.getLogger("io.undertow.request");
-        loggers.add(UNDERTOW_REQUEST_LOG);
+        Logger UNDERTOW_PREDICATE_LOG = Logger.getLogger("io.undertow.predicate");
+        loggers.add(UNDERTOW_PREDICATE_LOG);
 
         Logger UNDERTOW_IO_LOG = Logger.getLogger("io.undertow");
         loggers.add(UNDERTOW_IO_LOG);
 
-        Logger XNIO_LOG = Logger.getLogger("org.xnio.nio");
+        Logger XNIO_LOG = Logger.getLogger("org.xnio");
         loggers.add(XNIO_LOG);
 
         Logger HTTP_CLIENT_LOG = Logger.getLogger("org.apache.http.client.protocol");
@@ -81,6 +79,7 @@ public class LoggerFactory {
         Logger RUNWAR_REQUEST = Logger.getLogger("runwar.request");
         loggers.add(RUNWAR_REQUEST);
 
+
         Logger RUNWAR_BACKGROUND = Logger.getLogger("runwar.background");
         RUNWAR_BACKGROUND.addAppender(consoleAppender("%m%n"));
         RUNWAR_BACKGROUND.setLevel(Level.TRACE);
@@ -90,7 +89,7 @@ public class LoggerFactory {
             rewriteLogAppender = new RollingFileAppender();
             rewriteLogAppender.setName("URLRewriteFileLogger");
             rewriteLogAppender.setFile(serverOptions.urlRewriteLog().getAbsolutePath());
-            rewriteLogAppender.setLayout(new PatternLayout("[%-5p] %c{2}: %m%n"));
+            rewriteLogAppender.setLayout(new PatternLayout(serverOptions.getLogPattern()));
             rewriteLogAppender.setThreshold(Level.toLevel(logLevel));
             rewriteLogAppender.setAppend(true);
             rewriteLogAppender.setMaxFileSize("10MB");
@@ -105,30 +104,35 @@ public class LoggerFactory {
         RUNWAR_REQUEST.setLevel(Level.WARN);
         DORKBOX_LOG.setLevel(Level.ERROR);
         UNDERTOW_LOG.setLevel(Level.WARN);
+        UNDERTOW_IO_LOG.setLevel(Level.WARN);
+        XNIO_LOG.setLevel(Level.WARN);
         HTTP_CLIENT_LOG.setLevel(Level.WARN);
         System.setProperty("org.eclipse.jetty.LEVEL", "WARN");
 
 
         if (serverOptions.debug() || !logLevel.equalsIgnoreCase("info")) {
-            logPattern = "[%color{%-5p}] %c: %color{%m%n}";
-               ((MulticolorLayout) consoleAppender.getLayout()).setConversionPattern(logPattern);
 
             if (logLevel.equalsIgnoreCase("trace")) {
                 DORKBOX_LOG.setLevel(level);
                 appenders.forEach(DORKBOX_LOG::addAppender);
                 UNDERTOW_LOG.setLevel(level);
+                UNDERTOW_PREDICATE_LOG.setLevel(level);
                 HTTP_CLIENT_LOG.setLevel(level);
                 RUNWAR_CONFIG.setLevel(level);
                 RUNWAR_SERVER.setLevel(level);
                 RUNWAR_CONTEXT.setLevel(level);
                 RUNWAR_SECURITY.setLevel(level);
-                RUNWAR_REQUEST.setLevel(level);
+                
+                // This logger is only used in the resource mapper and is really chatty
+                // Consider a setting to enable it only when troubleshooting file system mapping issues
+                //RUNWAR_REQUEST.setLevel(level);
+                
                 Logger.getRootLogger().setLevel(level);
-                System.setProperty("org.eclipse.jetty.LEVEL", "ALL");
                 configureUrlRewriteLoggers(true);
             } else {
                 RUNWAR_REQUEST.setLevel(Level.INFO);
                 RUNWAR_SECURITY.setLevel(Level.DEBUG);
+                UNDERTOW_PREDICATE_LOG.setLevel(Level.DEBUG);
                 configureUrlRewriteLoggers(false);
             }
         }
@@ -166,9 +170,8 @@ public class LoggerFactory {
 
     private static ConsoleAppender consoleAppender(String pattern) {
         ConsoleAppender appender = new ConsoleAppender();
-        MulticolorLayout layout = new MulticolorLayout();
+        PatternLayout layout = new PatternLayout();
         layout.setConversionPattern(pattern);
-        layout.setLevels("TRACE:1;32,DEBUG:1;33,INFO:1;,WARN:38;5;208,ERROR:1;31,FATAL:1;40");
         appender.setLayout(layout);
         appender.setName("CONSOLE");
         appender.setThreshold(Level.toLevel(logLevel));
@@ -199,7 +202,7 @@ public class LoggerFactory {
         Logger REWRITE_EXECUTION_LOG = Logger.getLogger("org.tuckey.web.filters.urlrewrite.RuleExecutionOutput");
         Logger REWRITE_WRITER_LOG = Logger.getLogger("org.tuckey.web.filters.urlrewrite.UrlRewriter");
         Logger REWRITE_URL_LOG = Logger.getLogger("org.tuckey.web.filters.urlrewrite");
-        Logger REWRITE_FILTER = Logger.getLogger("org.tuckey.web.filters.urlrewrite.UrlRewriteFilter");
+        Logger REWRITE_FILTER = Logger.getLogger("runwar.util.UrlRewriteFilter");
         Logger REWRITE_LOG = Logger.getLogger("org.tuckey.web.filters.urlrewrite.utils.Log");
         urlrewriteLoggers = new ArrayList<>();
         urlrewriteLoggers.add(REWRITE_CONDITION_LOG);
@@ -223,7 +226,7 @@ public class LoggerFactory {
             RunwarLogger.CONF_LOG.infof("Enabling URL rewrite log level: %s", "TRACE");
             urlrewriteLoggers.forEach(logger -> {
                 logger.setLevel(Level.TRACE);
-                logger.addAppender(consoleAppender("[%color{%-5p}] %c{2}: %color{%m%n}"));
+                logger.addAppender(consoleAppender(serverOptions.getLogPattern()));
                 logger.setAdditivity(false);
             });
         } else {
@@ -232,7 +235,7 @@ public class LoggerFactory {
             }
             urlrewriteLoggers.forEach(logger -> {
                 logger.setLevel(Level.WARN);
-                logger.addAppender(consoleAppender("[%color{%-5p}] %c{2}: %color{%m%n}"));
+                logger.addAppender(consoleAppender(serverOptions.getLogPattern()));
                 logger.setAdditivity(false);
             });
             REWRITE_EXECUTION_LOG.setLevel(Level.DEBUG);

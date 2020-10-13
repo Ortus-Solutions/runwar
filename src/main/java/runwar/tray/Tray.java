@@ -51,6 +51,7 @@ import runwar.gui.SubmitActionlistioner;
 import runwar.util.dae.OSType;
 
 import java.lang.reflect.Method;
+import runwar.BrowserOpener;
 import static runwar.util.Reflection.invoke;
 import static runwar.util.Reflection.method;
 
@@ -208,14 +209,18 @@ public class Tray {
                     menuItem = new MenuItem(label, is, new ExitAction(server));
                     menuItem.setShortcut('s');
                 } else if (action.equalsIgnoreCase("restartserver")) {
-                    menuItem = new MenuItem(label, is, new RestartAction(server));
+                    //menuItem = new MenuItem(label, is, new RestartAction(server));
+                    String command = "box server restart";
+                    String workingDirectory = server.getServerOptions().warUriString();
+                    String shell = Utils.availableShellPick();
+                    menuItem = new MenuItem(label, is, new RunShellCommandAction(command, workingDirectory, false, shell));
                     menuItem.setShortcut('r');
                 } else if (action.equalsIgnoreCase("getversion")) {
                     menuItem = new MenuItem("Version: " + Server.getVersion(), is, new GetVersionAction());
                     menuItem.setShortcut('v');
                 } else if (action.equalsIgnoreCase("openbrowser")) {
                     String url = Utils.getIgnoreCase(itemInfo, "url").toString();
-                    menuItem = new MenuItem(label, is, new OpenBrowserAction(url));
+                    menuItem = new MenuItem(label, is, new OpenBrowserAction(url, server.getServerOptions().browser()));
                     menuItem.setShortcut('o');
                 } else if (action.equalsIgnoreCase("openfilesystem")) {
                     File path = new File(getString(itemInfo, "path", server.getServerOptions().warUriString()));
@@ -223,7 +228,7 @@ public class Tray {
                     menuItem.setShortcut('b');
                 } else if (action.equalsIgnoreCase("run")) {
                     String command = getString(itemInfo, "command", "");
-                    String workingDirectory = getString(itemInfo, "workingDirectory", "");
+                    String workingDirectory = getString(itemInfo, "workingDirectory", server.getServerOptions().warUriString());
                     String shell = getString(itemInfo, "shell", Utils.availableShellPick());
                     Boolean waitResponse = true;
                     try {
@@ -235,7 +240,7 @@ public class Tray {
                     menuItem = new MenuItem(label, is, new RunShellCommandAction(command, workingDirectory, waitResponse, shell));
                 } else if (action.equalsIgnoreCase("runAsync")) {
                     String command = getString(itemInfo, "command", "");
-                    String workingDirectory = getString(itemInfo, "workingDirectory", "");
+                    String workingDirectory = getString(itemInfo, "workingDirectory", server.getServerOptions().warUriString());
                     String shell = getString(itemInfo, "shell", Utils.availableShellPick());
                     menuItem = new MenuItem(label, is, new RunShellCommandAction(command, workingDirectory, false, shell));
                 } else {
@@ -720,7 +725,7 @@ public class Tray {
         @Override
         public void actionPerformed(ActionEvent e) {
             RunwarLogger.LOG.info("ServerOptionsJsonAction ------");
-            showDialog(serverOptions.toJson());
+//            showDialog(serverOptions.toJson());
         }
     }
 
@@ -795,9 +800,11 @@ public class Tray {
     private static class OpenBrowserAction implements ActionListener {
 
         private String url;
+        private String browser;
 
-        public OpenBrowserAction(String url) {
+        public OpenBrowserAction(String url, String browser) {
             this.url = url;
+            this.browser = browser;
         }
 
         @Override
@@ -805,7 +812,7 @@ public class Tray {
             // if binding to all IPs, swap out with localhost.
             url = Utils.replaceHost(url, "0.0.0.0", "127.0.0.1");
             displayMessage(variableMap.get("processName"), "Info", "Opening browser to " + url);
-            openURL(url);
+            openURL(url, browser);
         }
     }
 

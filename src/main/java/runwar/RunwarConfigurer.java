@@ -226,9 +226,9 @@ class RunwarConfigurer {
                 serverOptions.urlRewriteFile(new File(webInfDir,"urlrewrite.xml"));
             }
             try{
-                rewriteFilter = (Class<Filter>) getClassLoader().loadClass("org.tuckey.web.filters.urlrewrite.UrlRewriteFilter");
+                rewriteFilter = (Class<Filter>) getClassLoader().loadClass("runwar.util.UrlRewriteFilter");
             } catch (java.lang.ClassNotFoundException e) {
-                rewriteFilter = (Class<Filter>) Server.class.getClassLoader().loadClass("org.tuckey.web.filters.urlrewrite.UrlRewriteFilter");
+                rewriteFilter = (Class<Filter>) Server.class.getClassLoader().loadClass("runwar.util.UrlRewriteFilter");
             }
             if(serverOptions.urlRewriteFile() != null) {
                 if(!serverOptions.urlRewriteFile().isFile()) {
@@ -236,16 +236,7 @@ class RunwarConfigurer {
                     LOG.error(message);
                     throw new RuntimeException(message);
                 } else {
-                    String rewriteFileName = "urlrewrite";
-                    rewriteFileName += serverOptions.urlRewriteApacheFormat() ? ".htaccess" : ".xml";
-                    File webInfRewriteFile = new File(webInfDir, rewriteFileName);
-                    if(!serverOptions.urlRewriteFile().equals(webInfRewriteFile)){
-                        LaunchUtil.copyFile(serverOptions.urlRewriteFile(), webInfRewriteFile);
-                        LOG.debug("Copying URL rewrite file " + serverOptions.urlRewriteFile().getAbsolutePath() + " to WEB-INF: " + webInfRewriteFile.getAbsolutePath());
-                    }else{
-                        LOG.debug("Keeping the rewrite file ");
-                    }
-                    urlRewriteFile = "/WEB-INF/"+rewriteFileName;
+                    urlRewriteFile = serverOptions.urlRewriteFile().getAbsolutePath();
                 }
             }
 
@@ -424,11 +415,10 @@ class RunwarConfigurer {
         */
 
         // this prevents us from having to use our own ResourceHandler (directory listing, welcome files, see below) and error handler for now
-        servletBuilder.addServlet(new ServletInfo(io.undertow.servlet.handlers.ServletPathMatches.DEFAULT_SERVLET_NAME, DefaultServlet.class)
-                .addInitParam("directory-listing", Boolean.toString(serverOptions.directoryListingEnable())));
-
-//        servletBuilder.setExceptionHandler(LoggingExceptionHandler.DEFAULT);
-
+        servletBuilder.addServlet( new ServletInfo(io.undertow.servlet.handlers.ServletPathMatches.DEFAULT_SERVLET_NAME, DefaultServlet.class)
+                .addInitParam("directory-listing", Boolean.toString(serverOptions.directoryListingEnable()))
+        		.addInitParam("disallowed-extensions", "CFC,cfc,Cfc,CFc,cFc,cfC,CfC,cFC,CFM,cfm,Cfm,CFm,cFm,cfM,CfM,cFM,CFML,cfmL,CfmL,CFmL,cFmL,cfML,CfML,cFML,CFMl,cfml,Cfml,CFml,cFml,cfMl,CfMl,cFMl")
+        		.addInitParam("allow-post", "true") );
 
         List<?> welcomePages =  servletBuilder.getWelcomePages();
         if(serverOptions.ignoreWebXmlWelcomePages()) {

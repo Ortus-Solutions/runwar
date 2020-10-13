@@ -64,6 +64,7 @@ public interface ServerOptions {
         final static String DOCK = "dock";
         final static String SHELL = "shell";
         final static String TRAYCONFIG = "trayconfig";
+        final static String PREDICATEFILE = "predicateFile";
         final static String ICON = "icon";
         final static String URLREWRITEFILE = "urlrewritefile";
         final static String URLREWRITELOG = "urlrewritelog";
@@ -79,6 +80,7 @@ public interface ServerOptions {
         final static String TRANSFERMINSIZE = "transferminsize";
         final static String SENDFILE = "sendfile";
         final static String GZIP = "gzip";
+        final static String GZIP_PREDICATE = "gzipPredicate";
         final static String MARIADB4J = "mariadb4j";
         final static String MARIADB4JPORT = "mariadb4jport";
         final static String MARIADB4JBASEDIR = "mariadb4jbasedir";
@@ -109,6 +111,7 @@ public interface ServerOptions {
         final static String SERVICE = "service";
         final static String UNDERTOWOPTIONS = "undertowOptions";
         final static String XNIOOPTIONS = "xnioOptions";
+        final static String BROWSER = "browser";
     }
     
     String defaultShell();
@@ -352,6 +355,10 @@ public interface ServerOptions {
     ServerOptions welcomeFiles(String[] welcomeFiles);
 
     String warUriString();
+    
+    String browser();
+    
+    ServerOptions browser(String browser);
 
     ServerOptions sslCertificate(File file);
 
@@ -390,6 +397,10 @@ public interface ServerOptions {
     ServerOptions gzipEnable(boolean enable);
 
     boolean gzipEnable();
+    
+    ServerOptions gzipPredicate(String enable);
+
+    String gzipPredicate();
 
     ServerOptions mariaDB4jEnable(boolean enable);
 
@@ -534,5 +545,9 @@ public interface ServerOptions {
     ServerOptions undertowOptions(String options);
 
     ServerOptions undertowOptions(OptionMap.Builder options);
-
+    
+    File predicateFile();
+    
+    ServerOptions predicateFile(File predicateFile);
+    String getLogPattern();
 }

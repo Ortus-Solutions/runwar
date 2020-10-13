@@ -425,6 +425,10 @@ public class ConfigParser {
             if (serverConfig.hasOption(Keys.TRAYCONFIG)) {
                 serverOptions.trayConfig(getFile(serverConfig.getOptionValue(Keys.TRAYCONFIG)));
             }
+            
+            if (serverConfig.hasOption(Keys.PREDICATEFILE)) {
+                serverOptions.predicateFile(getFile(serverConfig.getOptionValue(Keys.PREDICATEFILE)));
+            }
 
             if (serverConfig.hasOption(Keys.STATUSFILE)) {
                 serverOptions.statusFile(getFile(serverConfig.getOptionValue(Keys.STATUSFILE)));
@@ -584,6 +588,10 @@ public class ConfigParser {
 
             if (serverConfig.hasOption(Keys.SSLSELFSIGN)) {
                 serverOptions.sslSelfSign(Boolean.valueOf(serverConfig.getOptionValue(Keys.SSLSELFSIGN)));
+            }
+            
+            if (serverConfig.hasOption(Keys.BROWSER)) {
+                serverOptions.sslSelfSign(Boolean.valueOf(serverConfig.getOptionValue(Keys.BROWSER)));
             }
 
             if (serverConfig.hasOption(Keys.WEBINF)) {
