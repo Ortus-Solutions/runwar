@@ -584,6 +584,25 @@ public class CommandLineHandler {
                 .hasArg().withArgName("firefox, chrome, opera, konqueror, epiphany, mozilla, netscape")
                 .create(Keys.BROWSER));
         
+        options.addOption(OptionBuilder
+                .withLongOpt("default-servlet-allowed-ext")
+                .withDescription("Additional allowed extensions to add to the default list.")
+                .hasArg().withArgName("log,foo,bar")
+                .create(Keys.DEFAULTSERVLETALLOWEDEXT));
+        
+        options.addOption(OptionBuilder
+                .withLongOpt("case-sensitive-web-server")
+                .withDescription("Experimental- force case sensitive or insensitive checks on web server")
+                .hasArg().withArgName("true|false")
+                .create(Keys.CASESENSITIVEWEBSERVER));
+        
+        options.addOption(OptionBuilder
+                .withLongOpt("resource-manager-logging")
+                .withDescription("Enable low level file system logging in resource manager")
+                .hasArg().withArgName("true|false")
+                .create(Keys.RESOURCEMANAGERLOGGING));
+        
+        
         options.addOption(new Option("h", Keys.HELP, false, "print this message"));
         options.addOption(new Option("v", "version", false, "print runwar version and undertow version"));
         
@@ -866,10 +885,23 @@ public class CommandLineHandler {
             if (hasOptionValue(line, Keys.LOGACCESS)) {
                 serverOptions.logAccessEnable(Boolean.valueOf(line.getOptionValue(Keys.LOGACCESS)));
             }
-            
+
             if (hasOptionValue(line, Keys.OPENBROWSER)) {
                 serverOptions.openbrowser(Boolean.valueOf(line.getOptionValue("open")));
             }
+            
+            if (hasOptionValue(line, Keys.DEFAULTSERVLETALLOWEDEXT)) {
+                serverOptions.defaultServletAllowedExt(line.getOptionValue(Keys.DEFAULTSERVLETALLOWEDEXT));
+            }
+            
+            if (hasOptionValue(line, Keys.CASESENSITIVEWEBSERVER)) {
+                serverOptions.caseSensitiveWebServer(Boolean.valueOf(line.getOptionValue(Keys.CASESENSITIVEWEBSERVER)));
+            }
+            
+            if (hasOptionValue(line, Keys.RESOURCEMANAGERLOGGING)) {
+                serverOptions.resourceManagerLogging(Boolean.valueOf(line.getOptionValue(Keys.RESOURCEMANAGERLOGGING)));
+            }
+            
             if (line.hasOption(Keys.OPENURL)) {
                 serverOptions.openbrowserURL(line.getOptionValue(Keys.OPENURL));
                 if (!line.hasOption(Keys.OPENBROWSER)) {

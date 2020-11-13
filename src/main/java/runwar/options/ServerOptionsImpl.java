@@ -68,7 +68,7 @@ public class ServerOptionsImpl implements ServerOptions {
     private String action = "start";
 
     private String browser = "";
-
+    
     private String cfengineName = "";
     
     private boolean customHTTPStatusEnable = true;
@@ -126,6 +126,13 @@ public class ServerOptionsImpl implements ServerOptions {
     private boolean service = false;
     
     public String logPattern = "[%-5p] %c: %m%n";
+    
+    private String defaultServletAllowedExt = "";
+
+    private Boolean caseSensitiveWebServer= null;
+    
+    private Boolean resourceManagerLogging= false;
+    
     
     private final Map<String, String> aliases = new HashMap<>();
     
@@ -2133,6 +2140,57 @@ public class ServerOptionsImpl implements ServerOptions {
         return this;
     }
 
+    /*
+     * @see runwar.options.ServerOptions#defaultServletAllowedExt()
+     */
+    @Override
+    public String defaultServletAllowedExt() {
+        return defaultServletAllowedExt;
+    }
+
+    /*
+     * @see runwar.options.ServerOptions#defaultServletAllowedExt(String)
+     */
+    @Override
+    public ServerOptions defaultServletAllowedExt(String defaultServletAllowedExt) {
+    	this.defaultServletAllowedExt = defaultServletAllowedExt;
+        return this;
+    }
+
+    /*
+     * @see runwar.options.ServerOptions#resourceManagerLogging()
+     */
+    @Override
+    public Boolean resourceManagerLogging() {
+        return resourceManagerLogging;
+    }
+
+    /*
+     * @see runwar.options.ServerOptions#resourceManagerLogging(boolean)
+     */
+    @Override
+    public ServerOptions resourceManagerLogging(Boolean resourceManagerLogging) {
+    	this.resourceManagerLogging = resourceManagerLogging;
+        return this;
+    }    
+
+    /*
+     * @see runwar.options.ServerOptions#caseSensitiveWebServer()
+     */
+    @Override
+    public Boolean caseSensitiveWebServer() {
+        return caseSensitiveWebServer;
+    }
+
+    /*
+     * @see runwar.options.ServerOptions#caseSensitiveWebServer(boolean)
+     */
+    @Override
+    public ServerOptions caseSensitiveWebServer(Boolean caseSensitiveWebServer) {
+    	this.caseSensitiveWebServer = caseSensitiveWebServer;
+        return this;
+    }
+    
     /**
      * @see runwar.options.ServerOptions#xnioOptions(java.lang.String)
      */

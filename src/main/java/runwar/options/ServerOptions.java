@@ -112,6 +112,9 @@ public interface ServerOptions {
         final static String UNDERTOWOPTIONS = "undertowOptions";
         final static String XNIOOPTIONS = "xnioOptions";
         final static String BROWSER = "browser";
+        final static String DEFAULTSERVLETALLOWEDEXT = "defaultServletAllowedExt";
+        final static String CASESENSITIVEWEBSERVER="caseSensitiveWebServer";
+        final static String RESOURCEMANAGERLOGGING="resourceManagerLogging";
     }
     
     String defaultShell();
@@ -359,7 +362,19 @@ public interface ServerOptions {
     String browser();
     
     ServerOptions browser(String browser);
+    
+    String defaultServletAllowedExt();
+    
+    ServerOptions defaultServletAllowedExt(String defaultServletAllowedExt);
 
+    Boolean caseSensitiveWebServer();
+    
+    ServerOptions caseSensitiveWebServer(Boolean caseSensitiveWebServer);
+
+    Boolean resourceManagerLogging();
+    
+    ServerOptions resourceManagerLogging(Boolean resourceManagerLogging);
+    
     ServerOptions sslCertificate(File file);
 
     File sslCertificate();
