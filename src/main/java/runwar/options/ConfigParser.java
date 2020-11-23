@@ -173,7 +173,7 @@ public class ConfigParser {
                     i++;
                 }
             }
-
+            
             if (serverConfig.g("app").hasOption("webXML")) {
                 serverConfig.put(Keys.WEBXMLPATH, serverConfig.g("app").getOptionValue("webXML"));
             }

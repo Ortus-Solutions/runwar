@@ -349,7 +349,9 @@ public class Server {
 
         File webinf = serverOptions.webInfDir();
         File webXmlFile = serverOptions.webXmlFile();
-
+        LOG.debug("web-inf dir:"+serverOptions.webInfDir());
+        LOG.debug("web.xml file:"+serverOptions.webXmlFile());
+        
         String libDirs = serverOptions.libDirs();
         URL jarURL = serverOptions.jarURL();
         // If this folder is a proper war, add its WEB-INF/lib folder to the passed libDirs

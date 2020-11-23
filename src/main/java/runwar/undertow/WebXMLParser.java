@@ -23,7 +23,7 @@ import org.w3c.dom.Document;
 public class WebXMLParser {
 
     private static Pattern SPECIAL_REGEX_CHARS = Pattern.compile("[{}()\\[\\].+*?^$\\\\|]");
-
+    
     /**
      * Parses the web.xml and configures the context.
      * @param webinf WEB-INF directory

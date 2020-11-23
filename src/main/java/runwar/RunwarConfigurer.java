@@ -86,7 +86,7 @@ class RunwarConfigurer {
             }
             cfengine = "adobe";
         }
-
+        LOG.debug("web-inf valid:"+webInfDir.exists());
         if(serverMode.equals(Server.Mode.SERVLET)) {
             configureServerServlet(servletBuilder);
         }
