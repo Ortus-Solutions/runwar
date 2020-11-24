@@ -9,7 +9,6 @@ import runwar.Server;
 import runwar.Server.Mode;
 
 import java.io.File;
-import java.lang.reflect.Modifier;
 import java.net.MalformedURLException;
 import java.net.URL;
 import java.nio.file.Path;
@@ -122,6 +121,8 @@ public class ServerOptionsImpl implements ServerOptions {
     private boolean sslEccDisable = true;
     
     private boolean sslSelfSign = false;
+    
+    private boolean ignoreWebXmlRestMappings = true;
     
     private boolean service = false;
     
@@ -2120,9 +2121,15 @@ public class ServerOptionsImpl implements ServerOptions {
      */
     @Override
     public boolean ignoreWebXmlRestMappings() {
-        return servletRestMappings() != null && servletRestMappings().length > 0;
+        return this.ignoreWebXmlRestMappings;
+        //return servletRestMappings() != null && servletRestMappings().length > 0;
     }
-
+    
+    public ServerOptions ignoreWebXmlRestMappings(boolean ignore) {
+        this.ignoreWebXmlRestMappings = ignore;
+        return this;
+    }
+    
     /*
      * @see runwar.options.ServerOptions#service()
      */

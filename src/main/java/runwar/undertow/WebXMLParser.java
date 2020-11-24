@@ -149,7 +149,7 @@ public class WebXMLParser {
                     });
                 }
             });
-
+            
             // add servlets to deploy info
             info.addServlets(servletMap.values());
             // do filters

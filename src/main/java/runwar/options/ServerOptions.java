@@ -88,6 +88,7 @@ public interface ServerOptions {
         final static String MARIADB4JIMPORT = "mariadb4jimport";
         final static String JVMARGS = "jvmargs";
         final static String ERRORPAGES = "errorpages";
+        final static String IGNORERESTMAPPING = "ignorerestmapping";
         final static String SERVLETREST = "servletrest";
         final static String SERVLETRESTMAPPINGS = "servletrestmappings";
         final static String FILTERPATHINFO = "filterpathinfo";
@@ -544,6 +545,8 @@ public interface ServerOptions {
     boolean ignoreWebXmlWelcomePages();
 
     boolean ignoreWebXmlRestMappings();
+    
+    ServerOptions ignoreWebXmlRestMappings(boolean ignore);
 
     boolean service();
 

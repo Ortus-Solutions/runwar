@@ -442,6 +442,12 @@ public class CommandLineHandler {
                 .create(Keys.ERRORPAGES));
         
         options.addOption(OptionBuilder
+                .withLongOpt("ignore-rest-mapping")
+                .withDescription("Ignore rest mappings on web.xml (true)")
+                .hasArg().withArgName("true|false").withType(Boolean.class)
+                .create(Keys.IGNORERESTMAPPING));
+        
+        options.addOption(OptionBuilder
                 .withLongOpt("servlet-rest-enable")
                 .withDescription("Enable an embedded CFML server REST servlet")
                 .hasArg().withArgName("true|false").withType(Boolean.class)
@@ -923,6 +929,11 @@ public class CommandLineHandler {
             if (hasOptionValue(line, Keys.DOCK)) {
                 serverOptions.dockEnable(Boolean.valueOf(line.getOptionValue(Keys.DOCK)));
             }
+            
+            if (hasOptionValue(line, Keys.IGNORERESTMAPPING)) {
+                serverOptions.ignoreWebXmlRestMappings(Boolean.valueOf(line.getOptionValue(Keys.IGNORERESTMAPPING)));
+            }
+            
             if (hasOptionValue(line, Keys.ICON)) {
                 serverOptions.iconImage(line.getOptionValue(Keys.ICON));
             }
