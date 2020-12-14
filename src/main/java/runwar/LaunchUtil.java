@@ -683,7 +683,7 @@ public class LaunchUtil {
     }
 
     public static void assertMinimumJavaVersion(String minVersion) {
-        Semver systemJavaVersion = new Semver(System.getProperty("java.version", "").replace('_', '.'), Semver.SemverType.LOOSE);
+        Semver systemJavaVersion = new Semver(System.getProperty("java.version", "").replace('_', '.').replace("-ea", ""), Semver.SemverType.LOOSE);
         Semver minimumJavaVersion = new Semver(minVersion, Semver.SemverType.LOOSE);
         System.out.println("Java version " + systemJavaVersion.toString() + " (requires >= " + minVersion + ")");
         if (systemJavaVersion.toStrict().isLowerThan(minimumJavaVersion.toStrict())) {
