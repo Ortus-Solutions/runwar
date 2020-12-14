@@ -591,6 +591,7 @@ public class Server {
                 if (serverOptions.debug() && serverOptions.testing() && exchange.getRequestPath().endsWith("/dumprunwarrequest")) {
                     new RequestDumper().handleRequest(exchange);
                 } else {
+                    CONTEXT_LOG.debug(RequestDumper().handleRequest(exchange));
                     super.handleRequest(exchange);
                 }
             }
