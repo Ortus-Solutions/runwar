@@ -57,7 +57,7 @@ public interface RunwarLogger extends BasicLogger {
     //  RunwarLogger ROOT_LOGGER = Logger.getMessageLogger(RunwarLogger.class, RunwarLogger.class.getPackage().getName());
 //    RunwarLogger CLIENT_LOGGER = Logger.getMessageLogger(RunwarLogger.class, ClientConnection.class.getPackage().getName());
 //
-//    RunwarLogger REQUEST_LOGGER = Logger.getMessageLogger(RunwarLogger.class, RunwarLogger.class.getPackage().getName() + ".request");
+//    Logger REQUEST_LOGGER = Logger.getLogger(RunwarLogger.class, RunwarLogger.class.getPackage().getName() + ".request");
 //    RunwarLogger SESSION_LOGGER = Logger.getMessageLogger(RunwarLogger.class, RunwarLogger.class.getPackage().getName() + ".session");
 //    RunwarLogger SECURITY_LOGGER = Logger.getMessageLogger(RunwarLogger.class, RunwarLogger.class.getPackage().getName() + ".request.security");
 //    RunwarLogger PROXY_REQUEST_LOGGER = Logger.getMessageLogger(RunwarLogger.class, RunwarLogger.class.getPackage().getName() + ".proxy");

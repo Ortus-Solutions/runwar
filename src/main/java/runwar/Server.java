@@ -588,10 +588,10 @@ public class Server {
                     manager.getDeployment().getServletPaths().invalidate();
                 }
 
-                if (serverOptions.debug() && serverOptions.testing() && exchange.getRequestPath().endsWith("/dumprunwarrequest")) {
-                    new RequestDumper().handleRequest(exchange);
+                if ((serverOptions.debug() || serverOptions.testing()) && serverOptions.logRequestsEnable()) {
+                    CONTEXT_LOG.debug(new RequestDumper().dumpRequest(exchange));
+                    super.handleRequest(exchange);
                 } else {
-                    CONTEXT_LOG.debug(RequestDumper().handleRequest(exchange));
                     super.handleRequest(exchange);
                 }
             }

@@ -8,7 +8,6 @@ import java.util.Iterator;
 import java.util.Map;
 
 import io.undertow.security.api.SecurityContext;
-import io.undertow.server.HttpHandler;
 import io.undertow.server.HttpServerExchange;
 import io.undertow.server.ServerConnection;
 import io.undertow.server.handlers.Cookie;
@@ -22,56 +21,57 @@ import org.bouncycastle.asn1.x500.X500Name;
 import org.bouncycastle.cert.jcajce.JcaX509CertificateHolder;
 
 @SuppressWarnings("deprecation")
-public class RequestDumper implements HttpHandler {
+public class RequestDumper {
 
-    @Override
-    public void handleRequest(final HttpServerExchange exchange) throws Exception {
+    public String dumpRequest(final HttpServerExchange exchange) throws Exception {
         final SecurityContext sc = exchange.getSecurityContext();
         final JSONObject jsonObject = new JSONObject();
         final ServletRequestContext servletRequestContext = exchange.getAttachment(ServletRequestContext.ATTACHMENT_KEY);
         final String realPath = servletRequestContext == null ? "" : servletRequestContext.getCurrentServletContext().getRealPath(exchange.getRequestURI());
-
-        jsonObject.put("URI",exchange.getRequestURI());
-        jsonObject.put("characterEncoding",exchange.getRequestHeaders().get(Headers.CONTENT_ENCODING));
-        jsonObject.put("contentLength",exchange.getRequestContentLength());
-        jsonObject.put("contentType",exchange.getRequestHeaders().get(Headers.CONTENT_TYPE));
+        
+        jsonObject.put("URI", exchange.getRequestURI());
+        jsonObject.put("URL", exchange.getRequestURL());
+        jsonObject.put("QueryParams", new JSONObject(exchange.getQueryParameters()));
+        jsonObject.put("characterEncoding", exchange.getRequestHeaders().get(Headers.CONTENT_ENCODING));
+        jsonObject.put("contentLength", exchange.getRequestContentLength());
+        jsonObject.put("contentType", exchange.getRequestHeaders().get(Headers.CONTENT_TYPE));
         ServerConnection connection = exchange.getConnection();
-        jsonObject.put("isHTTP2",(connection instanceof Http2ServerConnection));
-        jsonObject.put("isHTTPS",(connection.getSslSessionInfo() != null) );
-        jsonObject.put("realPath",realPath);
-        if(connection.getSslSessionInfo() != null){
+        jsonObject.put("isHTTP2", (connection instanceof Http2ServerConnection));
+        jsonObject.put("isHTTPS", (connection.getSslSessionInfo() != null));
+        jsonObject.put("realPath", realPath);
+        if (connection.getSslSessionInfo() != null) {
             final StringBuilder sb = new StringBuilder();
             sb.append("Ciphers: " + connection.getSslSessionInfo().getCipherSuite());
             JSONObject localCerts = new JSONObject();
             Arrays.stream(connection.getSslSession().getLocalCertificates()).forEach(
                     certificate -> {
                         try {
-                            X500Name x500name = new JcaX509CertificateHolder((X509Certificate) certificate ).getSubject();
-                            localCerts.put("subject",x500name.toString());
-                            Arrays.stream(x500name.toString().split(",")).forEach(part->{
-                                localCerts.put(part.split("=")[0],part.split("=")[1]);
+                            X500Name x500name = new JcaX509CertificateHolder((X509Certificate) certificate).getSubject();
+                            localCerts.put("subject", x500name.toString());
+                            Arrays.stream(x500name.toString().split(",")).forEach(part -> {
+                                localCerts.put(part.split("=")[0], part.split("=")[1]);
                             });
-                            localCerts.put("cipher",((X509Certificate) certificate).getSigAlgName());
+                            localCerts.put("cipher", ((X509Certificate) certificate).getSigAlgName());
                             sb.append(x500name.toString());
                         } catch (CertificateEncodingException e) {
                             e.printStackTrace();
                         }
                     }
             );
-            jsonObject.put("localCertificates",localCerts);
-            jsonObject.put("sslSessionInfo",sb.toString());
+            jsonObject.put("localCertificates", localCerts);
+            jsonObject.put("sslSessionInfo", sb.toString());
         } else {
-            jsonObject.put("sslSessionInfo","");
+            jsonObject.put("sslSessionInfo", "");
         }
         if (sc != null) {
             if (sc.isAuthenticated()) {
-                jsonObject.put("authType",sc.getMechanismName());
-                jsonObject.put("principle",sc.getAuthenticatedAccount().getPrincipal().getName());
+                jsonObject.put("authType", sc.getMechanismName());
+                jsonObject.put("principle", sc.getAuthenticatedAccount().getPrincipal().getName());
             } else {
-                jsonObject.put("authType","none");
+                jsonObject.put("authType", "none");
             }
         }
-        
+
         final JSONObject cookieData = new JSONObject();
         Map<String, Cookie> cookies = exchange.getRequestCookies();
         if (cookies != null) {
@@ -116,7 +116,6 @@ public class RequestDumper implements HttpHandler {
             queryParamData.put(pname, valueSB.toString());
         }
         jsonObject.put("queryParameters", queryParamData);
-
         jsonObject.put("protocol", exchange.getProtocol());
         jsonObject.put("queryString", exchange.getQueryString());
         jsonObject.put("remoteAddr", exchange.getSourceAddress());
@@ -124,9 +123,8 @@ public class RequestDumper implements HttpHandler {
         jsonObject.put("scheme", exchange.getRequestScheme());
         jsonObject.put("host", exchange.getRequestHeaders().getFirst(Headers.HOST));
         jsonObject.put("serverPort", exchange.getDestinationAddress().getPort());
-        
-        exchange.getResponseHeaders().put(Headers.CONTENT_TYPE, "text/plain");
-        exchange.getResponseSender().send(jsonObject.toJSONString());
+
+        return jsonObject.toString();
     }
 
 }
