@@ -31,7 +31,7 @@ public class ServerOptionsImpl implements ServerOptions {
 
     private boolean debug = false, isBackground = true, logAccessEnable = false, logRequestsEnable = false, openbrowser = false, startedFromCommandline = false;
 
-    private String pidFile, openbrowserURL, cfmlDirs, logFileBaseName = "server", logRequestBaseFileName = "requests", logAccessBaseFileName = "access", logSuffix = "txt", libDirs = null;
+    private String pidFile, openbrowserURL, cfmlDirs, logFileBaseName="server", logRequestBaseFileName="requests", logAccessBaseFileName="access", logSuffix="txt", libDirs = null;
 
     private int launchTimeout = 50 * 1000; // 50 secs
 
@@ -91,7 +91,7 @@ public class ServerOptionsImpl implements ServerOptions {
 
     private boolean servletRestEnable = false;
 
-    private String[] servletRestMappings = {"/rest"};
+    private String[] servletRestMappings = { "/rest" };
 
     private boolean filterPathInfoEnable = true;
 
@@ -129,9 +129,9 @@ public class ServerOptionsImpl implements ServerOptions {
 
     private String defaultServletAllowedExt = "";
 
-    private Boolean caseSensitiveWebServer = null;
+    private Boolean caseSensitiveWebServer= null;
 
-    private Boolean resourceManagerLogging = false;
+    private Boolean resourceManagerLogging= false;
 
     
     private final Map<String, String> aliases = new HashMap<>();
@@ -160,24 +160,26 @@ public class ServerOptionsImpl implements ServerOptions {
         userPasswordList.put("alice", "secret");
     }
 
+
 //    public String toJson(){
 //        final Gson gson=new GsonBuilder().excludeFieldsWithoutExposeAnnotation()
 //            .excludeFieldsWithModifiers(Modifier.TRANSIENT).create();
 //        return gson.toJson(this);
 //    }
-    public String toJson(Set<String> set) {
+
+    public String toJson(Set<String> set){
         JSONArray jsonArray = new JSONArray();
         jsonArray.addAll(set);
         return jsonArray.toJSONString();
     }
 
-    public String toJson(Map<?, ?> map) {
-        final Map<String, String> finalMap = new HashMap<>();
+    public String toJson(Map<?,?> map){
+        final Map<String,String> finalMap = new HashMap<>();
         map.forEach((o, o2) -> {
-            if (o instanceof Integer) {
-                finalMap.put(Integer.toString((Integer) o), (String) o2);
+            if(o instanceof Integer){
+                finalMap.put(Integer.toString((Integer) o),(String)o2);
             } else {
-                finalMap.put((String) o, (String) o2);
+                finalMap.put((String)o,(String)o2);
             }
         });
         return new JSONObject(finalMap).toJSONString();
@@ -213,7 +215,7 @@ public class ServerOptionsImpl implements ServerOptions {
                     || arg.contains("stopsocket") || arg.contains("--host")) {
                 skipNext = true;
             } else {
-                if (skipNext) {
+                if(skipNext) {
                     skipNext = false;
                 } else {
                     argarray.add(arg);
@@ -236,7 +238,7 @@ public class ServerOptionsImpl implements ServerOptions {
      */
     @Override
     public String serverName() {
-        if (serverName == null) {
+        if(serverName == null){
             serverName = Paths.get(".").toFile().getAbsoluteFile().getParentFile().getName();
             assert serverName.length() > 3;
         }
@@ -483,7 +485,8 @@ public class ServerOptionsImpl implements ServerOptions {
     }
 
     /**
-     * @see runwar.options.ServerOptions#urlRewriteStatusPath(java.lang.String)
+     * @see
+     * runwar.options.ServerOptions#urlRewriteStatusPath(java.lang.String)
      */
     @Override
     public ServerOptions urlRewriteStatusPath(String path) {
@@ -640,7 +643,7 @@ public class ServerOptionsImpl implements ServerOptions {
 
     @Override
     public Set<String> contentDirectories() {
-        if (contentDirs() != null) {
+        if(contentDirs() != null){
             Stream.of(contentDirs().split(",")).forEach(aDirList -> {
                 String dir;
                 String[] directoryAndAliasList = aDirList.trim().split("=");
@@ -680,8 +683,8 @@ public class ServerOptionsImpl implements ServerOptions {
      * @see runwar.options.ServerOptions#aliases()
      */
     @Override
-    public Map<String, String> aliases() {
-        if (contentDirs() == null && aliases.size() == 0) {
+    public Map<String,String> aliases() {
+        if(contentDirs() == null && aliases.size() == 0){
             return new HashMap<>();
         }
         Stream.of(contentDirs().split(",")).forEach(aDirList -> {
@@ -700,7 +703,7 @@ public class ServerOptionsImpl implements ServerOptions {
             }
             dir = dir.endsWith("/") ? dir : dir + '/';
             path = Paths.get(dir).normalize().toAbsolutePath();
-            if (virtual.length() != 0) {
+            if(virtual.length() != 0){
                 virtual = virtual.startsWith("/") ? virtual : "/" + virtual;
                 virtual = virtual.endsWith("/") ? virtual.substring(0, virtual.length() - 1) : virtual;
                 aliases.put(virtual.toLowerCase(), path.toString());
@@ -713,7 +716,7 @@ public class ServerOptionsImpl implements ServerOptions {
      * @see runwar.options.ServerOptions#contentDirs(java.lang.String)
      */
     @Override
-    public ServerOptions aliases(Map<String, String> aliases) {
+    public ServerOptions aliases(Map<String,String> aliases) {
         this.aliases.putAll(aliases);
         return this;
     }
@@ -777,13 +780,11 @@ public class ServerOptionsImpl implements ServerOptions {
         this.logRequestsDir = logDir;
         return this;
     }
-
     @Override
     public ServerOptions logRequestsDir(String logDir) {
         this.logRequestsDir = new File(logDir);
         return this;
     }
-
     @Override
     public File logRequestsDir() {
         if (this.logRequestsDir == null) {
@@ -793,12 +794,11 @@ public class ServerOptionsImpl implements ServerOptions {
     }
 
     /**
-     * @see
-     * runwar.options.ServerOptions#logRequestsBaseFileName(java.lang.String)
+     * @see runwar.options.ServerOptions#logRequestsBaseFileName(java.lang.String)
      */
     @Override
     public ServerOptions logRequestsBaseFileName(String name) {
-        this.logRequestBaseFileName = name;
+        this.logRequestBaseFileName= name;
         return this;
     }
 
@@ -818,13 +818,11 @@ public class ServerOptionsImpl implements ServerOptions {
         this.logAccessDir = logDir;
         return this;
     }
-
     @Override
     public ServerOptions logAccessDir(String logDir) {
         this.logAccessDir = new File(logDir);
         return this;
     }
-
     @Override
     public File logAccessDir() {
         if (this.logAccessDir == null) {
@@ -849,7 +847,6 @@ public class ServerOptionsImpl implements ServerOptions {
     public String logAccessBaseFileName() {
         return this.logAccessBaseFileName;
     }
-
     /**
      * @see runwar.options.ServerOptions#openbrowser()
      */
@@ -1020,7 +1017,7 @@ public class ServerOptionsImpl implements ServerOptions {
      */
     @Override
     public File workingDir() {
-        return workingDir != null ? workingDir : Paths.get(".").toFile().getAbsoluteFile();
+        return workingDir != null ? workingDir: Paths.get(".").toFile().getAbsoluteFile();
     }
 
     /**
@@ -1094,8 +1091,8 @@ public class ServerOptionsImpl implements ServerOptions {
      */
     @Override
     public File webXmlFile() {
-        if (webXmlFile == null && webInfDir() != null) {
-            webXmlFile(new File(webInfDir(), "web.xml"));
+        if(webXmlFile == null && webInfDir() != null) {
+            webXmlFile(new File(webInfDir(),"web.xml"));
         }
         return webXmlFile;
     }
@@ -1177,7 +1174,8 @@ public class ServerOptionsImpl implements ServerOptions {
     }
 
     /**
-     * @see runwar.options.ServerOptions#trayConfig(net.minidev.json.JSONArray)
+     * @see
+     * runwar.options.ServerOptions#trayConfig(net.minidev.json.JSONArray)
      */
     @Override
     public ServerOptions trayConfig(JSONArray trayConfig) {
@@ -1202,6 +1200,7 @@ public class ServerOptionsImpl implements ServerOptions {
         return this;
     }
 
+    
     @Override
     public String defaultShell() {
         return defaultShell;
@@ -1212,7 +1211,7 @@ public class ServerOptionsImpl implements ServerOptions {
         return browser;
     }
 
-    public ServerOptions browser(String browser) {
+    public ServerOptions browser(String browser){
         this.browser = browser;
         return this;
     }
@@ -1222,6 +1221,8 @@ public class ServerOptionsImpl implements ServerOptions {
         return this;
     }
 
+    
+    
     /**
      * @see runwar.options.ServerOptions#dockEnable()
      */
@@ -1338,7 +1339,8 @@ public class ServerOptionsImpl implements ServerOptions {
     }
 
     /**
-     * @see runwar.options.ServerOptions#directoryListingRefreshEnable(boolean)
+     * @see
+     * runwar.options.ServerOptions#directoryListingRefreshEnable(boolean)
      */
     @Override
     public ServerOptions directoryListingRefreshEnable(boolean directoryListingRefreshEnable) {
@@ -1393,7 +1395,7 @@ public class ServerOptionsImpl implements ServerOptions {
      */
     @Override
     public File sslCertificate() {
-        if (sslCertificate != null && !sslCertificate.exists() && !sslSelfSign) {
+        if(sslCertificate != null && !sslCertificate.exists() && !sslSelfSign){
             throw new IllegalArgumentException("Certificate file does not exist: " + sslCertificate.getAbsolutePath());
         }
         return this.sslCertificate;
@@ -1487,9 +1489,9 @@ public class ServerOptionsImpl implements ServerOptions {
      */
     @Override
     public String cfEngineName() {
-        if (cfengineName.isEmpty() && webInfDir() != null && webInfDir().exists() && new File(webInfDir(), "cfusion").exists()) {
+        if(cfengineName.isEmpty() && webInfDir() != null && webInfDir().exists() && new File(webInfDir(),"cfusion").exists()) {
             cfengineName = "adobe";
-        } else if (cfengineName.isEmpty() && webInfDir() != null && webInfDir().exists() && new File(webInfDir(), "lucee").exists()) {
+        } else if(cfengineName.isEmpty() && webInfDir() != null && webInfDir().exists() && new File(webInfDir(),"lucee").exists()) {
             cfengineName = "lucee";
         }
         return cfengineName;
@@ -1557,6 +1559,7 @@ public class ServerOptionsImpl implements ServerOptions {
         return this.gzipEnable;
     }
 
+    
     @Override
     public ServerOptions gzipPredicate(String predicate) {
         this.gzipPredicate = predicate;
@@ -1730,7 +1733,8 @@ public class ServerOptionsImpl implements ServerOptions {
     }
 
     /**
-     * @see runwar.options.ServerOptions#servletRestMappings(java.lang.String)
+     * @see
+     * runwar.options.ServerOptions#servletRestMappings(java.lang.String)
      */
     @Override
     public ServerOptions servletRestMappings(String mappings) {
@@ -1738,7 +1742,8 @@ public class ServerOptionsImpl implements ServerOptions {
     }
 
     /**
-     * @see runwar.options.ServerOptions#servletRestMappings(java.lang.String[])
+     * @see
+     * runwar.options.ServerOptions#servletRestMappings(java.lang.String[])
      */
     @Override
     public ServerOptions servletRestMappings(String[] mappings) {
@@ -2000,7 +2005,7 @@ public class ServerOptionsImpl implements ServerOptions {
      */
     @Override
     public ServerOptions cookieHttpOnly(boolean enable) {
-        this.cookieHttpOnly = enable;
+        this.cookieHttpOnly= enable;
         return this;
     }
 
@@ -2034,9 +2039,9 @@ public class ServerOptionsImpl implements ServerOptions {
      */
     @Override
     public String serverMode() {
-        if (webInfDir() != null && webInfDir().exists()) {
+        if(webInfDir() != null && webInfDir().exists()) {
             return Mode.WAR;
-        } else if (new File(warFile(), "WEB-INF").exists()) {
+        } else if( new File(warFile(), "WEB-INF").exists()) {
             return Mode.WAR;
         }
         return Mode.DEFAULT;
@@ -2057,7 +2062,7 @@ public class ServerOptionsImpl implements ServerOptions {
      */
     @Override
     public boolean bufferEnable() {
-        return this.bufferEnable;
+        return this.bufferEnable ;
     }
 
     /*
@@ -2241,6 +2246,7 @@ public class ServerOptionsImpl implements ServerOptions {
     public OptionMap.Builder xnioOptions() {
         return this.serverXnioOptions;
     }
+
 
     /**
      * @see runwar.options.ServerOptions#xnioOptions(java.lang.String)
