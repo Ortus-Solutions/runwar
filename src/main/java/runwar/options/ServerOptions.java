@@ -50,6 +50,7 @@ public interface ServerOptions {
         final static String TIMEOUT = "timeout";
         final static String WEBXMLPATH = "webxmlpath";
         final static String AJPPORT = "ajpport";
+        final static String AJPALLOWEDREQUESTATTRIBUTEPATTERN = "ajpAllowedRequestAttributePattern";
         final static String REQUESTLOG = "requestlog";
         final static String OPENBROWSER = "open-browser";
         final static String OPENURL = "open-url";
@@ -150,12 +151,16 @@ public interface ServerOptions {
     int ajpPort();
 
     ServerOptions ajpPort(int ajpPort);
-
+    
     int sslPort();
 
     ServerOptions sslPort(int sslPort);
 
     boolean sslEnable();
+
+    String ajpAllowedRequestAttributePattern();
+
+    ServerOptions ajpAllowedRequestAttributePattern(String ajpAllowedRequestAttributePattern);
 
     ServerOptions sslEnable(boolean enableSSL);
 

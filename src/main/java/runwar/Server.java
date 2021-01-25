@@ -301,6 +301,7 @@ public class Server {
                 // if no options is set, default to the large packet size
                 serverBuilder.setServerOption(UndertowOptions.MAX_AJP_PACKET_SIZE, 65536);
             }
+            serverBuilder.setServerOption(UndertowOptions.AJP_ALLOWED_REQUEST_ATTRIBUTES_PATTERN, serverOptions.ajpAllowedRequestAttributePattern());
         } else {
             LOG.info("HTTP ajpEnable:" + serverOptions.ajpEnable());
         }

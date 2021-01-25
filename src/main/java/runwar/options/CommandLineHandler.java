@@ -166,6 +166,12 @@ public class CommandLineHandler {
                 .create(Keys.AJPPORT));
         
         options.addOption(OptionBuilder
+                .withLongOpt("ajp-allowed-request-attribute-pattern")
+                .withDescription("AJP allowed request attribute pattern..")
+                .hasArg().withArgName("ajp-allowed-request-attribute-pattern").withType(Number.class)
+                .create(Keys.AJPALLOWEDREQUESTATTRIBUTEPATTERN));
+        
+        options.addOption(OptionBuilder
                 .withLongOpt("log-dir")
                 .withDescription("Log directory.  (WEB-INF/logs)")
                 .hasArg().withArgName("path/to/log/dir")
@@ -783,6 +789,9 @@ public class CommandLineHandler {
                 // disable http if no http port is specified
                 serverOptions.httpEnable(hasOptionValue(line, Keys.PORT))
                         .ajpEnable(true).ajpPort(((Number) line.getParsedOptionValue(Keys.AJPPORT)).intValue());
+            }
+            if (hasOptionValue(line, Keys.AJPALLOWEDREQUESTATTRIBUTEPATTERN)) {
+                serverOptions.ajpAllowedRequestAttributePattern(line.getOptionValue(Keys.HOST));
             }
             if (hasOptionValue(line, Keys.SSLPORT)) {
                 if (!hasOptionValue(line, Keys.HTTPENABLE)) {
