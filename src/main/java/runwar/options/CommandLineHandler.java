@@ -791,7 +791,7 @@ public class CommandLineHandler {
                         .ajpEnable(true).ajpPort(((Number) line.getParsedOptionValue(Keys.AJPPORT)).intValue());
             }
             if (hasOptionValue(line, Keys.AJPALLOWEDREQUESTATTRIBUTEPATTERN)) {
-                serverOptions.ajpAllowedRequestAttributePattern(line.getOptionValue(Keys.HOST));
+                serverOptions.ajpAllowedRequestAttributePattern(line.getOptionValue(Keys.AJPALLOWEDREQUESTATTRIBUTEPATTERN));
             }
             if (hasOptionValue(line, Keys.SSLPORT)) {
                 if (!hasOptionValue(line, Keys.HTTPENABLE)) {
