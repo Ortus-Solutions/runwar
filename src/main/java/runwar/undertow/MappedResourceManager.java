@@ -8,12 +8,14 @@ import java.nio.file.Paths;
 import java.nio.file.InvalidPathException;
 import java.nio.file.LinkOption;
 import java.util.HashMap;
+import java.util.concurrent.ConcurrentHashMap;
 import java.util.HashSet;
 import java.util.Map;
 import java.util.Set;
 import java.util.regex.Matcher;
 import java.util.regex.Pattern;
 import java.util.stream.Stream;
+import java.util.Optional;
 
 import io.undertow.server.handlers.resource.FileResource;
 import io.undertow.server.handlers.resource.FileResourceManager;
@@ -27,13 +29,16 @@ public class MappedResourceManager extends FileResourceManager {
     private ServerOptions serverOptions;
     private Boolean forceCaseSensitiveWebServer;
     private Boolean forceCaseInsensitiveWebServer;
+    private Boolean cacheServletPaths;
     private HashMap<String, Path> aliases;
-    private HashMap<String, Path> caseInsensitiveCache = new HashMap<String, Path>();
+    private ConcurrentHashMap<String, Path> caseInsensitiveCache = new ConcurrentHashMap<String, Path>();
+    private ConcurrentHashMap<String, Optional<Resource>> servletPathCache = new ConcurrentHashMap<String, Optional<Resource>>();
     private HashSet<Path> contentDirs;
     private File WEBINF = null, CFIDE = null;
     private static boolean isCaseSensitiveFS = caseSensitivityCheck(); 
     private static final Pattern CFIDE_REGEX_PATTERN;
     private static final Pattern WEBINF_REGEX_PATTERN;
+    private final FileResource baseResource;
 
     static {
         CFIDE_REGEX_PATTERN = Pattern.compile("(?i)^.*[\\\\/]?CFIDE([\\\\/].*)?");
@@ -47,9 +52,11 @@ public class MappedResourceManager extends FileResourceManager {
         this.allowResourceChangeListeners = false;
         this.contentDirs = (HashSet<Path>) contentDirs;
         this.aliases = (HashMap<String, Path>) aliases;
-        this.serverOptions = serverOptions;
+        this.serverOptions = serverOptions; 
         this.forceCaseSensitiveWebServer = serverOptions.caseSensitiveWebServer() != null && serverOptions.caseSensitiveWebServer();
         this.forceCaseInsensitiveWebServer = serverOptions.caseSensitiveWebServer() != null && !serverOptions.caseSensitiveWebServer();
+        this.cacheServletPaths = serverOptions.cacheServletPaths();
+        this.baseResource = new FileResource( getBase(), this, "/");
         
         if(webinfDir != null){
             WEBINF = webinfDir;
@@ -69,6 +76,26 @@ public class MappedResourceManager extends FileResourceManager {
             return null;
         }
         MAPPER_LOG.debug("* requested: '" + path + "'");
+        
+        // If cache is enabled and this path is found, return it
+        if( cacheServletPaths ) {
+        	Optional<Resource> cacheCheck = servletPathCache.get( path );
+        	if( cacheCheck != null ) {
+        		if( cacheCheck.isPresent() ) {
+                	MAPPER_LOG.debugf("** path mapped to (cached): '%s'", cacheCheck.get().getFile().toString() );	
+        		} else {
+                	MAPPER_LOG.debugf("** path mapped to (cached): '%s'", "null (not found)" );        			
+        		}
+            	return cacheCheck.orElse( null );	
+        	}
+        }
+        
+        if( path.equals( "/" ) ) {
+        	MAPPER_LOG.debugf("** path mapped to (cached): '%s'", getBase());
+            return this.baseResource;
+        }
+
+        
         try {
 	        Path reqFile = null;
 	        final Matcher webInfMatcher = WEBINF_REGEX_PATTERN.matcher(path);
@@ -110,8 +137,12 @@ public class MappedResourceManager extends FileResourceManager {
 	        }
 	        
 	        if (reqFile == null ) {
- 	            MAPPER_LOG.debugf("** No mapped resource for: '%s' (reqFile was: '%s')",path,reqFile != null ? reqFile.toString() : "null");
- 	            return super.getResource(path);
+ 	           MAPPER_LOG.debugf("** No mapped resource for: '%s' (reqFile was: '%s')",path,reqFile != null ? reqFile.toString() : "null");
+ 	           Resource superResult = super.getResource(path); 	            
+			   if( cacheServletPaths ) {
+				   servletPathCache.put( path, Optional.ofNullable( superResult ) );  
+			   }
+ 	           return superResult;
 	        }	        		
 	        		
             if(reqFile.toString().indexOf('\\') > 0) {
@@ -146,15 +177,27 @@ public class MappedResourceManager extends FileResourceManager {
             }
             
             MAPPER_LOG.debugf("** path mapped to: '%s'", reqFile);
+	            
+		   if( cacheServletPaths ) {
+			   servletPathCache.put( path, Optional.of( new FileResource(reqFile.toFile(), this, path) ) );  
+		   }
             return new FileResource(reqFile.toFile(), this, path);
             
         } catch( InvalidPathException e ){
             MAPPER_LOG.debugf("** InvalidPathException for: '%s'",path != null ? path : "null");
             MAPPER_LOG.debug("** " + e.getMessage());
+            
+ 		    if( cacheServletPaths ) {
+ 		 	   servletPathCache.put( path, Optional.empty() );  
+ 		    }
             return null;
         } catch( IOException e ){
             MAPPER_LOG.debugf("** IOException for: '%s'",path != null ? path : "null");
             MAPPER_LOG.debug("** " + e.getMessage());
+
+ 		    if( cacheServletPaths ) {
+ 		 	   servletPathCache.put( path, Optional.empty() );  
+ 		    }
             return null;
         }
     }
@@ -330,5 +373,10 @@ public class MappedResourceManager extends FileResourceManager {
 	    }
         return true;
 	}
+    
+    public void clearCaches() {
+    	caseInsensitiveCache.clear();
+        servletPathCache.clear();
+    }
 
 }
