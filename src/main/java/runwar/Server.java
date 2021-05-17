@@ -227,7 +227,7 @@ public class Server {
         }
 
         LOG.info("Starting RunWAR " + getVersion());
-        LOG.debug("Starting Server: " + options.host());;
+        LOG.debug("Starting Server: " + options.host());
         LaunchUtil.assertMinimumJavaVersion("1.8");
         requisitionPorts();
 
@@ -348,13 +348,6 @@ public class Server {
             }
             libDirs = libDirs + webinf.getAbsolutePath() + "/lib";
             LOG.info("Adding additional lib dir of: " + webinf.getAbsolutePath() + "/lib");
-            if (LaunchUtil.versionGreaterThanOrEqualTo(System.getProperty("java.version"), "1.9")) {
-                File cfusiondir = new File(webinf, "cfusion");
-                if (cfusiondir.exists()) {
-                    LOG.debug("Adding cfusion/lib dir by hand becuase java9+" + cfusiondir.getAbsolutePath());
-                    libDirs += "," + cfusiondir.getAbsolutePath() + "/lib";
-                }
-            }
             serverOptions.libDirs(libDirs);
         }
 
