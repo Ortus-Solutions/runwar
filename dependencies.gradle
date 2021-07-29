@@ -56,8 +56,8 @@ dependencies {
     }
 
     //For Tuckey Proxy
-    compile group: 'commons-codec', name: 'commons-codec', version: '1.15'
-    compile group: 'commons-httpclient', name: 'commons-httpclient', version: '3.1'
+    //compile group: 'commons-codec', name: 'commons-codec', version: '1.15'
+    //compile group: 'commons-httpclient', name: 'commons-httpclient', version: '3.1'
     /////
 
     // squish the dorkbox stuff together for java 9+
@@ -103,7 +103,7 @@ dependencies {
     // ssl
     compile("org.bouncycastle:bcpkix-jdk15on:1.57")
     // version compare
-    compile("com.vdurmont:semver4j:2.2.0") { transitive = false }
+    //compile("com.vdurmont:semver4j:2.2.0") { transitive = false }
     // ansi colors for logging system output
     compile("com.jcabi:jcabi-log:0.18.1") { transitive = false }
 
