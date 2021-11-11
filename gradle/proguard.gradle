@@ -2,13 +2,13 @@ import java.security.cert.Extension
 import java.util.jar.JarEntry
 
 buildscript {
-    repositories { jcenter() }
+    repositories { mavenCentral() }
     dependencies { classpath 'net.sf.proguard:proguard-gradle:' + project.proguardVersion }
 }
 
 task proguard(type: proguard.gradle.ProGuardTask) {
     dependsOn configurations.dorkboxDependency
-    ext.outJar = "${project.buildDir}/proguard/${jar.archiveName.replace("core.jar","mini.jar")}"
+    ext.outJar = "${project.buildDir}/proguard/${jar.archiveFileName.replace("core.jar","mini.jar")}"
     doFirst{
         println "Running proguard task with java ${System.getProperty("java.home")} : ${ext.outJar}"
     }

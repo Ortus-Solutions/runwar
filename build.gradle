@@ -149,13 +149,13 @@ shadowJar {
     mergeServiceFiles()
     exclude('**/*.java')
 }
-apply from: 'gradle/proguard.gradle'
+//apply from: 'gradle/proguard.gradle'
 apply from: 'gradle/maven.gradle'
 
 task copyToLib(type: Copy) {
     doFirst { delete "$buildDir/libs" }
     into "$buildDir/libs"
-    from configurations.runtime
+    from configurations.runtimeClasspath
 }
 
 /*
