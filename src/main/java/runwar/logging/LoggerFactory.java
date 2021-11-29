@@ -124,7 +124,8 @@ public class LoggerFactory {
                 appenders.forEach(DORKBOX_LOG::addAppender);
                 UNDERTOW_LOG.setLevel(level);
                 UNDERTOW_PREDICATE_LOG.setLevel(level);
-                UNDERTOW_PROXY_LOG.setLevel(level);                
+                UNDERTOW_PROXY_LOG.setLevel(level);
+                UNDERTOW_IO_LOG.setLevel(level);                
                 HTTP_CLIENT_LOG.setLevel(level);
                 RUNWAR_CONFIG.setLevel(level);
                 RUNWAR_SERVER.setLevel(level);
