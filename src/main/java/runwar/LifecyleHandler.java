@@ -21,7 +21,7 @@ public class LifecyleHandler implements HttpHandler {
     }
 
     @Override
-    public void handleRequest(final HttpServerExchange inExchange) {
+    public void handleRequest(final HttpServerExchange inExchange) throws Exception {
 
     	inExchange.addExchangeCompleteListener((httpServerExchange, nextListener) -> {
              if ( serverOptions.debug() && httpServerExchange.getStatusCode() > 399) {
@@ -43,7 +43,7 @@ public class LifecyleHandler implements HttpHandler {
 
             // This is to ensure some sort of error page always makes it back to the browser.  
             if (exchange.getStatusCode() != 200) {
-                final String errorPage = "<html><head><title>Error</title></head><body>" + StatusCodes.getReason( exchange.getStatusCode() ) + "</body></html>";
+                final String errorPage = "<html><head><title>Error</title></head><body>" + StatusCodes.getReason( exchange.getStatusCode() ) + "<br>(Check logs for more info)</body></html>";
                 exchange.getResponseHeaders().put(Headers.CONTENT_LENGTH, "" + errorPage.length());
                 exchange.getResponseHeaders().put(Headers.CONTENT_TYPE, "text/html");
                 Sender sender = exchange.getResponseSender();
@@ -53,13 +53,10 @@ public class LifecyleHandler implements HttpHandler {
 
             return false;
         });
-        try {
         	
-            CONTEXT_LOG.debug("requested: '" + Server.fullExchangePath(inExchange) + "'");
-            
-            next.handleRequest(inExchange);
-        } catch (Exception e) {
-            RunwarLogger.CONTEXT_LOG.error("LifecyleHandler handleRequest triggered", e);
-        }
+        CONTEXT_LOG.debug("requested: '" + Server.fullExchangePath(inExchange) + "'");
+        
+        next.handleRequest(inExchange);
+
     }
 }
