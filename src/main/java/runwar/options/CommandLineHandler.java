@@ -958,12 +958,8 @@ public class CommandLineHandler {
                 serverOptions.autoCreateContexts(Boolean.valueOf(line.getOptionValue(Keys.AUTOCREATECONTEXTS)));
             }
 
-            if (line.hasOption(Keys.AUTOCREATECONTEXTSSECRET)) {
-            	if( line.getOptionValue(Keys.AUTOCREATECONTEXTSSECRET) != null ) {
-                    serverOptions.autoCreateContextsSecret(line.getOptionValue(Keys.AUTOCREATECONTEXTSSECRET));	
-            	} else {
-                    serverOptions.autoCreateContextsSecret("");
-            	}
+            if (hasOptionValue(line, Keys.AUTOCREATECONTEXTSSECRET)) {
+            	serverOptions.autoCreateContextsSecret(line.getOptionValue(Keys.AUTOCREATECONTEXTSSECRET));
             }
             
             if (hasOptionValue(line, Keys.AUTOCREATECONTEXTSMAX)) {

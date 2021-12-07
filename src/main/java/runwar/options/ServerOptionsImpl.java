@@ -138,7 +138,7 @@ public class ServerOptionsImpl implements ServerOptions {
     
     private Boolean autoCreateContexts= false;
     
-    private String autoCreateContextsSecret=null;
+    private String autoCreateContextsSecret="";
     
     private Integer autoCreateContextsMax=200;
         

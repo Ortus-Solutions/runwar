@@ -430,7 +430,7 @@ class RunwarConfigurer {
         	allowedExt += "," + serverOptions.defaultServletAllowedExt();
         }
 
-        LOG.info("Extensions allowed by the default servlet for static files: " + allowedExt);
+        LOG.debug("Extensions allowed by the default servlet for static files: " + allowedExt);
         
         allowedExt = allowedExt.toLowerCase();
         StringBuilder allowedExtBuilder = new StringBuilder();
@@ -457,17 +457,17 @@ class RunwarConfigurer {
             LOG.debug("No welcome pages set yet, so adding defaults to deployment manager.");
             servletBuilder.addWelcomePages(defaultWelcomeFiles);
         }
-        LOG.info("welcome pages in deployment manager: " + servletBuilder.getWelcomePages());
+        LOG.debug("welcome pages in deployment manager: " + servletBuilder.getWelcomePages());
 
         if(serverOptions.ignoreWebXmlRestMappings() && serverOptions.servletRestEnable()) {
-            LOG.info("Overriding web.xml rest mappings with " + Arrays.toString( serverOptions.servletRestMappings() ) );
+        	LOG.debug("Overriding web.xml rest mappings with " + Arrays.toString( serverOptions.servletRestMappings() ) );
             for (Map.Entry<String, ServletInfo> stringServletInfoEntry : servletBuilder.getServlets().entrySet()) {
                 ServletInfo restServlet = stringServletInfoEntry.getValue();
 //                LOG.trace("Checking servlet named: " + restServlet.getName() + " to see if it's a REST servlet.");
                 if (restServlet.getName().toLowerCase().equals("restservlet") || restServlet.getName().toLowerCase().equals("cfrestservlet")) {
                     for (String path : serverOptions.servletRestMappings()) {
                         restServlet.addMapping(path);
-                        LOG.info("Added rest mapping: " + path + " to " + restServlet.getName());
+                        LOG.debug("Added rest mapping: " + path + " to " + restServlet.getName());
                     }
                 }
             }

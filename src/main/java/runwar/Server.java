@@ -115,22 +115,10 @@ public class Server {
     private void initClassLoader(List<URL> _classpath) {
         if (_classLoader == null) {
             int paths = _classpath.size();
-            LOG.debug("Initializing classloader with " + _classpath.size() + " libraries");
-            //         Thread.currentThread().setContextClassLoader(new JavaShimClassLoader(Thread.currentThread().getContextClassLoader()));
-//            LOG.debug("Booted:" + VM.isBooted());
+            LOG.debug("Initializing classloader with " + _classpath.size() + " jar(s)");
             if (paths > 0) {
                 LOG.tracef("classpath: %s", _classpath);
                 _classLoader = new URLClassLoader(_classpath.toArray(new URL[paths]));
-                //          _classLoader = new URLClassLoader(_classpath.toArray(new URL[_classpath.size()]),Thread.currentThread().getContextClassLoader());
-                //          _classLoader = new URLClassLoader(_classpath.toArray(new URL[_classpath.size()]),ClassLoader.getSystemClassLoader());
-                //          _classLoader = new XercesFriendlyURLClassLoader(_classpath.toArray(new URL[_classpath.size()]),ClassLoader.getSystemClassLoader());
-                //Thread.currentThread().setContextClassLoader(_classLoader);
-//                try {
-//                    Class<?> yourMainClass = Class.forName("sun.misc.VM", true, _classLoader);
-//                } catch (ClassNotFoundException e) {
-//                    e.printStackTrace();
-//                }
-
             } else {
                 _classLoader = Thread.currentThread().getContextClassLoader();
             }
@@ -230,8 +218,8 @@ public class Server {
             configurer.generateSelfSignedCertificate();
         }
 
+        LOG.info(bar);
         LOG.info("Starting RunWAR " + getVersion());
-        LOG.debug("Starting Server: " + options.host());
         requisitionPorts();
 
         Builder serverBuilder = Undertow.builder();
@@ -239,21 +227,23 @@ public class Server {
 
         LOG.debug("SERVER BUILDER:" + serverOptions.httpEnable());
         if (serverOptions.httpEnable()) {
-            LOG.debug("Server Builder - PORT:" + ports.get("http").socket + " HOST:" + host);
+            LOG.info("Binding HTTP on " + host + ":" + ports.get("http").socket );
             serverBuilder.addHttpListener(ports.get("http").socket, realHost);
         } else {
-            LOG.info("HTTP Enabled:" + serverOptions.httpEnable());
+        	LOG.debug("HTTP Enabled:" + serverOptions.httpEnable());
         }
 
-        LOG.info("HTTP2 Enabled:" + serverOptions.http2Enable());
         if (serverOptions.http2Enable()) {
+            LOG.info("Enabling HTTP/2");
             serverBuilder.setServerOption(UndertowOptions.ENABLE_HTTP2, true);
+        } else {
+            LOG.debug("HTTP2 Enabled:" + serverOptions.http2Enable());
         }
 
         if (serverOptions.sslEnable()) {
             int sslPort = ports.get("https").socket;
             serverOptions.directBuffers(true);
-            LOG.info("Enabling SSL protocol on port " + sslPort);
+            LOG.info("Binding SSL on " + host + ":" + sslPort );
 
             if (serverOptions.sslEccDisable() && cfengine.toLowerCase().equals("adobe")) {
                 LOG.debug("disabling com.sun.net.ssl.enableECC");
@@ -281,18 +271,18 @@ public class Server {
                 System.exit(1);
             }
         } else {
-            LOG.info("HTTP sslEnable:" + serverOptions.sslEnable());
+        	LOG.debug("sslEnable:" + serverOptions.sslEnable());
         }
 
         if (serverOptions.ajpEnable()) {
-            LOG.info("Enabling AJP protocol on port " + serverOptions.ajpPort());
+            LOG.info("Binding AJP on " + host + ":" + serverOptions.ajpPort() );
             serverBuilder.addAjpListener(serverOptions.ajpPort(), realHost);
             if (serverOptions.undertowOptions().getMap().size() == 0) {
                 // if no options is set, default to the large packet size
                 serverBuilder.setServerOption(UndertowOptions.MAX_AJP_PACKET_SIZE, 65536);
             }
         } else {
-            LOG.info("HTTP ajpEnable:" + serverOptions.ajpEnable());
+        	LOG.debug("ajpEnable:" + serverOptions.ajpEnable());
         }
 
         securityManager = new SecurityManager();
@@ -318,8 +308,8 @@ public class Server {
             }
             serverOptions.warFile(warFile);
         } else {
-            LOG.info("HTTP warFile exists:" + warFile.exists());
-            LOG.info("HTTP warFile isDirectory:" + warFile.isDirectory());
+        	LOG.debug("warFile exists:" + warFile.exists());
+        	LOG.debug("warFile isDirectory:" + warFile.isDirectory());
         }
         if (!warFile.exists()) {
             throw new RuntimeException("war does not exist: " + warFile.getAbsolutePath());
@@ -334,7 +324,7 @@ public class Server {
             Thread.sleep(200);
             System.exit(0);
         } else {
-            LOG.info("HTTP background:" + serverOptions.background());
+        	LOG.debug("background:" + serverOptions.background());
         }
 
         File webinf = serverOptions.webInfDir();
@@ -350,7 +340,7 @@ public class Server {
                 libDirs = libDirs + ",";
             }
             libDirs = libDirs + webinf.getAbsolutePath() + "/lib";
-            LOG.info("Adding additional lib dir of: " + webinf.getAbsolutePath() + "/lib");
+            LOG.debug("Adding additional lib dir of: " + webinf.getAbsolutePath() + "/lib");
             serverOptions.libDirs(libDirs);
         }
 
@@ -364,7 +354,7 @@ public class Server {
         }
 
         if (serverOptions.mariaDB4jImportSQLFile() != null) {
-            LOG.info("Importing sql file: " + serverOptions.mariaDB4jImportSQLFile().toURI().toURL());
+        	LOG.debug("Importing sql file: " + serverOptions.mariaDB4jImportSQLFile().toURI().toURL());
             cp.add(serverOptions.mariaDB4jImportSQLFile().toURI().toURL());
         }
         cp.addAll(getClassesList(new File(webinf, "/classes")));
@@ -411,18 +401,16 @@ public class Server {
                 System.setProperty("apple.awt.UIElement", "true");
             }
         }
-        LOG.info(bar);
-        LOG.info("Starting - port:" + ports.get("http") + " stop-port:" + ports.get("stop") + " warpath:" + warPath);
-        LOG.info("context: " + contextPath + "  -  version: " + getVersion());
+        LOG.info("Servlet Context: " + contextPath );
         if (serverOptions.contentDirectories().size() > 0) {
             JSONArray jsonArray = new JSONArray();
             jsonArray.addAll(serverOptions.contentDirectories());
-            LOG.info("web-dirs: " + jsonArray.toJSONString());
+            LOG.debug("web-dirs: " + jsonArray.toJSONString());
         } else {
             LOG.debug("no content directories configured");
         }
         if (serverOptions.aliases().size() > 0) {
-            LOG.info("aliases: " + new JSONObject(serverOptions.aliases()).toJSONString());
+        	LOG.debug("aliases: " + new JSONObject(serverOptions.aliases()).toJSONString());
         } else {
             LOG.debug("no aliases configured");
         }
@@ -439,12 +427,12 @@ public class Server {
         logXnioOptions(serverXnioOptions);
 
         if (serverOptions.ioThreads() != 0) {
-            LOG.info("IO Threads: " + serverOptions.ioThreads());
+        	LOG.debug("IO Threads: " + serverOptions.ioThreads());
             serverBuilder.setIoThreads(serverOptions.ioThreads()); // posterity: ignored when managing worker
             serverXnioOptions.set(Options.WORKER_IO_THREADS, serverOptions.ioThreads());
         }
         if (serverOptions.workerThreads() != 0) {
-            LOG.info("Worker threads: " + serverOptions.workerThreads());
+        	LOG.debug("Worker threads: " + serverOptions.workerThreads());
             serverBuilder.setWorkerThreads(serverOptions.workerThreads()); // posterity: ignored when managing worker
             serverXnioOptions.set(Options.WORKER_TASK_CORE_THREADS, serverOptions.workerThreads())
                     .set(Options.WORKER_TASK_MAX_THREADS, serverOptions.workerThreads());
@@ -543,12 +531,12 @@ public class Server {
                             	}
                             	
                             	// If a secret was provided, enforce it
-                            	if( serverOptions.autoCreateContextsSecret() == null || !serverOptions.autoCreateContextsSecret().equals( modCFMLSharedKey ) ) {
+                            	if( !serverOptions.autoCreateContextsSecret().equals( "" ) && !serverOptions.autoCreateContextsSecret().equals( modCFMLSharedKey ) ) {
 
 									exchange.getResponseHeaders().put(Headers.CONTENT_TYPE, "text/plain");
 									exchange.setStatusCode(403);
-									exchange.getResponseSender().send( "The request's X-ModCFML-SharedKey was not supplied or doesn't match the configured secret." );
-									LOG.debug( "The request's X-ModCFML-SharedKey [" + modCFMLSharedKey + "] was not supplied or doesn't match the auto-create-contexts-secret setting [" + ( serverOptions.autoCreateContextsSecret() == null ? "" : serverOptions.autoCreateContextsSecret() ) + "] for deploymentKey [" + deploymentKey + "]." );
+									exchange.getResponseSender().send( "The web server's X-ModCFML-SharedKey was not supplied or doesn't match the configured secret." );
+									LOG.debug( "The web server's X-ModCFML-SharedKey [" + modCFMLSharedKey + "] was not supplied or doesn't match the auto-create-contexts-secret setting [" + ( serverOptions.autoCreateContextsSecret() == null ? "" : serverOptions.autoCreateContextsSecret() ) + "] for deploymentKey [" + deploymentKey + "]." );
 									
 									return;
                             	}
@@ -597,10 +585,10 @@ public class Server {
         LOG.debug("started servlet deployment manager");
 
         if (serverOptions.bufferSize() != 0) {
-            LOG.info("Buffer Size: " + serverOptions.bufferSize());
+            LOG.debug("Buffer Size: " + serverOptions.bufferSize());
             serverBuilder.setBufferSize(serverOptions.bufferSize());
         }
-        LOG.info("Direct Buffers: " + serverOptions.directBuffers());
+        LOG.debug("Direct Buffers: " + serverOptions.directBuffers());
         serverBuilder.setDirectBuffers(serverOptions.directBuffers());
 
         final PathHandler pathHandler = new PathHandler(Handlers.redirect(contextPath)) {
@@ -699,7 +687,7 @@ public class Server {
                     .setLogBaseName(serverOptions.logAccessBaseFileName())
                     .setLogNameSuffix(serverOptions.logSuffix())
                     .build();
-            LOG.info("Logging combined access to " + serverOptions.logAccessDir() + " base name of '" + serverOptions.logAccessBaseFileName() + "." + serverOptions.logSuffix() + ", rotated daily'");
+            LOG.debug("Logging combined access to " + serverOptions.logAccessDir() + " base name of '" + serverOptions.logAccessBaseFileName() + "." + serverOptions.logSuffix() + ", rotated daily'");
             httpHandler = new AccessLogHandler(httpHandler, accessLogReceiver, "combined", Server.class.getClassLoader());
         }
 
@@ -778,7 +766,7 @@ public class Server {
         }
         setServerState(ServerState.STARTED);
         if (serverOptions.mariaDB4jEnable()) {
-            LOG.info("MariaDB support enable");
+        	LOG.debug("MariaDB support enable");
             mariadb4jManager = new MariaDB4jManager(_classLoader);
             try {
                 mariadb4jManager.start(serverOptions.mariaDB4jPort(), serverOptions.mariaDB4jBaseDir(),
@@ -808,7 +796,7 @@ public class Server {
     private void setUndertowOptions(Builder serverBuilder) {
         OptionMap undertowOptionsMap = serverOptions.undertowOptions().getMap();
         for (Option option : undertowOptionsMap) {
-            LOG.info("UndertowOption " + option.getName() + ':' + undertowOptionsMap.get(option));
+        	LOG.debug("UndertowOption " + option.getName() + ':' + undertowOptionsMap.get(option));
             serverBuilder.setServerOption(option, undertowOptionsMap.get(option));
         }
     }
@@ -817,7 +805,7 @@ public class Server {
     private void logXnioOptions(OptionMap.Builder xnioOptions) {
         OptionMap serverXnioOptionsMap = xnioOptions.getMap();
         for (Option option : serverXnioOptionsMap) {
-            LOG.info("XNIO-Option " + option.getName() + ':' + serverXnioOptionsMap.get(option));
+        	LOG.debug("XNIO-Option " + option.getName() + ':' + serverXnioOptionsMap.get(option));
         }
     }
 
@@ -1250,7 +1238,7 @@ public class Server {
     		throw new MaxContextsException( "Cannot create new servlet deployment.  The configured max is [" + serverOptions.autoCreateContextsMax() + "]." );
     	}
     	
-        LOG.debug("Creating deployment [" + deploymentKey + "] in " + webroot.toString() );
+        LOG.info("Creating deployment [" + deploymentKey + "] in " + webroot.toString() );
     	
     	File webInfDir = serverOptions.webInfDir();
         Long transferMinSize= serverOptions.transferMinSize();
