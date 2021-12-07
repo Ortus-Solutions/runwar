@@ -620,6 +620,24 @@ public class CommandLineHandler {
                 .hasArg().withArgName("true|false")
                 .create(Keys.CACHESERVLETPATHS));
         
+        options.addOption(OptionBuilder
+                .withLongOpt("auto-create-contexts")
+                .withDescription("Automatically create new servlet contexts based on host name (for use behind web server using virtual hosts)")
+                .hasArg().withArgName("true|false")
+                .create(Keys.AUTOCREATECONTEXTS));
+        
+        options.addOption(OptionBuilder
+                .withLongOpt("auto-create-contexts-secret")
+                .withDescription("Secret for automatically creating new servlet contexts")
+                .hasArg().withArgName("secret")
+                .create(Keys.AUTOCREATECONTEXTSSECRET));
+        
+        options.addOption(OptionBuilder
+                .withLongOpt("auto-create-contexts-max")
+                .withDescription("Max number of servlet contexts to create")
+                .hasArg().withArgName("max")
+                .create(Keys.AUTOCREATECONTEXTSMAX));
+        
         options.addOption(new Option("h", Keys.HELP, false, "print this message"));
         options.addOption(new Option("v", "version", false, "print runwar version and undertow version"));
         
@@ -935,6 +953,22 @@ public class CommandLineHandler {
             if (hasOptionValue(line, Keys.CACHESERVLETPATHS)) {
                 serverOptions.cacheServletPaths(Boolean.valueOf(line.getOptionValue(Keys.CACHESERVLETPATHS)));
             }
+            
+            if (hasOptionValue(line, Keys.AUTOCREATECONTEXTS)) {
+                serverOptions.autoCreateContexts(Boolean.valueOf(line.getOptionValue(Keys.AUTOCREATECONTEXTS)));
+            }
+
+            if (line.hasOption(Keys.AUTOCREATECONTEXTSSECRET)) {
+            	if( line.getOptionValue(Keys.AUTOCREATECONTEXTSSECRET) != null ) {
+                    serverOptions.autoCreateContextsSecret(line.getOptionValue(Keys.AUTOCREATECONTEXTSSECRET));	
+            	} else {
+                    serverOptions.autoCreateContextsSecret("");
+            	}
+            }
+            
+            if (hasOptionValue(line, Keys.AUTOCREATECONTEXTSMAX)) {
+                serverOptions.autoCreateContextsMax(Integer.valueOf(line.getOptionValue(Keys.AUTOCREATECONTEXTSMAX)));
+            }            
             
             if (line.hasOption(Keys.OPENURL)) {
                 serverOptions.openbrowserURL(line.getOptionValue(Keys.OPENURL));
