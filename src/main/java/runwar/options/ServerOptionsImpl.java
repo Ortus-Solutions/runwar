@@ -135,6 +135,12 @@ public class ServerOptionsImpl implements ServerOptions {
     private Boolean resourceManagerLogging= false;
     
     private Boolean cacheServletPaths= false;
+    
+    private Boolean autoCreateContexts= false;
+    
+    private String autoCreateContextsSecret=null;
+    
+    private Integer autoCreateContextsMax=200;
         
     private final Map<String, String> aliases = new HashMap<>();
     
@@ -2191,7 +2197,57 @@ public class ServerOptionsImpl implements ServerOptions {
     	this.resourceManagerLogging = resourceManagerLogging;
         return this;
     }
+    
+    /*
+     * @see runwar.options.ServerOptions#autoCreateContexts()
+     */
+    @Override
+    public Boolean autoCreateContexts() {
+        return autoCreateContexts;
+    }
 
+    /*
+     * @see runwar.options.ServerOptions#autoCreateContexts(boolean)
+     */
+    @Override
+    public ServerOptions autoCreateContexts(Boolean autoCreateContexts) {
+    	this.autoCreateContexts = autoCreateContexts;
+        return this;
+    }
+    
+    /*
+     * @see runwar.options.ServerOptions#autoCreateContextsSecret()
+     */
+    @Override
+    public String autoCreateContextsSecret() {
+        return autoCreateContextsSecret;
+    }
+
+    /*
+     * @see runwar.options.ServerOptions#autoCreateContextsSecret(String)
+     */
+    @Override
+    public ServerOptions autoCreateContextsSecret(String autoCreateContextsSecret) {
+    	this.autoCreateContextsSecret = autoCreateContextsSecret;
+        return this;
+    }
+    /*
+     * @see runwar.options.ServerOptions#autoCreateContextsMax()
+     */
+    @Override
+    public Integer autoCreateContextsMax() {
+        return autoCreateContextsMax;
+    }
+
+    /*
+     * @see runwar.options.ServerOptions#autoCreateContextsMax(Integer)
+     */
+    @Override
+    public ServerOptions autoCreateContextsMax(Integer autoCreateContextsMax) {
+    	this.autoCreateContextsMax = autoCreateContextsMax;
+        return this;
+    }
+    
     /*
      * @see runwar.options.ServerOptions#cacheServletPaths()
      */

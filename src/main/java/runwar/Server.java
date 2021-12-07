@@ -3,6 +3,7 @@ package runwar;
 import io.undertow.Handlers;
 import io.undertow.Undertow;
 import io.undertow.Undertow.Builder;
+import io.undertow.client.ClientConnection;
 import io.undertow.UndertowOptions;
 import io.undertow.predicate.Predicates;
 import io.undertow.server.DefaultByteBufferPool;
@@ -53,7 +54,9 @@ import java.lang.management.ManagementFactory;
 import java.lang.reflect.Method;
 import java.net.*;
 import java.nio.file.Path;
+import java.nio.file.Paths;
 import java.util.List;
+import java.util.concurrent.ConcurrentHashMap;
 import java.util.*;
 import javax.servlet.Servlet;
 import javax.servlet.http.HttpServletResponse;
@@ -71,7 +74,8 @@ public class Server {
     public static String processName = "Starting Server...";
     private volatile static ServerOptionsImpl serverOptions;
     private static MariaDB4jManager mariadb4jManager;
-    private DeploymentManager manager;
+    private ConcurrentHashMap<String,ServletDeployment> deployments = new ConcurrentHashMap<String,ServletDeployment>();
+	private HashSet<String> deploymentKeyWarnings = new HashSet<String>();
     private Undertow undertow;
     private MonitorThread monitor;
 
@@ -462,14 +466,6 @@ public class Server {
         servletSessionConfig.setHttpOnly(serverOptions.cookieHttpOnly());
         servletSessionConfig.setSecure(serverOptions.cookieSecure());
 
-        final DeploymentInfo servletBuilder = deployment()
-                .setContextPath(contextPath.equals("/") ? "" : contextPath)
-                .setTempDir(new File(System.getProperty("java.io.tmpdir")))
-                .setDeploymentName(warPath)
-                .setServletSessionConfig(servletSessionConfig)
-                .setDisplayName(serverName)
-                .setServerName("WildFly / Undertow");
-
         // hack to prevent . being picked up as the system path (jacob.x.dll)
         final String jarPath = getThisJarLocation().getPath();
         String javaLibraryPath = System.getProperty("java.library.path");
@@ -484,42 +480,120 @@ public class Server {
         }
         System.setProperty("java.library.path", javaLibraryPath);
         LOG.trace("java.library.path:" + System.getProperty("java.library.path"));
-
-        configurer.configureServerResourceHandler(servletBuilder);
-        if (serverOptions.basicAuthEnable()) {
-            securityManager.configureAuth(servletBuilder, serverOptions);//SECURITY_MANAGER
-        }
+        
+        final DeploymentInfo servletBuilder = deployment()
+                .setContextPath(contextPath.equals("/") ? "" : contextPath)
+                .setTempDir(new File(System.getProperty("java.io.tmpdir")))
+                .setDeploymentName("site1")
+                .setServletSessionConfig(servletSessionConfig)
+                .setDisplayName(serverName)
+                .setServerName("WildFly / Undertow");
 
         configurer.configureServlet(servletBuilder);
+        
+        configurer.configureServerResourceHandler(servletBuilder);
+        
+        if (serverOptions.basicAuthEnable()) {
+            securityManager.configureAuth(servletBuilder, serverOptions);
+        }
 
         // TODO: probably best to create a new worker for websockets, if we want fastness, but for now we share
         // TODO: add buffer pool size (maybe-- direct is best at 16k), enable/disable be good I reckon tho
         servletBuilder.addServletContextAttribute(WebSocketDeploymentInfo.ATTRIBUTE_NAME,
                 new WebSocketDeploymentInfo().setBuffers(new DefaultByteBufferPool(true, 1024 * 16)).setWorker(worker));
         LOG.debug("Added websocket context");
+        
+        // Create default context
+        createServletDeployment( servletBuilder, serverOptions.warFile(), configurer, ServletDeployment.DEFAULT, null );
 
-        // Remove this if/when this ticket is complete:
-        // https://issues.redhat.com/browse/UNDERTOW-1747
-        servletBuilder.addOuterHandlerChainWrapper(next -> new HttpHandler() {
+    	
+        HttpHandler hostHandler = new HttpHandler() {
+        	
             @Override
-            public void handleRequest(HttpServerExchange exchange) throws Exception {
-                if (exchange.getStatusCode() > 399 && exchange.getResponseContentLength() == -1) {
-                    ServletRequestContext src = exchange.getAttachment(ServletRequestContext.ATTACHMENT_KEY);
-                    ((HttpServletResponse) src.getServletResponse()).sendError(exchange.getStatusCode());
-                } else {
-                    next.handleRequest(exchange);
-                }
+            public void handleRequest(final HttpServerExchange exchange) throws Exception {
+            	ServletDeployment deployment;
+            	
+            	// If we're not auto-creating contexts, then just pass to our default servlet deployment
+            	if( !serverOptions.autoCreateContexts() ) {
+            		deployment = deployments.get( ServletDeployment.DEFAULT );
+            		
+            	// Otherwise, see if a deployment already exists 
+            	} else {
+                	
+                	String deploymentKey = exchange.getRequestHeaders().getFirst( "X-Webserver-Context" );
+                	if( deploymentKey == null ){
+                		deploymentKey = exchange.getHostName().toLowerCase();
+                	}
+                	
+            		deployment = deployments.get( deploymentKey );
+            		if( deployment == null ) {
+
+                    	String docRoot = exchange.getRequestHeaders().getFirst( "X-Tomcat-DocRoot" );
+                    	if( docRoot == null || docRoot.isEmpty() ) {
+                    		docRoot = exchange.getRequestHeaders().getFirst( "appl-physical-path" );
+                    	}
+                    	if( docRoot != null && !docRoot.isEmpty() ) {
+                    		File docRootFile = new File( docRoot );
+                    		if( docRootFile.exists() && docRootFile.isDirectory() ) {
+
+                    			// Enforce X-ModCFML-SharedKey
+                            	String modCFMLSharedKey = exchange.getRequestHeaders().getFirst( "X-ModCFML-SharedKey" );
+                            	if( modCFMLSharedKey == null ) {
+                            		modCFMLSharedKey = "";
+                            	}
+                            	
+                            	// If a secret was provided, enforce it
+                            	if( serverOptions.autoCreateContextsSecret() == null || !serverOptions.autoCreateContextsSecret().equals( modCFMLSharedKey ) ) {
+
+									exchange.getResponseHeaders().put(Headers.CONTENT_TYPE, "text/plain");
+									exchange.setStatusCode(403);
+									exchange.getResponseSender().send( "The request's X-ModCFML-SharedKey was not supplied or doesn't match the configured secret." );
+									LOG.debug( "The request's X-ModCFML-SharedKey [" + modCFMLSharedKey + "] was not supplied or doesn't match the auto-create-contexts-secret setting [" + ( serverOptions.autoCreateContextsSecret() == null ? "" : serverOptions.autoCreateContextsSecret() ) + "] for deploymentKey [" + deploymentKey + "]." );
+									
+									return;
+                            	}
+                    			
+                            	String vDirs = exchange.getRequestHeaders().getFirst( "x-vdirs" );
+                            	try {
+                            		deployment = createServletDeployment( servletBuilder, docRootFile, configurer, deploymentKey, vDirs );
+                            	} catch ( MaxContextsException e ) {
+                            		
+									exchange.getResponseHeaders().put(Headers.CONTENT_TYPE, "text/plain");
+									exchange.setStatusCode(500);
+									exchange.getResponseSender().send( e.getMessage() );
+
+		                    		if( !deploymentKeyWarnings.contains( deploymentKey ) ) {
+		                    			deploymentKeyWarnings.add( deploymentKey );
+		                    			LOG.error( e.getMessage() + "  The requested deploymentKey was [" + deploymentKey + "]" );
+		                    		}
+                       	        	return;
+                            	}
+                    		} else {
+                    	        LOG.warn( "X-Tomcat-DocRoot of [ + docRoot + ] does not exist or is not directory.  Using default context." );
+                        		deployment = deployments.get( ServletDeployment.DEFAULT );
+                    		}                    		
+                    	} else {
+                    		// Only print warning once for a given deploymentKey
+                    		if( !deploymentKeyWarnings.contains( deploymentKey ) ) {
+                    			deploymentKeyWarnings.add( deploymentKey );
+                    	        LOG.warn( "X-Tomcat-DocRoot and appl-physical-path are null or empty.  Using default context for deploymentKey [" + deploymentKey + "]." );	
+                    		}
+                    		deployment = deployments.get( ServletDeployment.DEFAULT );
+                    	}
+                    	    			
+            		}                	
+            	}
+            	
+        		deployment.getServletInitialHandler().handleRequest(exchange);
+            	
             }
 
             @Override
             public String toString() {
-                return "Runwar OuterHandlerChainWrapper";
+                return "Runwar HostHandler";
             }
-        });
-
-        manager = defaultContainer().addDeployment(servletBuilder);
-        manager.deploy();
-        HttpHandler servletHandler = manager.start();
+        };
+        
         LOG.debug("started servlet deployment manager");
 
         if (serverOptions.bufferSize() != 0) {
@@ -550,7 +624,7 @@ public class Server {
                 // clear any welcome-file info cached after initial request *NOT THREAD SAFE*
                 if (serverOptions.directoryListingRefreshEnable() && exchange.getRequestPath().endsWith("/")) {
                     CONTEXT_LOG.trace("*** Resetting servlet path info");
-                    manager.getDeployment().getServletPaths().invalidate();
+                    //manager.getDeployment().getServletPaths().invalidate();
                 }
 
                 if (serverOptions.debug() && serverOptions.testing() && exchange.getRequestPath().endsWith("/dumprunwarrequest")) {
@@ -576,8 +650,8 @@ public class Server {
                 return "Runwar PathHandler";
             }
         };
-
-        pathHandler.addPrefixPath(contextPath, servletHandler);
+        
+        pathHandler.addPrefixPath(contextPath, hostHandler);
         HttpHandler httpHandler = pathHandler;
 
         if (serverOptions.predicateFile() != null) {
@@ -646,7 +720,7 @@ public class Server {
         }
 
         if (serverOptions.basicAuthEnable()) {
-            securityManager.configureAuth(httpHandler, serverBuilder, options); //SECURITY_MANAGER
+            securityManager.configureAuth(httpHandler, serverBuilder, options);
         } else {
             serverBuilder.setHandler(httpHandler);
         }
@@ -752,7 +826,7 @@ public class Server {
     }
 
     static String fullExchangePath(HttpServerExchange exchange) {
-        return exchange.getRequestPath() + (exchange.getQueryString().length() > 0 ? "?" + exchange.getQueryString() : "");
+        return exchange.getRequestURL() + (exchange.getQueryString().length() > 0 ? "?" + exchange.getQueryString() : "");
     }
 
     private synchronized void hookSystemStreams() {
@@ -830,15 +904,20 @@ public class Server {
                     if (serverOptions.mariaDB4jEnable()) {
                         mariadb4jManager.stop();
                     }
-                    if (manager != null) {
+                    if (deployments != null) {
                         try {
-                            switch (manager.getState()) {
-                                case UNDEPLOYED:
-                                    break;
-                                default:
-                                    manager.stop();
-                                    manager.undeploy();
-                            }
+                        	 for ( Map.Entry<String,ServletDeployment> deployment : deployments.entrySet() ) {
+                        		 DeploymentManager manager = deployment.getValue().getDeploymentManager();
+                                 switch (manager.getState()) {
+                                     case UNDEPLOYED:
+                                         break;
+                                     default:
+                                         manager.stop();
+                                         manager.undeploy();
+                                 }
+                                 
+                        	 }
+                        	
                             if (undertow != null) {
                                 undertow.stop();
                             }
@@ -1158,9 +1237,53 @@ public class Server {
     public String getServerState() {
         return serverState;
     }
+    
+    public synchronized ServletDeployment createServletDeployment( DeploymentInfo servletBuilder, File webroot, RunwarConfigurer configurer, String deploymentKey, String vDirs ) throws Exception {
+    	ServletDeployment deployment;
+    	
+    	// If another thread already created this deployment
+    	if( ( deployment = deployments.get( deploymentKey ) ) != null ) {
+    		return deployment;
+    	}
 
-    public DeploymentManager getManager() {
-        return manager;
+    	if( deployments.size() > serverOptions.autoCreateContextsMax() ) {
+    		throw new MaxContextsException( "Cannot create new servlet deployment.  The configured max is [" + serverOptions.autoCreateContextsMax() + "]." );
+    	}
+    	
+        LOG.debug("Creating deployment [" + deploymentKey + "] in " + webroot.toString() );
+    	
+    	File webInfDir = serverOptions.webInfDir();
+        Long transferMinSize= serverOptions.transferMinSize();
+        Set<Path> contentDirs = new HashSet<>();
+        Map<String,Path> aliases = new HashMap<>();
+        serverOptions.contentDirectories().forEach(s -> contentDirs.add(Paths.get(s)));
+        serverOptions.aliases().forEach((s, s2) -> aliases.put(s,Paths.get(s2)));
+        
+        // Add any web server VDirs to Undertow. They come in this format:
+        // /foo,C:\path\to\foo;/bar,C:\path\to\bar
+        if( vDirs != null && !vDirs.isEmpty() ) {
+        	// Parsing logic borrowed from mod_cfml source:
+        	// https://github.com/paulklinkenberg/mod_cfml/blob/32e1fd868d7698f91ad12cffcaeb17258b4071d8/java/mod_cfml-valve/src/mod_cfml/core.java#L409-L420
+			String[] aVDirs = vDirs.split(";");
+			for (int i=0; i<aVDirs.length; i++) {
+				String[] dirParts = aVDirs[i].split(",");
+				if (dirParts.length == 2 && dirParts[0].length() > 1 && dirParts[1].length() > 1) {
+					// windows paths to forward slash
+					dirParts[1] = dirParts[1].replace("\\", "/");
+					aliases.put( dirParts[0], Paths.get( dirParts[1] ) );
+				}
+			}
+        }        
+        
+        servletBuilder.setResourceManager(getResourceManager(webroot, transferMinSize, contentDirs, aliases, webInfDir));    	
+    	
+    	DeploymentManager manager = defaultContainer().addDeployment(servletBuilder);
+    	manager.deploy();
+    	
+    	deployment = new ServletDeployment( manager.start(), manager );
+    	deployments.put(deploymentKey, deployment);
+    	
+    	return deployment;
     }
 
     public static class ServerState {
@@ -1296,4 +1419,35 @@ public class Server {
 
     }
 
+	private class ServletDeployment {
+	
+	    private final HttpHandler servletInitialHandler;
+	    private final DeploymentManager deploymentManager;
+	    public final static String DEFAULT = "default";
+	
+	    public ServletDeployment(HttpHandler servletInitialHandler, DeploymentManager deploymentManager) {
+	        this.servletInitialHandler = servletInitialHandler;
+	        this.deploymentManager = deploymentManager;
+	    }
+	
+	    public HttpHandler getServletInitialHandler() {
+	        return servletInitialHandler;
+	    }
+	
+	    public DeploymentManager getDeploymentManager() {
+	        return deploymentManager;
+	    }
+	}
+
+	private class MaxContextsException extends Exception {
+		
+		public MaxContextsException( String message ) {
+			super( message );
+		}
+		
+	}
+    
+
 }
+
+

@@ -125,17 +125,12 @@ class RunwarConfigurer {
     private void configureServerWar(DeploymentInfo servletBuilder) {
         File warFile = serverOptions.warFile();
         File webInfDir = serverOptions.webInfDir();
-        Long transferMinSize= serverOptions.transferMinSize();
         LOG.debug("found WEB-INF: '" + webInfDir.getAbsolutePath() + "'");
         if (getClassLoader() == null) {
             throw new RuntimeException("FATAL: Could not load any libs for war: " + warFile.getAbsolutePath());
         }
         servletBuilder.setClassLoader(getClassLoader());
-        Set<Path> contentDirs = new HashSet<>();
-        Map<String,Path> aliases = new HashMap<>();
-        serverOptions.contentDirectories().forEach(s -> contentDirs.add(Paths.get(s)));
-        serverOptions.aliases().forEach((s, s2) -> aliases.put(s,Paths.get(s2)));
-        servletBuilder.setResourceManager(server.getResourceManager(warFile, transferMinSize, contentDirs, aliases, webInfDir));
+        
         WebXMLParser.parseWebXml(serverOptions.webXmlFile(), servletBuilder, serverOptions.ignoreWebXmlWelcomePages(), serverOptions.ignoreWebXmlRestMappings(), false);
         File webXMLOverrideFile = serverOptions.webXmlOverrideFile();
         if(webXMLOverrideFile!=null){

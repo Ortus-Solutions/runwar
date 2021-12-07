@@ -118,6 +118,10 @@ public interface ServerOptions {
         final static String CASESENSITIVEWEBSERVER="caseSensitiveWebServer";
         final static String RESOURCEMANAGERLOGGING="resourceManagerLogging";
         final static String CACHESERVLETPATHS="cacheServletPaths";
+        final static String AUTOCREATECONTEXTS="autoCreateContexts";
+        final static String AUTOCREATECONTEXTSSECRET="autoCreateContextsSecret";
+        final static String AUTOCREATECONTEXTSMAX="autoCreateContextsMax";
+        
         
     }
     
@@ -387,10 +391,22 @@ public interface ServerOptions {
     
     Boolean cacheServletPaths();
 
-    ServerOptions resourceManagerLogging(Boolean resourceManagerLogging);
+    Boolean autoCreateContexts();
     
+    String autoCreateContextsSecret();
+    
+    Integer autoCreateContextsMax();
+
+    ServerOptions resourceManagerLogging(Boolean resourceManagerLogging);
+
     ServerOptions cacheServletPaths(Boolean cacheServletPaths);
-        
+    
+    ServerOptions autoCreateContexts(Boolean autoCreateContexts);
+
+    ServerOptions autoCreateContextsSecret(String autoCreateContextsSecret);
+    
+    ServerOptions autoCreateContextsMax(Integer autoCreateContextsMax);
+    
     ServerOptions sslCertificate(File file);
 
     File sslCertificate();
