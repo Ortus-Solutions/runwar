@@ -121,6 +121,7 @@ public interface ServerOptions {
         final static String AUTOCREATECONTEXTS="autoCreateContexts";
         final static String AUTOCREATECONTEXTSSECRET="autoCreateContextsSecret";
         final static String AUTOCREATECONTEXTSMAX="autoCreateContextsMax";
+        final static String AUTOCREATECONTEXTSVDIRS="autoCreateContextsVDirs";
         
         
     }
@@ -396,6 +397,8 @@ public interface ServerOptions {
     String autoCreateContextsSecret();
     
     Integer autoCreateContextsMax();
+    
+    Boolean autoCreateContextsVDirs();    
 
     ServerOptions resourceManagerLogging(Boolean resourceManagerLogging);
 
@@ -407,6 +410,8 @@ public interface ServerOptions {
     
     ServerOptions autoCreateContextsMax(Integer autoCreateContextsMax);
     
+    ServerOptions autoCreateContextsVDirs(Boolean autoCreateContextsVDirs);
+
     ServerOptions sslCertificate(File file);
 
     File sslCertificate();

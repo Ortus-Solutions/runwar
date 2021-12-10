@@ -25,6 +25,7 @@ import io.undertow.server.handlers.resource.ResourceManager;
 import io.undertow.servlet.api.DeploymentInfo;
 import io.undertow.servlet.api.DeploymentManager;
 import io.undertow.servlet.api.ServletSessionConfig;
+import io.undertow.util.HeaderValues;
 import io.undertow.util.Headers;
 import io.undertow.util.HttpString;
 import io.undertow.websockets.jsr.WebSocketDeploymentInfo;
@@ -507,7 +508,9 @@ public class Server {
             		
             	// Otherwise, see if a deployment already exists 
             	} else {
-                	
+            		
+            		if( !isHeaderSafe( exchange, "", "X-Webserver-Context" ) ) return; 
+            		
                 	String deploymentKey = exchange.getRequestHeaders().getFirst( "X-Webserver-Context" );
                 	if( deploymentKey == null ){
                 		deploymentKey = exchange.getHostName().toLowerCase();
@@ -516,15 +519,15 @@ public class Server {
             		deployment = deployments.get( deploymentKey );
             		if( deployment == null ) {
 
+                		if( !isHeaderSafe( exchange, deploymentKey, "X-Tomcat-DocRoot" ) ) return;
                     	String docRoot = exchange.getRequestHeaders().getFirst( "X-Tomcat-DocRoot" );
-                    	if( docRoot == null || docRoot.isEmpty() ) {
-                    		docRoot = exchange.getRequestHeaders().getFirst( "appl-physical-path" );
-                    	}
+                    	
                     	if( docRoot != null && !docRoot.isEmpty() ) {
                     		File docRootFile = new File( docRoot );
                     		if( docRootFile.exists() && docRootFile.isDirectory() ) {
 
                     			// Enforce X-ModCFML-SharedKey
+                        		if( !isHeaderSafe( exchange, deploymentKey, "X-ModCFML-SharedKey" ) ) return;
                             	String modCFMLSharedKey = exchange.getRequestHeaders().getFirst( "X-ModCFML-SharedKey" );
                             	if( modCFMLSharedKey == null ) {
                             		modCFMLSharedKey = "";
@@ -532,16 +535,32 @@ public class Server {
                             	
                             	// If a secret was provided, enforce it
                             	if( !serverOptions.autoCreateContextsSecret().equals( "" ) && !serverOptions.autoCreateContextsSecret().equals( modCFMLSharedKey ) ) {
-
 									exchange.getResponseHeaders().put(Headers.CONTENT_TYPE, "text/plain");
 									exchange.setStatusCode(403);
 									exchange.getResponseSender().send( "The web server's X-ModCFML-SharedKey was not supplied or doesn't match the configured secret." );
-									LOG.debug( "The web server's X-ModCFML-SharedKey [" + modCFMLSharedKey + "] was not supplied or doesn't match the auto-create-contexts-secret setting [" + ( serverOptions.autoCreateContextsSecret() == null ? "" : serverOptions.autoCreateContextsSecret() ) + "] for deploymentKey [" + deploymentKey + "]." );
-									
+									logOnce( deploymentKey, "SharedKeyNotMatch", "debug", "The web server's X-ModCFML-SharedKey [" + modCFMLSharedKey + "] was not supplied or doesn't match the auto-create-contexts-secret setting [" + ( serverOptions.autoCreateContextsSecret() == null ? "" : serverOptions.autoCreateContextsSecret() ) + "] for deploymentKey [" + deploymentKey + "]." );
 									return;
                             	}
-                    			
-                            	String vDirs = exchange.getRequestHeaders().getFirst( "x-vdirs" );
+                            	String vDirs = null;
+                            	if( serverOptions.autoCreateContextsVDirs() ) {
+                            		if( !isHeaderSafe( exchange, deploymentKey, "x-vdirs" ) ) return;
+                                	vDirs = exchange.getRequestHeaders().getFirst( "x-vdirs" );
+                                    if( vDirs != null && !vDirs.isEmpty() ) {
+                                    	// Ensure we can trust the x-vdirs header.  Only use it if the x-vdirs-sharedkey header is also supplied with the shared key
+                                		if( !isHeaderSafe( exchange, deploymentKey, "x-vdirs-sharedkey" ) ) return;
+                                    	String vDirsSharedKey = exchange.getRequestHeaders().getFirst( "x-vdirs-sharedkey" );
+                                    	if( vDirsSharedKey == null || vDirsSharedKey.isEmpty() ) {
+                                    		vDirs = null;
+        									logOnce( deploymentKey, "NovDirsSharedKey", "warn", "The x-vdirs header was provided, but it is being igonred because no x-vdirs-sharedkey header is present." );
+                                    	} else {
+                                        	// If a secret was provided, enforce it
+                                        	if( !serverOptions.autoCreateContextsSecret().equals( "" ) && !serverOptions.autoCreateContextsSecret().equals( vDirsSharedKey ) ) {
+                                        		vDirs = null;
+            									logOnce( deploymentKey, "VDirsSharedKeyNotMatch", "warn", "The x-vdirs header was provided, but it is being igonred because the x-vdirs-sharedkey header [" + vDirsSharedKey + "] doesn't match the auto-create-contexts-secret setting [" + ( serverOptions.autoCreateContextsSecret() == null ? "" : serverOptions.autoCreateContextsSecret() ) + "] for deploymentKey [" + deploymentKey + "]." );
+                                        	}	
+                                    	}
+                                    }
+                            	}
                             	try {
                             		deployment = createServletDeployment( servletBuilder, docRootFile, configurer, deploymentKey, vDirs );
                             	} catch ( MaxContextsException e ) {
@@ -550,10 +569,7 @@ public class Server {
 									exchange.setStatusCode(500);
 									exchange.getResponseSender().send( e.getMessage() );
 
-		                    		if( !deploymentKeyWarnings.contains( deploymentKey ) ) {
-		                    			deploymentKeyWarnings.add( deploymentKey );
-		                    			LOG.error( e.getMessage() + "  The requested deploymentKey was [" + deploymentKey + "]" );
-		                    		}
+									logOnce( deploymentKey, "MaxContextsException", "error", e.getMessage() + "  The requested deploymentKey was [" + deploymentKey + "]" );
                        	        	return;
                             	}
                     		} else {
@@ -561,11 +577,7 @@ public class Server {
                         		deployment = deployments.get( ServletDeployment.DEFAULT );
                     		}                    		
                     	} else {
-                    		// Only print warning once for a given deploymentKey
-                    		if( !deploymentKeyWarnings.contains( deploymentKey ) ) {
-                    			deploymentKeyWarnings.add( deploymentKey );
-                    	        LOG.warn( "X-Tomcat-DocRoot and appl-physical-path are null or empty.  Using default context for deploymentKey [" + deploymentKey + "]." );	
-                    		}
+                    		logOnce( deploymentKey, "NoDocRootHeader", "warn", "X-Tomcat-DocRoot is null or empty.  Using default context for deploymentKey [" + deploymentKey + "]." );
                     		deployment = deployments.get( ServletDeployment.DEFAULT );
                     	}
                     	    			
@@ -1258,10 +1270,16 @@ public class Server {
 				if (dirParts.length == 2 && dirParts[0].length() > 1 && dirParts[1].length() > 1) {
 					// windows paths to forward slash
 					dirParts[1] = dirParts[1].replace("\\", "/");
-					aliases.put( dirParts[0], Paths.get( dirParts[1] ) );
+					if( !aliases.containsKey( dirParts[0] ) ) {
+						aliases.put( dirParts[0], Paths.get( dirParts[1] ) );	
+					}
 				}
 			}
-        }        
+        }
+
+        LOG.trace( "Initializing mapped resource manager in with base dir of [" + webroot.toString() + "] with " + aliases.size() + " alias(es) and " + contentDirs.size() + " content dir(s)." );
+        aliases.forEach((s, s2) -> LOG.trace( "Alias: " + s + " -> " + s2.toString() ) );
+        contentDirs.forEach(s -> LOG.trace( "Content Dir: " + s.toString() ) );
         
         servletBuilder.setResourceManager(getResourceManager(webroot, transferMinSize, contentDirs, aliases, webInfDir));    	
     	
@@ -1273,6 +1291,51 @@ public class Server {
     	
     	return deployment;
     }
+    
+    private void logOnce( String deploymentKey, String type, String severity, String message ) {
+    	String logKey = deploymentKey + type;
+    	severity = severity.toLowerCase();
+		if( !deploymentKeyWarnings.contains( logKey ) ) {
+			deploymentKeyWarnings.add( logKey );
+			switch (severity) {
+			case "trace":
+				LOG.trace( message );
+				break;
+			case "debug":
+				LOG.debug( message );
+				break;
+			case "info":
+				LOG.info( message );
+				break;
+			case "warn":
+				LOG.warn( message );
+				break;
+			case "error":
+				LOG.error( message );
+				break;
+			case "fatal":
+				LOG.fatal( message );
+				break;
+			default:
+				LOG.info( message );
+			}
+			
+		}
+    }
+    
+    private Boolean isHeaderSafe( HttpServerExchange exchange, String deploymentKey, String headerName ) {
+    	HeaderValues headerValues = exchange.getRequestHeaders().get( headerName );
+    	if( headerValues != null && headerValues.size() > 1 ) {
+        	exchange.getResponseHeaders().put(Headers.CONTENT_TYPE, "text/plain");
+        	exchange.setStatusCode(403);
+        	exchange.getResponseSender().send( "The request header [" + headerName + "] was supplied " + headerValues.size() + " times which is likely a configuration error.  CommandBox won't serve requests with fishy ModCFML headers for security." );
+        	logOnce( deploymentKey, "SharedKeyNotMatch", "debug", "The request header [" + headerName + "] was supplied " + headerValues.size() + " times which is likely a configuration error. The values are " + headerValues.toString() + ""
+        			+ ".  CommandBox won't serve requests with fishy ModCFML headers for security." );
+        	return false;
+    	}
+    	return true;
+    }
+
 
     public static class ServerState {
 

@@ -141,7 +141,9 @@ public class ServerOptionsImpl implements ServerOptions {
     private String autoCreateContextsSecret="";
     
     private Integer autoCreateContextsMax=200;
-        
+    
+    private Boolean autoCreateContextsVDirs=false;
+    
     private final Map<String, String> aliases = new HashMap<>();
     
     private Set<String> contentDirectories = new HashSet<>();
@@ -2231,6 +2233,26 @@ public class ServerOptionsImpl implements ServerOptions {
     	this.autoCreateContextsSecret = autoCreateContextsSecret;
         return this;
     }
+    
+    
+    
+    /*
+     * @see runwar.options.ServerOptions#autoCreateContextsVDirs()
+     */
+    @Override
+    public Boolean autoCreateContextsVDirs() {
+        return autoCreateContextsVDirs;
+    }
+
+    /*
+     * @see runwar.options.ServerOptions#autoCreateContextsVDirs(boolean)
+     */
+    @Override
+    public ServerOptions autoCreateContextsVDirs(Boolean autoCreateContextsVDirs) {
+    	this.autoCreateContextsVDirs = autoCreateContextsVDirs;
+        return this;
+    }
+    
     /*
      * @see runwar.options.ServerOptions#autoCreateContextsMax()
      */

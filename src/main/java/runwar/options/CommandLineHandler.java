@@ -638,6 +638,12 @@ public class CommandLineHandler {
                 .hasArg().withArgName("max")
                 .create(Keys.AUTOCREATECONTEXTSMAX));
         
+        options.addOption(OptionBuilder
+                .withLongOpt("auto-create-contexts-vdirs")
+                .withDescription("Automatically copy virtual directories from the front end web server to Undertow)")
+                .hasArg().withArgName("true|false")
+                .create(Keys.AUTOCREATECONTEXTSVDIRS));
+        
         options.addOption(new Option("h", Keys.HELP, false, "print this message"));
         options.addOption(new Option("v", "version", false, "print runwar version and undertow version"));
         
@@ -964,8 +970,12 @@ public class CommandLineHandler {
             
             if (hasOptionValue(line, Keys.AUTOCREATECONTEXTSMAX)) {
                 serverOptions.autoCreateContextsMax(Integer.valueOf(line.getOptionValue(Keys.AUTOCREATECONTEXTSMAX)));
-            }            
+            }
             
+            if (hasOptionValue(line, Keys.AUTOCREATECONTEXTSVDIRS)) {
+                serverOptions.autoCreateContextsVDirs(Boolean.valueOf(line.getOptionValue(Keys.AUTOCREATECONTEXTSVDIRS)));
+            }
+
             if (line.hasOption(Keys.OPENURL)) {
                 serverOptions.openbrowserURL(line.getOptionValue(Keys.OPENURL));
                 if (!line.hasOption(Keys.OPENBROWSER)) {
