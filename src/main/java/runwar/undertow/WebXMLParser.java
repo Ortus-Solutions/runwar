@@ -58,15 +58,17 @@ public class WebXMLParser {
             if (displayName != null) {
                 info.setDisplayName(displayName);
             }
-
-            $(doc).find("context-param").each(ctx -> {
+            
+            Match contextParams = $(doc).find("context-param");
+            trace("Total No. of context-params: %s", contextParams.size());
+            
+            contextParams.each(ctx -> {
                 String pName = getRequired(ctx,"param-name");
                 String pValue = getRequired(ctx,"param-value");
                 info.addServletContextAttribute(pName, pValue);
                 info.addInitParameter(pName, pValue);
                 CONF_LOG.tracef("context param: '%s' = '%s'", pName, pValue);
             });
-            trace("Total No. of context-params: %s", info.getServletContextAttributes().size());
 
             //do listeners
             Match listeners = $(doc).find("listener");
