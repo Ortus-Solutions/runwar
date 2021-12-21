@@ -119,6 +119,10 @@ public class LoggerFactory {
 
         if (serverOptions.debug() || !logLevel.equalsIgnoreCase("info")) {
 
+            if( serverOptions.resourceManagerLogging() ) {
+                RUNWAR_REQUEST.setLevel(level);	
+            }
+        	
             if (logLevel.equalsIgnoreCase("trace")) {
                 DORKBOX_LOG.setLevel(level);
                 appenders.forEach(DORKBOX_LOG::addAppender);
@@ -132,16 +136,13 @@ public class LoggerFactory {
                 RUNWAR_CONTEXT.setLevel(level);
                 RUNWAR_SECURITY.setLevel(level);
                 
-                // This logger is only used in the resource mapper and is really chatty
-                // Consider a setting to enable it only when troubleshooting file system mapping issues
-                if( serverOptions.resourceManagerLogging() ) {
-                    RUNWAR_REQUEST.setLevel(level);	
-                }
                 
                 Logger.getRootLogger().setLevel(level);
                 configureUrlRewriteLoggers(true);
             } else {
-                RUNWAR_REQUEST.setLevel(Level.INFO);
+                
+
+                
                 RUNWAR_SECURITY.setLevel(Level.DEBUG);
                 UNDERTOW_PREDICATE_LOG.setLevel(Level.DEBUG);
                 UNDERTOW_PROXY_LOG.setLevel(Level.DEBUG);                

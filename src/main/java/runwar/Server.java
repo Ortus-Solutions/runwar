@@ -25,6 +25,9 @@ import io.undertow.server.handlers.resource.ResourceManager;
 import io.undertow.servlet.api.DeploymentInfo;
 import io.undertow.servlet.api.DeploymentManager;
 import io.undertow.servlet.api.ServletSessionConfig;
+import io.undertow.servlet.api.ThreadSetupAction;
+import io.undertow.servlet.api.ThreadSetupAction.Handle;
+import io.undertow.util.AttachmentKey;
 import io.undertow.util.HeaderValues;
 import io.undertow.util.Headers;
 import io.undertow.util.HttpString;
@@ -43,6 +46,7 @@ import runwar.security.SSLUtil;
 import runwar.security.SecurityManager;
 import runwar.tray.Tray;
 import runwar.undertow.MappedResourceManager;
+import runwar.undertow.HostResourceManager;
 import runwar.undertow.RequestDebugHandler;
 import runwar.util.ClassLoaderUtils;
 import runwar.util.PortRequisitioner;
@@ -70,9 +74,12 @@ import static runwar.logging.RunwarLogger.CONTEXT_LOG;
 import static runwar.logging.RunwarLogger.LOG;
 import runwar.util.Utils;
 
+@SuppressWarnings( "deprecation" )
 public class Server {
 
     public static String processName = "Starting Server...";
+    public static final AttachmentKey<String> DEPLOYMENT_KEY = AttachmentKey.create(String.class);
+    private static final ThreadLocal<HttpServerExchange> currentExchange= new ThreadLocal<HttpServerExchange>();
     private volatile static ServerOptionsImpl serverOptions;
     private static MariaDB4jManager mariadb4jManager;
     private ConcurrentHashMap<String,ServletDeployment> deployments = new ConcurrentHashMap<String,ServletDeployment>();
@@ -476,7 +483,22 @@ public class Server {
                 .setDeploymentName("site1")
                 .setServletSessionConfig(servletSessionConfig)
                 .setDisplayName(serverName)
-                .setServerName("WildFly / Undertow");
+                .setServerName("WildFly / Undertow")
+                .addThreadSetupAction( new ThreadSetupAction() {
+                	
+                        public Handle setup(final HttpServerExchange exchange) {
+
+                            // This allows the exchange to be available to the task thread.
+                        	currentExchange.set(exchange);
+                            return new Handle() {
+
+                                @Override
+                                public void tearDown() {
+                                	currentExchange.remove();
+                                }
+                            };
+                        }
+                });
 
         configurer.configureServlet(servletBuilder);
         
@@ -501,7 +523,7 @@ public class Server {
             @Override
             public void handleRequest(final HttpServerExchange exchange) throws Exception {
             	ServletDeployment deployment;
-            	
+
             	// If we're not auto-creating contexts, then just pass to our default servlet deployment
             	if( !serverOptions.autoCreateContexts() ) {
             		deployment = deployments.get( ServletDeployment.DEFAULT );
@@ -515,9 +537,13 @@ public class Server {
                 	if( deploymentKey == null ){
                 		deploymentKey = exchange.getHostName().toLowerCase();
                 	}
-                	
+                	// Save into the exchange for later in the thread
+                	exchange.putAttachment(DEPLOYMENT_KEY, deploymentKey);
+
+                    CONTEXT_LOG.info("*************** deloymentKey is " + deploymentKey );
             		deployment = deployments.get( deploymentKey );
             		if( deployment == null ) {
+                        CONTEXT_LOG.info("*************** creating deloymentKey for " + deploymentKey );
 
                 		if( !isHeaderSafe( exchange, deploymentKey, "X-Tomcat-DocRoot" ) ) return;
                     	String docRoot = exchange.getRequestHeaders().getFirst( "X-Tomcat-DocRoot" );
@@ -583,9 +609,9 @@ public class Server {
                     	    			
             		}                	
             	}
-            	
+
         		deployment.getServletInitialHandler().handleRequest(exchange);
-            	
+
             }
 
             @Override
@@ -641,6 +667,7 @@ public class Server {
                        	// Not ending the exchange here so the servlet can still send any custom error page.
                			exchange.setStatusCode( 404 );
                 	}
+
                     super.handleRequest(exchange);
                 }
             }
@@ -969,7 +996,7 @@ public class Server {
 
     }
 
-    ResourceManager getResourceManager(File warFile, Long transferMinSize, Set<Path> contentDirs, Map<String, Path> aliases, File internalCFMLServerRoot) {
+    public ResourceManager getResourceManager(File warFile, Long transferMinSize, Set<Path> contentDirs, Map<String, Path> aliases, File internalCFMLServerRoot) {
         MappedResourceManager mappedResourceManager = new MappedResourceManager(warFile, transferMinSize, contentDirs, aliases, internalCFMLServerRoot,serverOptions);
         if (serverOptions.directoryListingRefreshEnable() || !serverOptions.bufferEnable()) {
             return mappedResourceManager;
@@ -1280,13 +1307,39 @@ public class Server {
         LOG.trace( "Initializing mapped resource manager in with base dir of [" + webroot.toString() + "] with " + aliases.size() + " alias(es) and " + contentDirs.size() + " content dir(s)." );
         aliases.forEach((s, s2) -> LOG.trace( "Alias: " + s + " -> " + s2.toString() ) );
         contentDirs.forEach(s -> LOG.trace( "Content Dir: " + s.toString() ) );
+        ResourceManager resourceManager = getResourceManager(webroot, transferMinSize, contentDirs, aliases, webInfDir);
         
-        servletBuilder.setResourceManager(getResourceManager(webroot, transferMinSize, contentDirs, aliases, webInfDir));    	
     	
-    	DeploymentManager manager = defaultContainer().addDeployment(servletBuilder);
-    	manager.deploy();
-    	
-    	deployment = new ServletDeployment( manager.start(), manager );
+        // For non=Adobe (Lucee), create actual servlet context
+        if( serverOptions.cfEngineName().toLowerCase().indexOf("adobe") == -1 ) {
+            servletBuilder.setResourceManager(resourceManager);    	            
+        	DeploymentManager manager = defaultContainer().addDeployment(servletBuilder);
+        	manager.deploy();
+        	
+        	deployment = new ServletDeployment( manager.start(), manager );
+            LOG.debug("New servlet context created for [" + deploymentKey + "]" );
+        // For Adobe
+        } else {
+        	// For default deployment, create initial resource manager and deploy
+        	if( deploymentKey.equals(ServletDeployment.DEFAULT) ) {
+        		
+                servletBuilder.setResourceManager( new HostResourceManager( (MappedResourceManager)resourceManager ) );
+            	DeploymentManager manager = defaultContainer().addDeployment(servletBuilder);
+            	manager.deploy();            	
+            	deployment = new ServletDeployment( manager.start(), manager );
+                LOG.debug("Initial servlet context created for [" + deploymentKey + "]" );
+            	
+           	// For all subsequent deploys, reuse default deployment and simply add new resource manager	
+        	} else {
+
+        		((HostResourceManager)servletBuilder.getResourceManager()).addResourceManager( deploymentKey, (MappedResourceManager)resourceManager );
+            	deployment = deployments.get(ServletDeployment.DEFAULT);
+                LOG.debug("New resource manager added to deployment [" + deploymentKey + "]" );
+            	
+        	}
+        	
+        }
+
     	deployments.put(deploymentKey, deployment);
     	
     	return deployment;
@@ -1336,7 +1389,14 @@ public class Server {
     	return true;
     }
 
+    public static HttpServerExchange getCurrentExchange() {
+    	return currentExchange.get();
+    }
 
+    public static void setCurrentExchange( HttpServerExchange exchange ) {
+    	currentExchange.set( exchange );
+    }
+    
     public static class ServerState {
 
         public static final String STARTING = "STARTING";
@@ -1470,7 +1530,7 @@ public class Server {
 
     }
 
-	private class ServletDeployment {
+	public class ServletDeployment {
 	
 	    private final HttpHandler servletInitialHandler;
 	    private final DeploymentManager deploymentManager;

@@ -53,10 +53,16 @@ public class LifecyleHandler implements HttpHandler {
 
             return false;
         });
-        	
+
         CONTEXT_LOG.debug("requested: '" + Server.fullExchangePath(inExchange) + "'");
-        
+
+        // This allows the exchange to be available to the IO thread.
+    	Server.setCurrentExchange(inExchange);
+
         next.handleRequest(inExchange);
+
+        // Clean up after
+    	Server.setCurrentExchange(null);
 
     }
 }
