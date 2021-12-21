@@ -540,10 +540,8 @@ public class Server {
                 	// Save into the exchange for later in the thread
                 	exchange.putAttachment(DEPLOYMENT_KEY, deploymentKey);
 
-                    CONTEXT_LOG.info("*************** deloymentKey is " + deploymentKey );
             		deployment = deployments.get( deploymentKey );
             		if( deployment == null ) {
-                        CONTEXT_LOG.info("*************** creating deloymentKey for " + deploymentKey );
 
                 		if( !isHeaderSafe( exchange, deploymentKey, "X-Tomcat-DocRoot" ) ) return;
                     	String docRoot = exchange.getRequestHeaders().getFirst( "X-Tomcat-DocRoot" );
