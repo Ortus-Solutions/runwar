@@ -72,6 +72,8 @@ import io.undertow.servlet.handlers.ServletRequestContext;
 
 import static runwar.logging.RunwarLogger.CONTEXT_LOG;
 import static runwar.logging.RunwarLogger.LOG;
+import static runwar.logging.RunwarLogger.MAPPER_LOG;
+
 import runwar.util.Utils;
 
 @SuppressWarnings( "deprecation" )
@@ -102,8 +104,7 @@ public class Server {
     private String serverMode;
     private PrintStream originalSystemOut;
     private PrintStream originalSystemErr;
-
-    private static final int METADATA_MAX_AGE = 2000;
+ 
     private static final Thread mainThread = Thread.currentThread();
 
     private static XnioWorker worker, logWorker;
@@ -294,31 +295,8 @@ public class Server {
         }
 
         securityManager = new SecurityManager();
-
-        // if the war is archived, unpack it to system temp
-        if (warFile.exists() && !warFile.isDirectory()) {
-            URL zipResource = warFile.toURI().toURL();
-            String warDir = warFile.getName().toLowerCase().replace(".war", "");
-            warFile = new File(warFile.getParentFile(), warDir);
-            if (!warFile.exists()) {
-                if (!warFile.mkdir()) {
-                    LOG.error("Unable to explode WAR to " + warFile.getAbsolutePath());
-                } else {
-                    LOG.debug("Exploding compressed WAR to " + warFile.getAbsolutePath());
-                    LaunchUtil.unzipResource(zipResource, warFile, false);
-                }
-            } else {
-                LOG.debug("Using already exploded WAR in " + warFile.getAbsolutePath());
-            }
-            warPath = warFile.getAbsolutePath();
-            if (serverOptions.warFile().getAbsolutePath().equals(serverOptions.contentDirs())) {
-                serverOptions.contentDirs(warFile.getAbsolutePath());
-            }
-            serverOptions.warFile(warFile);
-        } else {
-        	LOG.debug("warFile exists:" + warFile.exists());
-        	LOG.debug("warFile isDirectory:" + warFile.isDirectory());
-        }
+    
+    	LOG.debug("WAR root:" + warFile.getAbsolutePath());
         if (!warFile.exists()) {
             throw new RuntimeException("war does not exist: " + warFile.getAbsolutePath());
         }
@@ -410,18 +388,6 @@ public class Server {
             }
         }
         LOG.info("Servlet Context: " + contextPath );
-        if (serverOptions.contentDirectories().size() > 0) {
-            JSONArray jsonArray = new JSONArray();
-            jsonArray.addAll(serverOptions.contentDirectories());
-            LOG.debug("web-dirs: " + jsonArray.toJSONString());
-        } else {
-            LOG.debug("no content directories configured");
-        }
-        if (serverOptions.aliases().size() > 0) {
-        	LOG.debug("aliases: " + new JSONObject(serverOptions.aliases()).toJSONString());
-        } else {
-            LOG.debug("no aliases configured");
-        }
         LOG.info("Log Directory: " + serverOptions.logDir().getAbsolutePath());
         LOG.info(bar);
         addShutDownHook();
@@ -994,14 +960,40 @@ public class Server {
 
     }
 
-    public ResourceManager getResourceManager(File warFile, Long transferMinSize, Set<Path> contentDirs, Map<String, Path> aliases, File internalCFMLServerRoot) {
-        MappedResourceManager mappedResourceManager = new MappedResourceManager(warFile, transferMinSize, contentDirs, aliases, internalCFMLServerRoot,serverOptions);
-        if (serverOptions.directoryListingRefreshEnable() || !serverOptions.bufferEnable()) {
+    public ResourceManager getResourceManager(File warFile, Long transferMinSize, Map<String, Path> aliases, File internalCFMLServerRoot) {
+    	Boolean cached = !serverOptions.directoryListingRefreshEnable() && serverOptions.cacheServletPaths(); 
+
+        LOG.debugf("Initialized " + ( cached ? "CACHED " : "" ) + "MappedResourceManager - base: %s, web-inf: %s, aliases: %s", warFile.getAbsolutePath(), internalCFMLServerRoot.getAbsolutePath(), aliases);
+        
+        MappedResourceManager mappedResourceManager = new MappedResourceManager(warFile, transferMinSize, aliases, internalCFMLServerRoot, serverOptions);
+        if ( !cached ) {
             return mappedResourceManager;
         }
-        final DirectBufferCache dataCache = new DirectBufferCache(1000, 10, 1000 * 10 * 1000, BufferAllocator.DIRECT_BYTE_BUFFER_ALLOCATOR, METADATA_MAX_AGE);
-        final int metadataCacheSize = 100;
-        final long maxFileSize = 10000;
+        
+        // 8 hours in in milliseconds-- used for both the path metadata cache AND the file contents cache
+        // Setting to -1 will never expire items from the cache, which is tempting-- but having some sort of expiration will keep errant entries from clogging the cache forever
+        int METADATA_MAX_AGE = 8 * 60 * 60 * 1000;
+        /* DirectBufferCache.sliceSize: internally DirectBufferCache has a buffer pool. This pool is responsible for allocating byte buffers to store the data that is in the cache, 
+         * the size of those buffers will be sliceSize * slicesPerPage. Each byte buffer region that is allocated in the memory is split into slicesPerPage, and then each buffer
+         *  will have sliceSize. To give you an example, if you have 50 slicesPerPage and each one is 10,000 bytes long (this would be sliceSize), each time a buffer is needed, 
+         *  it allocates a region whose size is 500,000 bytes. That region is split into 50 byte buffers of length 10,000 (in bytes). 
+         *  If those buffers are all used at some point and not reclaimed, when the pool needs more buffers, it will allocate another 500,000 bytes long chunk, and so on, but there is a limit to it, 
+         *  which is maxMemory 
+         */
+        int sliceSize = 1024 * 512; // 512 KB per slice
+        // DirectBufferCache slicesPerPage: the explanation is right above.
+        int slicesPerPage = 10; // 10 slices per page means 5 MB per buffer 
+        /* DirectBufferCache.maxMemory: this is the maximum number of bytes that can be allocated by the pool. So, in the example above, supposed that slicesPerPage is 50, and sliceSize is 10,000 bytes, 
+         * if you have a maxMemory of 1,000,000 bytes, it means that the buffer pool can only allocate two chunks of 500,000 bytes each, because that's the number of 500,000 bytes long 
+         * regions that fit into 1,000,000. If none of those buffers are reclaimed at some point, and more buffers are needed, the buffer pool will refuse to do more allocations. 
+         * The cache will remove the oldest entry from usage pov because it is LRU. This cache is used by CachingResourceManager to store contents of files in direct memory. */
+        int maxMemory = 1024 * 1024 * 50; // 50MB cache (up to 10 buffers)
+        final DirectBufferCache dataCache = new DirectBufferCache(sliceSize, slicesPerPage, maxMemory, BufferAllocator.DIRECT_BYTE_BUFFER_ALLOCATOR, METADATA_MAX_AGE);
+        // Number of paths to cache. i.e. /foo.txt maps to C:/webroot/foo.txt
+        // I assume the memory overhead of the meta is nearly zero since it's just a single POJO instance per path 
+        final int metadataCacheSize = 10000;
+        // Max file size to cache directly in memory-- measured in bytes.  
+        final long maxFileSize = 51200; // cache files up to 50KB in size
         return new CachingResourceManager(metadataCacheSize, maxFileSize, dataCache, mappedResourceManager, METADATA_MAX_AGE);
     }
 
@@ -1279,9 +1271,7 @@ public class Server {
     	
     	File webInfDir = serverOptions.webInfDir();
         Long transferMinSize= serverOptions.transferMinSize();
-        Set<Path> contentDirs = new HashSet<>();
         Map<String,Path> aliases = new HashMap<>();
-        serverOptions.contentDirectories().forEach(s -> contentDirs.add(Paths.get(s)));
         serverOptions.aliases().forEach((s, s2) -> aliases.put(s,Paths.get(s2)));
         
         // Add any web server VDirs to Undertow. They come in this format:
@@ -1302,10 +1292,7 @@ public class Server {
 			}
         }
 
-        LOG.trace( "Initializing mapped resource manager in with base dir of [" + webroot.toString() + "] with " + aliases.size() + " alias(es) and " + contentDirs.size() + " content dir(s)." );
-        aliases.forEach((s, s2) -> LOG.trace( "Alias: " + s + " -> " + s2.toString() ) );
-        contentDirs.forEach(s -> LOG.trace( "Content Dir: " + s.toString() ) );
-        ResourceManager resourceManager = getResourceManager(webroot, transferMinSize, contentDirs, aliases, webInfDir);
+        ResourceManager resourceManager = getResourceManager(webroot, transferMinSize, aliases, webInfDir);
         
     	
         // For non=Adobe (Lucee), create actual servlet context
