@@ -1308,7 +1308,7 @@ public class Server {
         	// For default deployment, create initial resource manager and deploy
         	if( deploymentKey.equals(ServletDeployment.DEFAULT) ) {
         		
-                servletBuilder.setResourceManager( new HostResourceManager( (MappedResourceManager)resourceManager ) );
+                servletBuilder.setResourceManager( new HostResourceManager( resourceManager ) );
             	DeploymentManager manager = defaultContainer().addDeployment(servletBuilder);
             	manager.deploy();            	
             	deployment = new ServletDeployment( manager.start(), manager );
@@ -1317,7 +1317,7 @@ public class Server {
            	// For all subsequent deploys, reuse default deployment and simply add new resource manager	
         	} else {
 
-        		((HostResourceManager)servletBuilder.getResourceManager()).addResourceManager( deploymentKey, (MappedResourceManager)resourceManager );
+        		((HostResourceManager)servletBuilder.getResourceManager()).addResourceManager( deploymentKey, resourceManager );
             	deployment = deployments.get(ServletDeployment.DEFAULT);
                 LOG.debug("New resource manager added to deployment [" + deploymentKey + "]" );
             	
