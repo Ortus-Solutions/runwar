@@ -118,8 +118,6 @@ public class ServerOptionsImpl implements ServerOptions {
     
     private JSONArray trayConfigJSON;
     
-    private boolean bufferEnable = false;
-    
     private boolean sslEccDisable = true;
     
     private boolean sslSelfSign = false;
@@ -135,6 +133,10 @@ public class ServerOptionsImpl implements ServerOptions {
     private Boolean resourceManagerLogging= false;
     
     private Boolean cacheServletPaths= false;
+    
+    private Integer fileCacheTotalSizeMB = 50; // 50MB cache (up to 10 buffers)
+    
+    private Integer fileCacheMaxFileSizeKB = 50; // cache files up to 50KB in size;
     
     private Boolean autoCreateContexts= false;
     
@@ -2066,24 +2068,6 @@ public class ServerOptionsImpl implements ServerOptions {
         return Mode.DEFAULT;
     }
 
-
-    /*
-     * @see runwar.options.ServerOptions#bufferEnable(boolean)
-     */
-    @Override
-    public ServerOptions bufferEnable(boolean enable) {
-        this.bufferEnable = enable;
-        return this;
-    }
-
-    /*
-     * @see runwar.options.ServerOptions#bufferEnable()
-     */
-    @Override
-    public boolean bufferEnable() {
-        return this.bufferEnable ;
-    }
-    
     /*
      * @see runwar.options.ServerOptions#startedFromCommandLine(boolean)
      */
@@ -2286,7 +2270,41 @@ public class ServerOptionsImpl implements ServerOptions {
     	this.cacheServletPaths = cacheServletPaths;
         return this;
     }
+    
+    /*
+     * @see runwar.options.ServerOptions#fileCacheTotalSizeMB()
+     */
+    @Override
+    public Integer fileCacheTotalSizeMB() {
+        return fileCacheTotalSizeMB;
+    }
 
+    /*
+     * @see runwar.options.ServerOptions#fileCacheTotalSizeMB(Integer)
+     */
+    @Override
+    public ServerOptions fileCacheTotalSizeMB(Integer fileCacheTotalSizeMB) {
+    	this.fileCacheTotalSizeMB = fileCacheTotalSizeMB;
+        return this;
+    }
+    
+    /*
+     * @see runwar.options.ServerOptions#fileCacheMaxFileSizeKB()
+     */
+    @Override
+    public Integer fileCacheMaxFileSizeKB() {
+        return fileCacheMaxFileSizeKB;
+    }
+
+    /*
+     * @see runwar.options.ServerOptions#fileCacheMaxFileSizeKB(Integer)
+     */
+    @Override
+    public ServerOptions fileCacheMaxFileSizeKB(Integer fileCacheMaxFileSizeKB) {
+    	this.fileCacheMaxFileSizeKB = fileCacheMaxFileSizeKB;
+        return this;
+    }    
+    
     /*
      * @see runwar.options.ServerOptions#caseSensitiveWebServer()
      */

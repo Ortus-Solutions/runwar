@@ -107,7 +107,6 @@ public interface ServerOptions {
         final static String COOKIEHTTPONLY = "cookiehttponly";
         final static String COOKIESECURE = "cookiesecure";
         final static String SERVERMODE = "mode";
-        final static String BUFFEREnable = "bufferenable";
         final static String SSLECCDISABLE = "SSLECCDISABLE";
         final static String SSLSELFSIGN = "sslselfsign";
         final static String SERVICE = "service";
@@ -118,6 +117,8 @@ public interface ServerOptions {
         final static String CASESENSITIVEWEBSERVER="caseSensitiveWebServer";
         final static String RESOURCEMANAGERLOGGING="resourceManagerLogging";
         final static String CACHESERVLETPATHS="cacheServletPaths";
+        final static String FILECACHETOTALSIZEMB="fileCacheTotalSizeMB";
+        final static String FILECACHEMAXFILESIZEKB="fileCacheMaxFileSizeKB";
         final static String AUTOCREATECONTEXTS="autoCreateContexts";
         final static String AUTOCREATECONTEXTSSECRET="autoCreateContextsSecret";
         final static String AUTOCREATECONTEXTSMAX="autoCreateContextsMax";
@@ -391,6 +392,10 @@ public interface ServerOptions {
     Boolean resourceManagerLogging();
     
     Boolean cacheServletPaths();
+    
+    Integer fileCacheTotalSizeMB();
+    
+    Integer fileCacheMaxFileSizeKB();
 
     Boolean autoCreateContexts();
     
@@ -403,6 +408,10 @@ public interface ServerOptions {
     ServerOptions resourceManagerLogging(Boolean resourceManagerLogging);
 
     ServerOptions cacheServletPaths(Boolean cacheServletPaths);
+    
+    ServerOptions fileCacheTotalSizeMB( Integer fileCacheTotalSizeMB );
+    
+    ServerOptions fileCacheMaxFileSizeKB( Integer fileCacheMaxFileSizeKB );
     
     ServerOptions autoCreateContexts(Boolean autoCreateContexts);
 
@@ -566,10 +575,6 @@ public interface ServerOptions {
     
     String serverMode();
 
-    boolean bufferEnable();
-    
-    ServerOptions bufferEnable(boolean enable);
-
     boolean startedFromCommandLine();
 
     ServerOptions startedFromCommandLine(boolean enable);
@@ -597,5 +602,6 @@ public interface ServerOptions {
     File predicateFile();
     
     ServerOptions predicateFile(File predicateFile);
+    
     String getLogPattern();
 }

@@ -621,6 +621,18 @@ public class CommandLineHandler {
                 .create(Keys.CACHESERVLETPATHS));
         
         options.addOption(OptionBuilder
+                .withLongOpt("file-cache-total-size-mb")
+                .withDescription("Total size of the resource cache in megabytes. Only used if cache-servlet-paths is enabled")
+                .hasArg().withArgName("true|false")
+                .create(Keys.FILECACHETOTALSIZEMB));
+        
+        options.addOption(OptionBuilder
+                .withLongOpt("file-cache-max-file-size-kb")
+                .withDescription("Max size of idividual static files to enable caching for them. Only used if cache-servlet-paths is enabled")
+                .hasArg().withArgName("true|false")
+                .create(Keys.FILECACHEMAXFILESIZEKB));
+        
+        options.addOption(OptionBuilder
                 .withLongOpt("auto-create-contexts")
                 .withDescription("Automatically create new servlet contexts based on host name (for use behind web server using virtual hosts)")
                 .hasArg().withArgName("true|false")
@@ -960,6 +972,14 @@ public class CommandLineHandler {
                 serverOptions.cacheServletPaths(Boolean.valueOf(line.getOptionValue(Keys.CACHESERVLETPATHS)));
             }
             
+            if (hasOptionValue(line, Keys.FILECACHETOTALSIZEMB)) {
+                serverOptions.fileCacheTotalSizeMB(Integer.valueOf(line.getOptionValue(Keys.FILECACHETOTALSIZEMB)));
+            }
+            
+            if (hasOptionValue(line, Keys.FILECACHEMAXFILESIZEKB)) {
+                serverOptions.fileCacheMaxFileSizeKB(Integer.valueOf(line.getOptionValue(Keys.FILECACHEMAXFILESIZEKB)));
+            }
+
             if (hasOptionValue(line, Keys.AUTOCREATECONTEXTS)) {
                 serverOptions.autoCreateContexts(Boolean.valueOf(line.getOptionValue(Keys.AUTOCREATECONTEXTS)));
             }
