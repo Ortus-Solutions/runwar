@@ -983,21 +983,27 @@ public class Server {
          *  If those buffers are all used at some point and not reclaimed, when the pool needs more buffers, it will allocate another 500,000 bytes long chunk, and so on, but there is a limit to it, 
          *  which is maxMemory 
          */
-        int sliceSize = 1024 * 1024; // 1 KB per slice
-        // DirectBufferCache slicesPerPage: the explanation is right above.
-        int slicesPerPage = 10; // 10 slices per page means 10 KB per buffer 
+        // Max file size to cache directly in memory-- measured in bytes.
+        final long maxFileSize = serverOptions.fileCacheMaxFileSizeKB() * 1024; // Convert KB to B 
         /* DirectBufferCache.maxMemory: this is the maximum number of bytes that can be allocated by the pool. So, in the example above, supposed that slicesPerPage is 50, and sliceSize is 10,000 bytes, 
          * if you have a maxMemory of 1,000,000 bytes, it means that the buffer pool can only allocate two chunks of 500,000 bytes each, because that's the number of 500,000 bytes long 
          * regions that fit into 1,000,000. If none of those buffers are reclaimed at some point, and more buffers are needed, the buffer pool will refuse to do more allocations. 
          * The cache will remove the oldest entry from usage pov because it is LRU. This cache is used by CachingResourceManager to store contents of files in direct memory. */
         int maxMemory = serverOptions.fileCacheTotalSizeMB() * 1024 * 1024; // Convert MB to B
-        final DirectBufferCache dataCache = new DirectBufferCache(sliceSize, slicesPerPage, maxMemory, BufferAllocator.DIRECT_BYTE_BUFFER_ALLOCATOR, METADATA_MAX_AGE);
         // Number of paths to cache. i.e. /foo.txt maps to C:/webroot/foo.txt
         // I assume the memory overhead of the meta is nearly zero since it's just a single POJO instance per path 
         final int metadataCacheSize = 10000;
-        // Max file size to cache directly in memory-- measured in bytes.  
-        final long maxFileSize = serverOptions.fileCacheMaxFileSizeKB() * 1024; // Convert KB to B
-        return new CachingResourceManager(metadataCacheSize, maxFileSize, dataCache, mappedResourceManager, METADATA_MAX_AGE);
+        if( maxMemory > 0 && maxFileSize > 0 ) {
+            int sliceSize = 1024 * 1024; // 1 KB per slice
+            // DirectBufferCache slicesPerPage: the explanation is right above.
+            int slicesPerPage = 10; // 10 slices per page means 10 KB per buffer
+            final DirectBufferCache dataCache = new DirectBufferCache(sliceSize, slicesPerPage, maxMemory, BufferAllocator.DIRECT_BYTE_BUFFER_ALLOCATOR, METADATA_MAX_AGE);
+            
+            return new CachingResourceManager(metadataCacheSize, maxFileSize, dataCache, mappedResourceManager, METADATA_MAX_AGE);	
+        } else {
+        	LOG.debug("ResourceManager file cache disabled since size is zero. Path lookups will still be cached." );
+            return new CachingResourceManager(metadataCacheSize, maxFileSize, null, mappedResourceManager, METADATA_MAX_AGE);
+        }
     }
 
     public static File getThisJarLocation() {
