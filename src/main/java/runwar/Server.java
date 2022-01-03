@@ -969,6 +969,9 @@ public class Server {
         if ( !cached ) {
             return mappedResourceManager;
         }
+
+        LOG.debugf("ResourceManager Cache total size: %s MB", serverOptions.fileCacheTotalSizeMB() );
+        LOG.debugf("ResourceManager Cache max file size: %s KB", serverOptions.fileCacheMaxFileSizeKB() );
         
         // 8 hours in in milliseconds-- used for both the path metadata cache AND the file contents cache
         // Setting to -1 will never expire items from the cache, which is tempting-- but having some sort of expiration will keep errant entries from clogging the cache forever
@@ -980,9 +983,9 @@ public class Server {
          *  If those buffers are all used at some point and not reclaimed, when the pool needs more buffers, it will allocate another 500,000 bytes long chunk, and so on, but there is a limit to it, 
          *  which is maxMemory 
          */
-        int sliceSize = 1024 * 512; // 512 KB per slice
+        int sliceSize = 1024 * 1024; // 1 KB per slice
         // DirectBufferCache slicesPerPage: the explanation is right above.
-        int slicesPerPage = 10; // 10 slices per page means 5 MB per buffer 
+        int slicesPerPage = 10; // 10 slices per page means 10 KB per buffer 
         /* DirectBufferCache.maxMemory: this is the maximum number of bytes that can be allocated by the pool. So, in the example above, supposed that slicesPerPage is 50, and sliceSize is 10,000 bytes, 
          * if you have a maxMemory of 1,000,000 bytes, it means that the buffer pool can only allocate two chunks of 500,000 bytes each, because that's the number of 500,000 bytes long 
          * regions that fit into 1,000,000. If none of those buffers are reclaimed at some point, and more buffers are needed, the buffer pool will refuse to do more allocations. 
