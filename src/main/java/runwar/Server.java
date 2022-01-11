@@ -197,9 +197,10 @@ public class Server {
 
     public synchronized void startServer(final ServerOptions options) throws Exception {
         serverOptions = (ServerOptionsImpl) options;
-        LoggerFactory.configure(serverOptions);
+        //LoggerFactory.configure(serverOptions);
         // redirect out and err to context logger
         hookSystemStreams();
+        
         serverState = ServerState.STARTING;
         if (serverOptions.action().equals("stop")) {
             Stop.stopServer(serverOptions, true);
@@ -933,13 +934,13 @@ public class Server {
                 }
 
                 tray.unhookTray();
+                if (System.getProperty("runwar.listloggers") != null && Boolean.parseBoolean(System.getProperty("runwar.listloggers"))) {
+                    LoggerFactory.listLoggers();
+                }
                 unhookSystemStreams();
 
                 if (System.getProperty("runwar.classlist") != null && Boolean.parseBoolean(System.getProperty("runwar.classlist"))) {
                     ClassLoaderUtils.listAllClasses(serverOptions.logDir() + "/classlist.txt");
-                }
-                if (System.getProperty("runwar.listloggers") != null && Boolean.parseBoolean(System.getProperty("runwar.listloggers"))) {
-                    LoggerFactory.listLoggers();
                 }
 
                 if (monitor != null) {

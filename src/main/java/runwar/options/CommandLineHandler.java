@@ -390,7 +390,7 @@ public class CommandLineHandler {
         
         options.addOption(OptionBuilder
                 .withLongOpt("transfer-min-size")
-                .withDescription("Minimun transfer file size to offload to OS. (100)\n")
+                .withDescription("Minimun transfer file size to offload to OS.")
                 .hasArg().withArgName(Keys.TRANSFERMINSIZE).withType(Long.class)
                 .create(Keys.TRANSFERMINSIZE));
         
@@ -705,6 +705,19 @@ public class CommandLineHandler {
             } else {
                 serverOptions.logDir();
             }
+
+            
+            if (hasOptionValue(line, Keys.RESOURCEMANAGERLOGGING)) {
+                serverOptions.resourceManagerLogging(Boolean.valueOf(line.getOptionValue(Keys.RESOURCEMANAGERLOGGING)));
+            }
+
+            if (hasOptionValue(line, Keys.URLREWRITELOG)) {
+                serverOptions.urlRewriteLog(new File(line.getOptionValue(Keys.URLREWRITELOG)));
+                if (!line.hasOption(Keys.URLREWRITEENABLE)) {
+                    serverOptions.urlRewriteEnable(true);
+                }
+            }
+            
             return serverOptions;
         } catch (Exception exp) {
             exp.printStackTrace();
@@ -905,12 +918,6 @@ public class CommandLineHandler {
                     serverOptions.urlRewriteEnable(true);
                 }
             }
-            if (hasOptionValue(line, Keys.URLREWRITELOG)) {
-                serverOptions.urlRewriteLog(new File(line.getOptionValue(Keys.URLREWRITELOG)));
-                if (!line.hasOption(Keys.URLREWRITEENABLE)) {
-                    serverOptions.urlRewriteEnable(true);
-                }
-            }
             if (line.hasOption(Keys.URLREWRITEENABLE)) {
                 serverOptions.urlRewriteEnable(Boolean.valueOf(line.getOptionValue(Keys.URLREWRITEENABLE)));
             }
@@ -962,10 +969,6 @@ public class CommandLineHandler {
             
             if (hasOptionValue(line, Keys.CASESENSITIVEWEBSERVER)) {
                 serverOptions.caseSensitiveWebServer(Boolean.valueOf(line.getOptionValue(Keys.CASESENSITIVEWEBSERVER)));
-            }
-            
-            if (hasOptionValue(line, Keys.RESOURCEMANAGERLOGGING)) {
-                serverOptions.resourceManagerLogging(Boolean.valueOf(line.getOptionValue(Keys.RESOURCEMANAGERLOGGING)));
             }
             
             if (hasOptionValue(line, Keys.CACHESERVLETPATHS)) {

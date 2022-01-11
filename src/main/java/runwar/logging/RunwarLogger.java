@@ -38,14 +38,6 @@ public interface RunwarLogger extends BasicLogger {
 
     boolean initialized = LoggerFactory.initialize();
 
-    /*
-     * public default void doityo() {
-     * LoggerFactory.init(Server.getServerOptions());
-     * System.out.println("default method");
-     * System.setProperty("runwar.logfile", "/tmp/fart");
-     * System.setProperty("runwar.logLevel", "DEBUG" );
-     * System.setProperty("runwar.logpattern", "%m%n" ); }
-     */
     Logger LOG = Logger.getLogger("runwar.server");
     Logger CONTEXT_LOG = Logger.getLogger("runwar.context");
     Logger CONF_LOG = Logger.getLogger("runwar.config");
@@ -53,25 +45,6 @@ public interface RunwarLogger extends BasicLogger {
     Logger SECURITY_LOGGER = Logger.getLogger("runwar.security");
     Logger BACKGROUNDED_LOG = Logger.getLogger("runwar.background");
     Logger MONITOR_LOG = Logger.getLogger("runwar.monitor");
-
-    //  RunwarLogger ROOT_LOGGER = Logger.getMessageLogger(RunwarLogger.class, RunwarLogger.class.getPackage().getName());
-//    RunwarLogger CLIENT_LOGGER = Logger.getMessageLogger(RunwarLogger.class, ClientConnection.class.getPackage().getName());
-//
-//    RunwarLogger REQUEST_LOGGER = Logger.getMessageLogger(RunwarLogger.class, RunwarLogger.class.getPackage().getName() + ".request");
-//    RunwarLogger SESSION_LOGGER = Logger.getMessageLogger(RunwarLogger.class, RunwarLogger.class.getPackage().getName() + ".session");
-//    RunwarLogger SECURITY_LOGGER = Logger.getMessageLogger(RunwarLogger.class, RunwarLogger.class.getPackage().getName() + ".request.security");
-//    RunwarLogger PROXY_REQUEST_LOGGER = Logger.getMessageLogger(RunwarLogger.class, RunwarLogger.class.getPackage().getName() + ".proxy");
-//    RunwarLogger REQUEST_DUMPER_LOGGER = Logger.getMessageLogger(RunwarLogger.class, RunwarLogger.class.getPackage().getName() + ".request.dump");
-
-    /**
-     * Logger used for IO exceptions. Generally these should be suppressed,
-     * because they are of little interest, and it is easy for an attacker to
-     * fill up the logs by intentionally causing IO exceptions.
-     * @param cause the cause
-     */
-    // RunwarLogger REQUEST_IO_LOGGER =
-    // Logger.getMessageLogger(RunwarLogger.class,
-    // RunwarLogger.class.getPackage().getName() + ".request.io");
 
     @LogMessage(level = ERROR)
     @Message(id = 5001, value = "An exception occurred processing the request")

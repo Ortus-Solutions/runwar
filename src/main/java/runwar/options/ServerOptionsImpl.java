@@ -78,7 +78,7 @@ public class ServerOptionsImpl implements ServerOptions {
 
     private String gzipPredicate = "request-larger-than(1500)";
 
-    private Long transferMinSize = (long) 100;
+    private Long transferMinSize = (long) 1024 * 1024 * 10; // 10 MB
     
     private boolean mariadb4jEnable = false;
     

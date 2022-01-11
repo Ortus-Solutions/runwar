@@ -31,20 +31,6 @@ public class Start {
 	    new Server(seconds);
 	}
 
-	private static void launchServer(String balanceHost, ServerOptions serverOptions){
-        String[] schemeHostAndPort = balanceHost.split(":");
-        if(schemeHostAndPort.length != 3) {
-            throw new RuntimeException("hosts for balancehost should have scheme, host and port, e.g.: http://127.0.0.1:55555");
-        }
-        String host = schemeHostAndPort[1].replaceAll("^//", "");
-        int port = Integer.parseInt(schemeHostAndPort[2]);
-        int stopPort = port+1;
-        RunwarLogger.LOG.info("Starting instance: " + host + " on port "+ schemeHostAndPort[2]);
-        LaunchUtil.relaunchAsBackgroundProcess(serverOptions.host(host).startedFromCommandLine(true)
-                .httpPort(port).stopPort(stopPort).loadBalance(""), false);
-	    
-	}
-
 	public static void main(String[] args) throws Exception {
         ServerOptions serverOptions = CommandLineHandler.parseLogArguments(args);
         LoggerFactory.configure(serverOptions);
@@ -58,75 +44,15 @@ public class Start {
             serverOptions = CommandLineHandler.parseArguments(args);
         }
         serverOptions.startedFromCommandLine(true);
-        if(serverOptions.loadBalance() != null && serverOptions.loadBalance().length > 0) {
-            final List<String> balanceHosts = new ArrayList<String>();
-            RunwarLogger.LOG.info("Initializing...");
-            final LoadBalancingProxyClient loadBalancer = new LoadBalancingProxyClient();
-            for(String balanceHost : serverOptions.loadBalance()) {
-                if(serverOptions.warFile() != null) {
-                    RunwarLogger.LOG.info("Starting instance of " + serverOptions.warFile().getParent() +"...");
-                    launchServer(balanceHost,serverOptions);
-                }
-                loadBalancer.addHost(new URI(balanceHost));
-                balanceHosts.add(balanceHost);
-                RunwarLogger.LOG.info("Added balanced host: " + balanceHost);
-                Thread.sleep(3000);
-            }
-            int port = serverOptions.httpPort();
-            loadBalancer.setConnectionsPerThread(20);
-            RunwarLogger.LOG.info("Hosts loaded");
-
-            RunwarLogger.LOG.info("Starting load balancer on 127.0.0.1 port " + port + "...");
-            ProxyHandler proxyHandler = ProxyHandler.builder().setProxyClient(loadBalancer)
-                    .setMaxRequestTime(30000).setNext(ResponseCodeHandler.HANDLE_404).build();
-            Undertow reverseProxy = Undertow.builder().addHttpListener(port, "localhost").setIoThreads(4)
-                    .setHandler(proxyHandler).build();
-            reverseProxy.start();
-            RunwarLogger.LOG.info("View balancer admin on http://127.0.0.1:9080");
-            Undertow adminServer = Undertow.builder()
-                    .addHttpListener(9080, "localhost")
-                    .setHandler(new HttpHandler() {
-                        @Override
-                        public void handleRequest(final HttpServerExchange exchange) throws Exception {
-                            exchange.getResponseHeaders().put(Headers.CONTENT_TYPE, "text/html");
-                            if(exchange.getQueryParameters().get("addHost") != null) {
-                                String balanceHost = URLDecoder.decode(exchange.getQueryParameters().get("addHost").toString(),"UTF-8");
-                                balanceHost = balanceHost.replaceAll("]|\\[", "");
-                                loadBalancer.addHost(new URI(balanceHost));
-                                balanceHosts.add(balanceHost);
-                            }
-                            if(exchange.getQueryParameters().get("removeHost") != null) {
-                                String balanceHost = URLDecoder.decode(exchange.getQueryParameters().get("removeHost").toString(),"UTF-8");
-                                balanceHost = balanceHost.replaceAll("]|\\[", "");
-                                loadBalancer.removeHost(new URI(balanceHost));
-                                balanceHosts.remove(balanceHost);
-                            }
-                            String response = "";
-                            for(String balanceHost : balanceHosts) {
-                                String[] schemeHostAndPort = balanceHost.split(":");
-                                String host = schemeHostAndPort[1].replaceAll("^//", "");
-                                int port = schemeHostAndPort.length >2 ? Integer.parseInt(schemeHostAndPort[2]) : 80 ;
-                                response += balanceHost + " <a href='?removeHost=" + balanceHost + "'>remove</a> Listening: "+serverListening(host, port)+"<br/>";
-                            }
-                            exchange.getResponseSender().send("<h3>Balanced Hosts</h3><form action='?'> Add Host:<input name='text' name='addHost' placeholder='http://127.0.0.1:7070'><input name='submit'></form>" + response);
-                        }
-                    }).build();
-            adminServer.start();
-            
-            
-            RunwarLogger.LOG.info("Started load balancer.");
-            
-        } else {
-
-            Server server = new Server();
-            try {
-                server.startServer(serverOptions);
-            } catch (Exception e) {
-                e.printStackTrace();
-                System.exit(1);
-            }
-            
+        
+        Server server = new Server();
+        try {
+            server.startServer(serverOptions);
+        } catch (Exception e) {
+            e.printStackTrace();
+            System.exit(1);
         }
+        
 	}
 	
     public static boolean serverListening(String host, int port) {
