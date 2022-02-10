@@ -38,8 +38,8 @@ jobs:
         distribution: 'temurin'
 
     - name: Build with Gradle
-      run: ./gradlew --refresh-dependencies
-      
+      run: ./gradlew --debug
+
     - name: Upload JAR to S3
       uses: jakejarvis/s3-sync-action@master
       with:
