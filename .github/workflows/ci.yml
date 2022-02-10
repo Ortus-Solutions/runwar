@@ -39,15 +39,7 @@ jobs:
 
     - name: Build with Gradle
       run: ./gradlew --refresh-dependencies
-
-  deploy:
-    runs-on: ubuntu-latest
-    
-    permissions:
-      contents: read
-      packages: write
-          
-    steps:
+      
     - name: Upload JAR to S3
       uses: jakejarvis/s3-sync-action@master
       with:
