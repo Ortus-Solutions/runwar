@@ -36,7 +36,7 @@ jobs:
         distribution: 'temurin'
 
     - name: Build with Gradle
-      run: ./gradlew
+      run: ./gradlew --refresh-dependencies
 
   deploy:
     runs-on: ubuntu-latest
