@@ -41,13 +41,17 @@ jobs:
         java-version: '11'
         distribution: 'adopt'
 
+    # Do the build
     - name: Build with Gradle
       run: ./gradlew --debug
 
   upload:
+    # Run the upload on master branch
+    if: ${{ github.ref == 'refs/heads/master' }}
 
     runs-on: ubuntu-latest
 
+    # Depends on previous job
     needs: build
 
     steps:
