@@ -10,7 +10,7 @@ on:
   push:
     branches: [ master, develop ]
   pull_request:
-    branches: [ develop ]
+    branches: [ master, develop ]
 
   # We get the required keys
   workflow_call:
@@ -44,6 +44,13 @@ jobs:
     - name: Build with Gradle
       run: ./gradlew --debug
 
+  upload:
+
+    runs-on: ubuntu-latest
+
+    needs: build
+
+    steps:
     - name: Upload JAR to S3
       uses: jakejarvis/s3-sync-action@master
       with:
