@@ -43,7 +43,7 @@ jobs:
 
     # Do the build
     - name: Build with Gradle
-      run: ./gradlew
+      run: ./gradlew --refresh-dependencies
 
   upload:
     # Run the upload on master branch
