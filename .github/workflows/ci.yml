@@ -43,11 +43,11 @@ jobs:
 
     # Do the build
     - name: Build with Gradle
-      run: ./gradlew --debug
+      run: ./gradlew --refresh-dependencies
 
   upload:
     # Run the upload on master branch
-    if: ${{ github.ref == 'refs/heads/master' }}
+    if: ${{ github.ref == 'refs/heads/master' || github.ref == 'refs/heads/develop' }}
 
     runs-on: ubuntu-latest
 
