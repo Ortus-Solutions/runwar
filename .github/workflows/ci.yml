@@ -43,19 +43,15 @@ jobs:
 
     # Do the build
     - name: Build with Gradle
-      run: ./gradlew --debug
+      run: ./gradlew --refresh-dependencies
 
-  upload:
-    # Run the upload on master branch
-    if: ${{ github.ref == 'refs/heads/master' }}
+    
 
-    runs-on: ubuntu-latest
-
-    # Depends on previous job
-    needs: build
-
-    steps:
     - name: Upload JAR to S3
+    
+      # Run the upload on master branch
+      if: ${{ github.ref == 'refs/heads/master' || github.ref == 'refs/heads/develop' }}
+
       uses: jakejarvis/s3-sync-action@master
       with:
         args: --acl public-read
