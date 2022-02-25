@@ -45,7 +45,10 @@ jobs:
     - name: Build with Gradle
       run: ./gradlew --refresh-dependencies
 
-    
+    - name: Change folder source
+      run: |
+        echo "folderName=`basename -s .jar dist/libs/runwar-*.jar | sed -e 's/runwar-//'`" >> $GITHUB_ENV
+        mkdir dist/libs/temp/${{env.folderName}} && cp dist/libs/runwar-*.jar dist/libs/temp/${{env.folderName}}
 
     - name: Upload JAR to S3
     
@@ -59,5 +62,5 @@ jobs:
         AWS_S3_BUCKET: "downloads.ortussolutions.com"
         AWS_ACCESS_KEY_ID: ${{ secrets.AWS_ACCESS_KEY }}
         AWS_SECRET_ACCESS_KEY: ${{ secrets.AWS_ACCESS_SECRET }}
-        SOURCE_DIR: "dist/libs/"
+        SOURCE_DIR: "dist/libs/temp/"
         DEST_DIR: "cfmlprojects/runwar/"
