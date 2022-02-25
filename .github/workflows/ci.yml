@@ -22,12 +22,7 @@ on:
 
 jobs:
   build:
-
     runs-on: ubuntu-latest
-    
-    permissions:
-      contents: read
-      packages: write
 
     steps:
     - name: Checkout Repository
@@ -45,6 +40,7 @@ jobs:
     - name: Build with Gradle
       run: ./gradlew --refresh-dependencies
 
+    # Creating S3 destination folder name based on the version and copying just the jar into temp directory
     - name: Change folder source
       run: |
         echo "folderName=`basename -s .jar dist/libs/runwar-*.jar | sed -e 's/runwar-//'`" >> $GITHUB_ENV
