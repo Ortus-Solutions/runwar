@@ -62,5 +62,5 @@ jobs:
         AWS_S3_BUCKET: "downloads.ortussolutions.com"
         AWS_ACCESS_KEY_ID: ${{ secrets.AWS_ACCESS_KEY }}
         AWS_SECRET_ACCESS_KEY: ${{ secrets.AWS_ACCESS_SECRET }}
-        SOURCE_DIR: "dist/libs/temp/${{env.folderName}}"
+        SOURCE_DIR: "dist/libs/temp/${{env.folderName}}/"
         DEST_DIR: "cfmlprojects/runwar/"
