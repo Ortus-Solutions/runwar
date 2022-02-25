@@ -44,7 +44,7 @@ jobs:
     - name: Change folder source
       run: |
         echo "folderName=`basename -s .jar dist/libs/runwar-*.jar | sed -e 's/runwar-//'`" >> $GITHUB_ENV
-        mkdir dist/libs/temp/${{env.folderName}} && cp dist/libs/runwar-*.jar dist/libs/temp/${{env.folderName}}
+        mkdir dist/libs/temp && cp dist/libs/runwar-*.jar dist/libs/temp
 
     - name: Upload JAR to S3
     
