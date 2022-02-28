@@ -22,7 +22,6 @@ apply from: 'gradle/config.gradle'
 sourceCompatibility = 1.8
 targetCompatibility = 1.8
 tasks.withType(JavaCompile) {
-    //options.bootstrapClasspath = fileTree( include: [ '**/jce.jar','**/rt.jar' ], dir: "${System.properties['java.home']}/" )
     options.encoding = 'UTF-8'
     options.compilerArgs += '-Xlint:unchecked'
     options.compilerArgs += '-Xlint:deprecation'
@@ -51,8 +50,6 @@ tasks.withType(Test) {
 sourceSets {
     main {
         output.dir(generatedResources, builtBy: 'generateVersionFile')
-        // Add the dist/libs/<version>/ folder into the compile classpath
-        // compileClasspath += fileTree(dir: "$rootDir/dist/libs/" + project.version).matching { include "*.jar" }
     }
 }
 
@@ -93,13 +90,6 @@ jar {
     )
 }
 
-// This is supposed to change where the jar file is output, but it also changes the default
-// compileclasspath (see above).  Put jar in a folder named after the version to
-// simplify S3 sync
-/* tasks.withType(Jar) {
-    destinationDir = file("$rootDir/dist/libs/" + project.version)
-} */
-
 task javadocJar(type: Jar) {
     archiveClassifier = 'javadoc'
     from javadoc
@@ -114,6 +104,10 @@ shadowJar {
     archiveClassifier = null
     mergeServiceFiles()
     exclude('**/*.java')
+    manifest {
+       attributes(
+     	 "Multi-Release": true )
+    }
 }
 apply from: 'gradle/proguard.gradle'
 apply from: 'gradle/maven.gradle'
