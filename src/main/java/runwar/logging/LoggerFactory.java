@@ -237,7 +237,7 @@ public class LoggerFactory {
         urlrewriteLoggers.forEach(logger -> {
             log4jConfig.addLogger(logger.getName(), logger);
     	});
-        
+
         if (isTrace) {
             RunwarLogger.CONF_LOG.infof("Enabling URL rewrite log level: %s", "TRACE");
             urlrewriteLoggers.forEach(logger -> {
@@ -252,10 +252,6 @@ public class LoggerFactory {
                 logger.addAppender(consoleAppender(serverOptions.getLogPattern()),logger.getLevel(),null);
             });
         }
-        
-
-        System.out.println("serverOptions.urlRewriteLog() ");
-        System.out.println(serverOptions.urlRewriteLog());
         
         if (serverOptions.urlRewriteLog() != null) {
             rewriteLogAppender = RollingFileAppender.newBuilder()

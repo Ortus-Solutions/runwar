@@ -656,6 +656,12 @@ public class CommandLineHandler {
                 .hasArg().withArgName("true|false")
                 .create(Keys.AUTOCREATECONTEXTSVDIRS));
         
+        options.addOption(OptionBuilder
+                .withLongOpt("log-pattern")
+                .withDescription("Log4j formatter pattern for log messages")
+                .hasArg().withArgName("[%-5p] %c: %m%n")
+                .create(Keys.LOGPATTERN));
+        
         options.addOption(new Option("h", Keys.HELP, false, "print this message"));
         options.addOption(new Option("v", "version", false, "print runwar version and undertow version"));
         
@@ -690,6 +696,10 @@ public class CommandLineHandler {
             
             if (hasOptionValue(line, "level")) {
                 serverOptions.logLevel(line.getOptionValue("level"));
+            }
+            
+            if (hasOptionValue(line, Keys.LOGPATTERN)) {
+                serverOptions.logPattern(line.getOptionValue(Keys.LOGPATTERN));
             }
             
             if (line.hasOption(Keys.WAR)) {
