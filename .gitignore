@@ -28,3 +28,4 @@ testwars
 *.ipr
 *.iws
 /settings.xml
+.classpath
