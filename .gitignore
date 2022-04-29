@@ -1,6 +1,7 @@
 /bin
 /dist
 /lib
+/libs
 /build
 /undertow
 /testlibs
@@ -27,3 +28,4 @@ testwars
 *.ipr
 *.iws
 /settings.xml
+.classpath

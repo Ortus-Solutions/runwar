@@ -6,8 +6,6 @@ plugins {
     id 'com.github.johnrengelman.shadow' version '4.0.2'
     id "com.diffplug.gradle.oomph.ide" version "3.17.1"
     id "se.bjurr.gitchangelog.git-changelog-gradle-plugin" version "1.55"
- //   id "com.fizzed.rocker" version "0.24.0"
-//    id 'com.zyxist.chainsaw' version '0.3.1'
 }
 
 defaultTasks 'clean', 'shadow'
@@ -24,7 +22,6 @@ apply from: 'gradle/config.gradle'
 sourceCompatibility = 1.8
 targetCompatibility = 1.8
 tasks.withType(JavaCompile) {
-    options.bootstrapClasspath = fileTree(include: ['**/jce.jar','**/rt.jar'], dir: "${System.properties['java.home']}/")
     options.encoding = 'UTF-8'
     options.compilerArgs += '-Xlint:unchecked'
     options.compilerArgs += '-Xlint:deprecation'
@@ -45,7 +42,6 @@ wrapper{
 
 javadoc {
     options.addStringOption('Xdoclint:none', '-quiet')
-//    options.addBooleanOption('html5', true)
 }
 
 tasks.withType(Test) {
@@ -54,22 +50,8 @@ tasks.withType(Test) {
 sourceSets {
     main {
         output.dir(generatedResources, builtBy: 'generateVersionFile')
-   //     rocker {
-   //         srcDir('src/main/rocker')
-    //    }
     }
 }
-
-/*
- processResources {
- filesMatching('properties/*.properties') {
- filter ReplaceTokens, tokens: [
- 'build.version': project.property("version"),
- 'build.timestamp': project.buildTimestamp
- ]
- }
- }
- */
 
 test {
     // Enable JUnit 5 (Gradle 4.6+).
@@ -84,21 +66,6 @@ test {
     // show standard out and standard error of the test JVM(s) on the console
     testLogging.showStandardStreams = true
 }
-
-/*rocker {
-    failOnError true
-    skipTouch true
-    // must not be empty when skipTouch is equal to false
-    touchFile ""
-    javaVersion '1.8'
-    extendsClass null
-    extendsModelClass null
-    optimize null
-    discardLogicWhitespace true
-    targetCharset null
-    suffixRegex null
-    postProcessing null
-}*/
 
 // create an OSGI manifest
 apply plugin: 'com.diffplug.gradle.osgi.bndmanifest'
@@ -133,21 +100,14 @@ task sourceJar(type: Jar) {
     from sourceSets.main.allSource
 }
 
-/*
-tasks.withType(JavaCompile) {
-    options.compilerArgs.addAll([
-            "--add-exports",
-            "java.base/jdk.internal.misc=ALL-UNNAMED",
-            "--add-exports",
-            "java.base/jdk.internal.misc=runwar"
-    ])
-}
-*/
-
 shadowJar {
     archiveClassifier = null
     mergeServiceFiles()
     exclude('**/*.java')
+    manifest {
+       attributes(
+     	 "Multi-Release": true )
+    }
 }
 apply from: 'gradle/proguard.gradle'
 apply from: 'gradle/maven.gradle'
@@ -158,27 +118,11 @@ task copyToLib(type: Copy) {
     from configurations.runtime
 }
 
-/*
- task generateGitChangelogTemplateWithGitHubIssues(type: se.bjurr.gitchangelog.plugin.gradle.GitChangelogTask) {
- gitHubApi = "https://api.github.com/repos/Ortus-Solutions/runwar"
- gitHubToken = System.properties['GITHUB_OAUTH2TOKEN']
- gitHubIssuePattern = "#([0-9]*)"
- file = new File("${buildDir}/CHANGELOG.md")
- templateContent = file('gradle/changelog/changelog.mustache').getText('UTF-8')
- }
- */
-
 task gitChangelogTask() {
     doLast {
         GitChangelogApi builder;
         builder = gitChangelogApiBuilder()
-        /*
-         println builder.withGitHubApi("https://api.github.com/repos/Ortus-Solutions/runwar")
-         .withGitHubToken(System.properties['GITHUB_OAUTH2TOKEN'])
-         .withGitHubIssuePattern("#([0-9]*)")
-         .withTemplatePath('gradle/changelog/changelog.mustache')
-         .render();
-         */
+
         println builder.withFromRef("master")
                 .withToRef("HEAD")
                 .withGitHubApi("https://api.github.com/repos/Ortus-Solutions/runwar")
@@ -187,7 +131,7 @@ task gitChangelogTask() {
                 .withNoIssueName("These commits have no issue in their commit comment")
                 .withTemplateContent("""
 					# Changelog
-					
+
 					{{#tags}}
 					## {{name}}
 					 {{^hasIssue}}
@@ -197,32 +141,24 @@ task gitChangelogTask() {
 					  {{#hasLink}}
 					  [{{issue}}]({{link}}) {{title}}
 					  {{#commits}}
-					   [{{hash}}] {{{messageTitle}}} (https://github.com/{{ownerName}}/{{repoName}}/commit/{{hash}}) 
+					   [{{hash}}] {{{messageTitle}}} (https://github.com/{{ownerName}}/{{repoName}}/commit/{{hash}})
 					  {{/commits}}
 					  {{/hasLink}}
 					 {{/issues}}
-					
+
 					 {{#issues}}
 					  {{^hasLink}}
 					 Commits:
 					  {{#commits}}
-					  [{{hash}}] {{{messageTitle}}} (https://github.com/{{ownerName}}/{{repoName}}/commit/{{hash}}) 
+					  [{{hash}}] {{{messageTitle}}} (https://github.com/{{ownerName}}/{{repoName}}/commit/{{hash}})
 					  {{/commits}}
 					  {{/hasLink}}
 					 {{/issues}}
-					 
+
 					{{/tags}}
                 """.stripIndent())
                 .render()
 
-        /*
-         println builder.withFromRef("refs/tags/3.7.0")
-         .withToRef("refs/tags/3.8.0")
-         .withTemplatePath('gradle/changelog/changelog.mustache')
-         .render()
-         */
-        //    file = new File("${buildDir}/CHANGELOG.md");
-        //    templateContent = file('gradle/changelog/changelog.mustache').getText('UTF-8');
     }
 }
 

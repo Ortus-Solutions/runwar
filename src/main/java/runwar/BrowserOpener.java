@@ -29,7 +29,6 @@ public class BrowserOpener {
             return;
         }
         try {
-            RunwarLogger.LOG.info(url);
             if (osName.startsWith("Mac OS")) {
                 if (!preferred_browser.equalsIgnoreCase("default")) {
                     try {

@@ -390,7 +390,7 @@ public class CommandLineHandler {
         
         options.addOption(OptionBuilder
                 .withLongOpt("transfer-min-size")
-                .withDescription("Minimun transfer file size to offload to OS. (100)\n")
+                .withDescription("Minimun transfer file size to offload to OS.")
                 .hasArg().withArgName(Keys.TRANSFERMINSIZE).withType(Long.class)
                 .create(Keys.TRANSFERMINSIZE));
         
@@ -620,6 +620,48 @@ public class CommandLineHandler {
                 .hasArg().withArgName("true|false")
                 .create(Keys.CACHESERVLETPATHS));
         
+        options.addOption(OptionBuilder
+                .withLongOpt("file-cache-total-size-mb")
+                .withDescription("Total size of the resource cache in megabytes. Only used if cache-servlet-paths is enabled")
+                .hasArg().withArgName("true|false")
+                .create(Keys.FILECACHETOTALSIZEMB));
+        
+        options.addOption(OptionBuilder
+                .withLongOpt("file-cache-max-file-size-kb")
+                .withDescription("Max size of idividual static files to enable caching for them. Only used if cache-servlet-paths is enabled")
+                .hasArg().withArgName("true|false")
+                .create(Keys.FILECACHEMAXFILESIZEKB));
+        
+        options.addOption(OptionBuilder
+                .withLongOpt("auto-create-contexts")
+                .withDescription("Automatically create new servlet contexts based on host name (for use behind web server using virtual hosts)")
+                .hasArg().withArgName("true|false")
+                .create(Keys.AUTOCREATECONTEXTS));
+        
+        options.addOption(OptionBuilder
+                .withLongOpt("auto-create-contexts-secret")
+                .withDescription("Secret for automatically creating new servlet contexts")
+                .hasArg().withArgName("secret")
+                .create(Keys.AUTOCREATECONTEXTSSECRET));
+        
+        options.addOption(OptionBuilder
+                .withLongOpt("auto-create-contexts-max")
+                .withDescription("Max number of servlet contexts to create")
+                .hasArg().withArgName("max")
+                .create(Keys.AUTOCREATECONTEXTSMAX));
+        
+        options.addOption(OptionBuilder
+                .withLongOpt("auto-create-contexts-vdirs")
+                .withDescription("Automatically copy virtual directories from the front end web server to Undertow)")
+                .hasArg().withArgName("true|false")
+                .create(Keys.AUTOCREATECONTEXTSVDIRS));
+        
+        options.addOption(OptionBuilder
+                .withLongOpt("log-pattern")
+                .withDescription("Log4j formatter pattern for log messages")
+                .hasArg().withArgName("[%-5p] %c: %m%n")
+                .create(Keys.LOGPATTERN));
+        
         options.addOption(new Option("h", Keys.HELP, false, "print this message"));
         options.addOption(new Option("v", "version", false, "print runwar version and undertow version"));
         
@@ -656,6 +698,10 @@ public class CommandLineHandler {
                 serverOptions.logLevel(line.getOptionValue("level"));
             }
             
+            if (hasOptionValue(line, Keys.LOGPATTERN)) {
+                serverOptions.logPattern(line.getOptionValue(Keys.LOGPATTERN));
+            }
+            
             if (line.hasOption(Keys.WAR)) {
                 String warPath = line.getOptionValue(Keys.WAR);
                 serverOptions.warFile(getFile(warPath));
@@ -669,6 +715,19 @@ public class CommandLineHandler {
             } else {
                 serverOptions.logDir();
             }
+
+            
+            if (hasOptionValue(line, Keys.RESOURCEMANAGERLOGGING)) {
+                serverOptions.resourceManagerLogging(Boolean.valueOf(line.getOptionValue(Keys.RESOURCEMANAGERLOGGING)));
+            }
+
+            if (hasOptionValue(line, Keys.URLREWRITELOG)) {
+                serverOptions.urlRewriteLog(new File(line.getOptionValue(Keys.URLREWRITELOG)));
+                if (!line.hasOption(Keys.URLREWRITEENABLE)) {
+                    serverOptions.urlRewriteEnable(true);
+                }
+            }
+            
             return serverOptions;
         } catch (Exception exp) {
             exp.printStackTrace();
@@ -869,12 +928,6 @@ public class CommandLineHandler {
                     serverOptions.urlRewriteEnable(true);
                 }
             }
-            if (hasOptionValue(line, Keys.URLREWRITELOG)) {
-                serverOptions.urlRewriteLog(new File(line.getOptionValue(Keys.URLREWRITELOG)));
-                if (!line.hasOption(Keys.URLREWRITEENABLE)) {
-                    serverOptions.urlRewriteEnable(true);
-                }
-            }
             if (line.hasOption(Keys.URLREWRITEENABLE)) {
                 serverOptions.urlRewriteEnable(Boolean.valueOf(line.getOptionValue(Keys.URLREWRITEENABLE)));
             }
@@ -928,14 +981,34 @@ public class CommandLineHandler {
                 serverOptions.caseSensitiveWebServer(Boolean.valueOf(line.getOptionValue(Keys.CASESENSITIVEWEBSERVER)));
             }
             
-            if (hasOptionValue(line, Keys.RESOURCEMANAGERLOGGING)) {
-                serverOptions.resourceManagerLogging(Boolean.valueOf(line.getOptionValue(Keys.RESOURCEMANAGERLOGGING)));
-            }
-            
             if (hasOptionValue(line, Keys.CACHESERVLETPATHS)) {
                 serverOptions.cacheServletPaths(Boolean.valueOf(line.getOptionValue(Keys.CACHESERVLETPATHS)));
             }
             
+            if (hasOptionValue(line, Keys.FILECACHETOTALSIZEMB)) {
+                serverOptions.fileCacheTotalSizeMB(Integer.valueOf(line.getOptionValue(Keys.FILECACHETOTALSIZEMB)));
+            }
+            
+            if (hasOptionValue(line, Keys.FILECACHEMAXFILESIZEKB)) {
+                serverOptions.fileCacheMaxFileSizeKB(Integer.valueOf(line.getOptionValue(Keys.FILECACHEMAXFILESIZEKB)));
+            }
+
+            if (hasOptionValue(line, Keys.AUTOCREATECONTEXTS)) {
+                serverOptions.autoCreateContexts(Boolean.valueOf(line.getOptionValue(Keys.AUTOCREATECONTEXTS)));
+            }
+
+            if (hasOptionValue(line, Keys.AUTOCREATECONTEXTSSECRET)) {
+            	serverOptions.autoCreateContextsSecret(line.getOptionValue(Keys.AUTOCREATECONTEXTSSECRET));
+            }
+            
+            if (hasOptionValue(line, Keys.AUTOCREATECONTEXTSMAX)) {
+                serverOptions.autoCreateContextsMax(Integer.valueOf(line.getOptionValue(Keys.AUTOCREATECONTEXTSMAX)));
+            }
+            
+            if (hasOptionValue(line, Keys.AUTOCREATECONTEXTSVDIRS)) {
+                serverOptions.autoCreateContextsVDirs(Boolean.valueOf(line.getOptionValue(Keys.AUTOCREATECONTEXTSVDIRS)));
+            }
+
             if (line.hasOption(Keys.OPENURL)) {
                 serverOptions.openbrowserURL(line.getOptionValue(Keys.OPENURL));
                 if (!line.hasOption(Keys.OPENBROWSER)) {
