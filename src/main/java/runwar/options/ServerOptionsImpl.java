@@ -2327,9 +2327,12 @@ public class ServerOptionsImpl implements ServerOptions {
      */
     @Override
     public ServerOptions xnioOptions(String options) {
-        String[] optionList = options.split(",");
+        String[] optionList = options.split(";");
         for (int x = 0; x < optionList.length; x++) {
             String[] splitted = optionList[x].split("=");
+            if( splitted.length != 2 ) {
+            	throw new IllegalArgumentException("XNIO Option is malformed. Expected [" + optionList[x] + "] to be in the form of [OPTION_NAME=value].");
+            }
             setOptionMapValue(serverXnioOptions, Options.class, splitted[0].trim(), splitted[1].trim());
         }
         return this;
