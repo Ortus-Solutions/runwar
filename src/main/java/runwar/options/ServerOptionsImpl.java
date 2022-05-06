@@ -92,7 +92,7 @@ public class ServerOptionsImpl implements ServerOptions {
     
     private boolean servletRestEnable = false;
     
-    private String[] servletRestMappings = { "/rest" };
+    private String[] servletRestMappings = {};
     
     private boolean filterPathInfoEnable = true;
     

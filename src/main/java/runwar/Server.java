@@ -471,6 +471,8 @@ public class Server {
         
         configurer.configureServerResourceHandler(servletBuilder);
         
+        configurer.configureRestMappings(servletBuilder);
+        
         if (serverOptions.basicAuthEnable()) {
             securityManager.configureAuth(servletBuilder, serverOptions);
         }
