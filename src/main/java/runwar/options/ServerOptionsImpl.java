@@ -132,6 +132,8 @@ public class ServerOptionsImpl implements ServerOptions {
     
     private Boolean resourceManagerLogging= false;
     
+    private Boolean resourceManagerFileSystemWatcher= true;
+    
     private Boolean cacheServletPaths= false;
     
     private Integer fileCacheTotalSizeMB = 50; // 50MB cache (up to 10 buffers)
@@ -2181,6 +2183,23 @@ public class ServerOptionsImpl implements ServerOptions {
     @Override
     public ServerOptions resourceManagerLogging(Boolean resourceManagerLogging) {
     	this.resourceManagerLogging = resourceManagerLogging;
+        return this;
+    }
+
+    /*
+     * @see runwar.options.ServerOptions#resourceManagerFileSystemWatcher()
+     */
+    @Override
+    public Boolean resourceManagerFileSystemWatcher() {
+        return resourceManagerFileSystemWatcher;
+    }
+
+    /*
+     * @see runwar.options.ServerOptions#resourceManagerFileSystemWatcher(boolean)
+     */
+    @Override
+    public ServerOptions resourceManagerFileSystemWatcher(Boolean resourceManagerFileSystemWatcher) {
+    	this.resourceManagerFileSystemWatcher = resourceManagerFileSystemWatcher;
         return this;
     }
     

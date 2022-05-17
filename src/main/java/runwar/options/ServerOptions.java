@@ -116,6 +116,7 @@ public interface ServerOptions {
         final static String DEFAULTSERVLETALLOWEDEXT = "defaultServletAllowedExt";
         final static String CASESENSITIVEWEBSERVER="caseSensitiveWebServer";
         final static String RESOURCEMANAGERLOGGING="resourceManagerLogging";
+        final static String RESOURCEMANAGERFILESYSTEMWATCHER="resourceManagerFileSystemWatcher";        
         final static String CACHESERVLETPATHS="cacheServletPaths";
         final static String FILECACHETOTALSIZEMB="fileCacheTotalSizeMB";
         final static String FILECACHEMAXFILESIZEKB="fileCacheMaxFileSizeKB";
@@ -391,6 +392,8 @@ public interface ServerOptions {
 
     Boolean resourceManagerLogging();
     
+    Boolean resourceManagerFileSystemWatcher();
+    
     Boolean cacheServletPaths();
     
     Integer fileCacheTotalSizeMB();
@@ -403,9 +406,11 @@ public interface ServerOptions {
     
     Integer autoCreateContextsMax();
     
-    Boolean autoCreateContextsVDirs();    
+    Boolean autoCreateContextsVDirs();
 
     ServerOptions resourceManagerLogging(Boolean resourceManagerLogging);
+
+    ServerOptions resourceManagerFileSystemWatcher(Boolean resourceManagerFileSystemWatcher);
 
     ServerOptions cacheServletPaths(Boolean cacheServletPaths);
     
