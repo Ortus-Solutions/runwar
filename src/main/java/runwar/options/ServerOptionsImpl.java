@@ -92,7 +92,7 @@ public class ServerOptionsImpl implements ServerOptions {
     
     private boolean servletRestEnable = false;
     
-    private String[] servletRestMappings = { "/rest" };
+    private String[] servletRestMappings = {};
     
     private boolean filterPathInfoEnable = true;
     
@@ -131,6 +131,8 @@ public class ServerOptionsImpl implements ServerOptions {
     private Boolean caseSensitiveWebServer= null;
     
     private Boolean resourceManagerLogging= false;
+    
+    private Boolean resourceManagerFileSystemWatcher= true;
     
     private Boolean cacheServletPaths= false;
     
@@ -2183,6 +2185,23 @@ public class ServerOptionsImpl implements ServerOptions {
     	this.resourceManagerLogging = resourceManagerLogging;
         return this;
     }
+
+    /*
+     * @see runwar.options.ServerOptions#resourceManagerFileSystemWatcher()
+     */
+    @Override
+    public Boolean resourceManagerFileSystemWatcher() {
+        return resourceManagerFileSystemWatcher;
+    }
+
+    /*
+     * @see runwar.options.ServerOptions#resourceManagerFileSystemWatcher(boolean)
+     */
+    @Override
+    public ServerOptions resourceManagerFileSystemWatcher(Boolean resourceManagerFileSystemWatcher) {
+    	this.resourceManagerFileSystemWatcher = resourceManagerFileSystemWatcher;
+        return this;
+    }
     
     /*
      * @see runwar.options.ServerOptions#autoCreateContexts()
@@ -2327,9 +2346,12 @@ public class ServerOptionsImpl implements ServerOptions {
      */
     @Override
     public ServerOptions xnioOptions(String options) {
-        String[] optionList = options.split(",");
+        String[] optionList = options.split(";");
         for (int x = 0; x < optionList.length; x++) {
             String[] splitted = optionList[x].split("=");
+            if( splitted.length != 2 ) {
+            	throw new IllegalArgumentException("XNIO Option is malformed. Expected [" + optionList[x] + "] to be in the form of [OPTION_NAME=value].");
+            }
             setOptionMapValue(serverXnioOptions, Options.class, splitted[0].trim(), splitted[1].trim());
         }
         return this;

@@ -615,6 +615,12 @@ public class CommandLineHandler {
                 .create(Keys.RESOURCEMANAGERLOGGING));
         
         options.addOption(OptionBuilder
+                .withLongOpt("resource-manager-file-system-watcher")
+                .withDescription("Enable low level file system watcher to detect changes on disk. Used for welcome files and servlet path cache invalidation")
+                .hasArg().withArgName("true|false")
+                .create(Keys.RESOURCEMANAGERFILESYSTEMWATCHER));
+        
+        options.addOption(OptionBuilder
                 .withLongOpt("cache-servlet-paths")
                 .withDescription("Enable file system caching in resource manager of servlet.getRealPath() calls")
                 .hasArg().withArgName("true|false")
@@ -716,7 +722,6 @@ public class CommandLineHandler {
                 serverOptions.logDir();
             }
 
-            
             if (hasOptionValue(line, Keys.RESOURCEMANAGERLOGGING)) {
                 serverOptions.resourceManagerLogging(Boolean.valueOf(line.getOptionValue(Keys.RESOURCEMANAGERLOGGING)));
             }
@@ -983,6 +988,10 @@ public class CommandLineHandler {
             
             if (hasOptionValue(line, Keys.CACHESERVLETPATHS)) {
                 serverOptions.cacheServletPaths(Boolean.valueOf(line.getOptionValue(Keys.CACHESERVLETPATHS)));
+            }
+                        
+            if (hasOptionValue(line, Keys.RESOURCEMANAGERFILESYSTEMWATCHER)) {
+                serverOptions.resourceManagerFileSystemWatcher(Boolean.valueOf(line.getOptionValue(Keys.RESOURCEMANAGERFILESYSTEMWATCHER)));
             }
             
             if (hasOptionValue(line, Keys.FILECACHETOTALSIZEMB)) {

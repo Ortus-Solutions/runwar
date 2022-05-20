@@ -93,23 +93,11 @@ public class Reflection {
                 foundOption = true;
                 try {
                     option = (Option) f.get(null);
-                    String typename = f.getGenericType().getTypeName();
-                    if (typename.contains("String>")) {
-                        builder.set(option, value);
-                    } else if (typename.contains("Integer>")) {
-                        builder.set(option, Integer.valueOf(value));
-                    } else if (typename.contains("Boolean>")) {
-                        builder.set(option, Boolean.valueOf(value));
-                    } else if (typename.contains("Double>")) {
-                        builder.set(option, Double.valueOf(value));
-                    } else if (typename.contains("Long>")) {
-                        builder.set(option, Long.valueOf(value));
-                    } else {
-                        throw new IllegalArgumentException( optionsClass.getName() + " option " + f.getName() + " has an unhandled type of " + typename );
-                    }
+                    builder.parse( option, value );
                 } catch (IllegalAccessException e) {
                     LOG.error(e);
                 }
+                break;
             }
         }
         if (!foundOption) {

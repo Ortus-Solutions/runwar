@@ -124,12 +124,12 @@ class RunwarConfigurer {
         }
         servletBuilder.setClassLoader(getClassLoader());
         
-        WebXMLParser.parseWebXml(serverOptions.webXmlFile(), servletBuilder, serverOptions.ignoreWebXmlWelcomePages(), serverOptions.ignoreWebXmlRestMappings(), false);
+        WebXMLParser.parseWebXml(serverOptions.webXmlFile(), servletBuilder, serverOptions.ignoreWebXmlWelcomePages(), serverOptions.ignoreWebXmlRestMappings(), false, serverOptions.servletRestEnable());
         File webXMLOverrideFile = serverOptions.webXmlOverrideFile();
         if(webXMLOverrideFile!=null){
             LOG.debug("Using webxml override: '" + webXMLOverrideFile.getAbsolutePath() + "'");
             WebXMLParser.parseWebXml(webXMLOverrideFile, servletBuilder, serverOptions.ignoreWebXmlWelcomePages(), 
-                                        serverOptions.ignoreWebXmlRestMappings(), serverOptions.webXmlOverrideForce());
+                                        serverOptions.ignoreWebXmlRestMappings(), serverOptions.webXmlOverrideForce(), serverOptions.servletRestEnable());
         }
     }
 
@@ -372,6 +372,10 @@ class RunwarConfigurer {
             servletBuilder.addWelcomePages(defaultWelcomeFiles);
         }
         LOG.debug("welcome pages in deployment manager: " + servletBuilder.getWelcomePages());
+
+    }
+
+    void configureRestMappings(final DeploymentInfo servletBuilder) {
 
         if(serverOptions.ignoreWebXmlRestMappings() && serverOptions.servletRestEnable()) {
         	LOG.debug("Overriding web.xml rest mappings with " + Arrays.toString( serverOptions.servletRestMappings() ) );

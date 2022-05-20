@@ -32,8 +32,7 @@ public class WebXMLParser {
      * @param ignoreWelcomePages ignore welcome pages or not
      */
     @SuppressWarnings("unchecked")
-    public static void parseWebXml(File webxml, DeploymentInfo info,
-            boolean ignoreWelcomePages, boolean ignoreRestMappings, boolean overrideEnabled) {
+    public static void parseWebXml(File webxml, DeploymentInfo info, boolean ignoreWelcomePages, boolean ignoreRestMappings, boolean overrideEnabled, boolean servletRestEnable) {
         CONF_LOG.infof("Parsing '%s'", webxml.getPath());
         CONF_LOG.debugf("Overriding previous web.xml '%s'", overrideEnabled?"True":"False");
 
@@ -142,10 +141,11 @@ public class WebXMLParser {
                     Match urlPatterns = $(mappingElement).find("url-pattern");
                     urlPatterns.each(urlPatternElement -> {
                         String urlPattern = $(urlPatternElement).text();
-                        if (ignoreRestMappings && (servletName.toLowerCase().equals("restservlet")
-                                || servletName.toLowerCase().equals("cfrestservlet"))) {
-                            CONF_LOG.tracef("Skipping mapping servlet-name: %s, url-partern: %s", servletName,
-                                    urlPattern);
+                        
+                        
+                        
+                        if ( isREST( servletName ) && ( ignoreRestMappings || !servletRestEnable ) ) {
+                            CONF_LOG.tracef("Skipping mapping servlet-name: %s, url-partern: %s", servletName, urlPattern);
                         } else {
                             CONF_LOG.tracef("mapping servlet-name: %s, url-pattern: %s", servletName, urlPattern);
                             trace( "does mapping exist already %s", servlet.getMappings().contains( urlPattern ) );
@@ -307,7 +307,11 @@ public class WebXMLParser {
             throw new RuntimeException(e);
         }
     }
-
+    
+    private static boolean isREST(String servletName) {
+        return servletName.toLowerCase().equals("restservlet") || servletName.toLowerCase().equals("cfrestservlet");
+    }
+    
     private static String getRequired(Context ctx, String param) {
         final String result = $(ctx).find(param).text();
         if(result == null) {

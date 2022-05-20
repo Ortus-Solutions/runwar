@@ -399,7 +399,7 @@ public class Server {
         Xnio xnio = Xnio.getInstance("nio", Server.class.getClassLoader());
         OptionMap.Builder serverXnioOptions = serverOptions.xnioOptions();
 
-        logXnioOptions(serverXnioOptions);
+        logXnioOptions(serverXnioOptions,serverBuilder);
 
         if (serverOptions.ioThreads() != 0) {
         	LOG.debug("IO Threads: " + serverOptions.ioThreads());
@@ -470,6 +470,8 @@ public class Server {
         configurer.configureServlet(servletBuilder);
         
         configurer.configureServerResourceHandler(servletBuilder);
+        
+        configurer.configureRestMappings(servletBuilder);
         
         if (serverOptions.basicAuthEnable()) {
             securityManager.configureAuth(servletBuilder, serverOptions);
@@ -564,7 +566,7 @@ public class Server {
                        	        	return;
                             	}
                     		} else {
-                    	        LOG.warn( "X-Tomcat-DocRoot of [ + docRoot + ] does not exist or is not directory.  Using default context." );
+                    	        LOG.warn( "X-Tomcat-DocRoot of [" + docRoot + "] does not exist or is not directory.  Using default context." );
                         		deployment = deployments.get( ServletDeployment.DEFAULT );
                     		}                    		
                     	} else {
@@ -798,7 +800,7 @@ public class Server {
 
     @SuppressWarnings("unchecked")
     private void setUndertowOptions(Builder serverBuilder) {
-        OptionMap undertowOptionsMap = serverOptions.undertowOptions().getMap();
+		OptionMap undertowOptionsMap = serverOptions.undertowOptions().getMap();
         for (Option option : undertowOptionsMap) {
         	LOG.debug("UndertowOption " + option.getName() + ':' + undertowOptionsMap.get(option));
             serverBuilder.setServerOption(option, undertowOptionsMap.get(option));
@@ -806,10 +808,11 @@ public class Server {
     }
 
     @SuppressWarnings("unchecked")
-    private void logXnioOptions(OptionMap.Builder xnioOptions) {
+    private void logXnioOptions(OptionMap.Builder xnioOptions, Builder serverBuilder) {
         OptionMap serverXnioOptionsMap = xnioOptions.getMap();
         for (Option option : serverXnioOptionsMap) {
         	LOG.debug("XNIO-Option " + option.getName() + ':' + serverXnioOptionsMap.get(option));
+            serverBuilder.setSocketOption(option, serverXnioOptionsMap.get(option));
         }
     }
 

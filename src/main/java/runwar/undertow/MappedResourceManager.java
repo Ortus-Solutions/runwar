@@ -64,7 +64,10 @@ public class MappedResourceManager extends FileResourceManager {
 
     public MappedResourceManager(File base, long transferMinSize, Map<String,Path> aliases, File webinfDir, ServerOptions serverOptions) {
         super(base, transferMinSize);
-        this.allowResourceChangeListeners = true;
+        this.allowResourceChangeListeners = serverOptions.resourceManagerFileSystemWatcher();
+        if( !this.allowResourceChangeListeners ) {
+            MAPPER_LOG.debug("Resource change listener disabled for [" + base.toString() + "]");
+        }
         this.aliases = (HashMap<String, Path>) aliases;
         this.serverOptions = serverOptions; 
         this.forceCaseSensitiveWebServer = serverOptions.caseSensitiveWebServer() != null && serverOptions.caseSensitiveWebServer();
@@ -284,12 +287,12 @@ public class MappedResourceManager extends FileResourceManager {
 	}
 
     public synchronized void registerResourceChangeListener(ResourceChangeListener listener) {
-    	MAPPER_LOG.trace("Adding change listener for mapped resource manager");
         if(!allowResourceChangeListeners) {
             //by rights we should throw an exception here, but this works around a bug in Wildfly where it just assumes
             //PathResourceManager supports this. This will be fixed in a later version
             return;
         }
+    	MAPPER_LOG.trace("Adding change listener for mapped resource manager");
         if (!fileSystem.equals(FileSystems.getDefault())) {
             throw new IllegalStateException("Resource change listeners not supported when using a non-default file system");
         }
