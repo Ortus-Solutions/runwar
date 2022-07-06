@@ -254,14 +254,10 @@ class RunwarConfigurer {
             else if( file.exists() && file.isFile() )
             {
                 String fileName = file.getAbsolutePath().toLowerCase();
-                if ( fileName.endsWith( ".jar" ) || fileName.endsWith( ".zip" ) ) 
-                {
-                    if( !fileName.contains( "slf4j" ) && !fileName.contains( "log4j" ) ) 
-                    {
-                        URL url = file.toURI().toURL();
-                        classpath.add( url );
-                        LOG.trace( "lib: adding to classpath: " + file.getAbsolutePath() );
-                    }
+                if ( fileName.endsWith( ".jar" ) || fileName.endsWith( ".zip" ) ) {
+                    URL url = file.toURI().toURL();
+                    classpath.add( url );
+                    LOG.trace( "lib: adding to classpath: " + file.getAbsolutePath() );
                 }
             }
         }
