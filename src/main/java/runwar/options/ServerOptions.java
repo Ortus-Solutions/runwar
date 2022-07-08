@@ -95,6 +95,7 @@ public interface ServerOptions {
         final static String FILTERPATHINFO = "filterpathinfo";
         final static String SSLADDCERTS = "ssladdcerts";
         final static String BASICAUTHENABLE = "basicauth";
+        final static String BASICAUTHPREDICATE = "basicauthpredicate";
         final static String BUFFERSIZE = "buffersize";
         final static String IOTHREADS = "iothreads";
         final static String WORKERTHREADS = "workerthreads";
@@ -515,6 +516,10 @@ public interface ServerOptions {
     ServerOptions basicAuthEnable(boolean enable);
 
     boolean basicAuthEnable();
+    
+    ServerOptions basicAuthPredicate(String predicate);
+
+    String basicAuthPredicate();
 
     ServerOptions basicAuth(String userPasswordList);
 

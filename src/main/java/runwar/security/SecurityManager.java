@@ -1,5 +1,6 @@
 package runwar.security;
 
+import io.undertow.UndertowLogger;
 import io.undertow.Undertow.Builder;
 import io.undertow.security.api.AuthenticationMechanism;
 import io.undertow.security.api.AuthenticationMode;
@@ -14,6 +15,7 @@ import io.undertow.security.idm.IdentityManager;
 import io.undertow.security.idm.PasswordCredential;
 import io.undertow.security.impl.BasicAuthenticationMechanism;
 import io.undertow.server.HttpHandler;
+import io.undertow.server.HttpServerExchange;
 import io.undertow.servlet.api.AuthMethodConfig;
 import io.undertow.servlet.api.DeploymentInfo;
 import io.undertow.servlet.api.LoginConfig;
@@ -21,6 +23,8 @@ import io.undertow.servlet.api.SecurityConstraint;
 import io.undertow.servlet.api.WebResourceCollection;
 import io.undertow.servlet.api.SecurityInfo;
 import io.undertow.util.HexConverter;
+import io.undertow.predicate.Predicates;
+import io.undertow.predicate.Predicate;
 import runwar.logging.RunwarLogger;
 import runwar.options.ServerOptions;
 
@@ -45,33 +49,24 @@ public class SecurityManager implements IdentityManager {
     private static final Charset UTF_8 = StandardCharsets.UTF_8;
     private final Map<String, UserAccount> users = new HashMap<>();
     
+    /*
     public void configureAuth(DeploymentInfo servletBuilder, ServerOptions serverOptions) {
         String realm = serverOptions.serverName() + " Realm";
         RunwarLogger.SECURITY_LOGGER.debug("Enabling Basic Auth: " + realm);
         for(Entry<String,String> userNpass : serverOptions.basicAuth().entrySet()) {
             addUser(userNpass.getKey(), userNpass.getValue(), "role1");
-            RunwarLogger.SECURITY_LOGGER.debug(String.format("User:%s password:%s",userNpass.getKey(),userNpass.getValue()));
+            RunwarLogger.SECURITY_LOGGER.debug(String.format("User:%s password:****",userNpass.getKey()));
         }
         LoginConfig loginConfig = new LoginConfig(realm);
         Map<String, String> props = new HashMap<>();
         props.put("charset", "ISO_8859_1");
         props.put("user-agent-charsets", "Chrome,UTF-8,OPR,UTF-8");
+        props.put("silent", "false");
         loginConfig.addFirstAuthMethod(new AuthMethodConfig("BASIC", props));
         servletBuilder.setIdentityManager(this).setLoginConfig(loginConfig);
         // TODO: see if we can leverage this stuff
         //addConstraints(servletBuilder, serverOptions);
 
-    }
-
-    public void configureAuth(HttpHandler nextHandler, Builder serverBuilder, ServerOptions serverOptions) {
-        String realm = serverOptions.serverName() + " Realm";
-        RunwarLogger.SECURITY_LOGGER.debug("Enabling Basic Auth: " + realm);
-        final Map<String, String> users = new HashMap<>(2);
-        for(Entry<String,String> userNpass : serverOptions.basicAuth().entrySet()) {
-            users.put(userNpass.getKey(), userNpass.getValue());
-            RunwarLogger.SECURITY_LOGGER.debug(String.format("User:%s password:%s",userNpass.getKey(),userNpass.getValue()));
-        }
-        serverBuilder.setHandler(addSecurity(nextHandler, users, realm));
     }
 
     public void addConstraints(DeploymentInfo servletBuilder, ServerOptions serverOptions) {
@@ -81,14 +76,41 @@ public class SecurityManager implements IdentityManager {
                 .addRoleAllowed("role1")
                 .setEmptyRoleSemantic(SecurityInfo.EmptyRoleSemantic.DENY));
     }
+    */
 
-    public HttpHandler addSecurity(final HttpHandler toWrap, final Map<String, String> users, String realm) {
+    public void configureAuth(HttpHandler nextHandler, Builder serverBuilder, ServerOptions serverOptions) {    	
+        String realm = serverOptions.serverName() + " Realm";
+        RunwarLogger.SECURITY_LOGGER.debug("Enabling Basic Auth: " + realm);
+        final Map<String, String> users = new HashMap<>(2);
+        for(Entry<String,String> userNpass : serverOptions.basicAuth().entrySet()) {
+            users.put(userNpass.getKey(), userNpass.getValue());
+            RunwarLogger.SECURITY_LOGGER.debug(String.format("User:%s password:****",userNpass.getKey()));
+        }
+        serverBuilder.setHandler(addSecurity(nextHandler, users, realm, serverOptions));
+    }
+
+    public HttpHandler addSecurity(final HttpHandler toWrap, final Map<String, String> users, String realm, ServerOptions serverOptions) {
         for(String userName : users.keySet()) {
             addUser(userName, users.get(userName), "role1");
         }
         HttpHandler handler = toWrap;
-        handler = new AuthenticationCallHandler(handler);
-        handler = new AuthenticationConstraintHandler(handler);
+        handler = new AuthenticationCallHandler(handler);	
+        Predicate authRequired = ( serverOptions.basicAuthPredicate() != null && serverOptions.basicAuthPredicate().length() > 0 ) ? Predicates.parse( serverOptions.basicAuthPredicate() ) : null;
+        if( authRequired != null ) {
+            RunwarLogger.SECURITY_LOGGER.debug( "Basic Auth will only apply to [ " + serverOptions.basicAuthPredicate() + " ]" );	
+        }
+        handler = new AuthenticationConstraintHandler(handler){
+        	
+        	@Override
+            protected boolean isAuthenticationRequired(final HttpServerExchange exchange) {
+        		if( authRequired == null ) {
+        			return true;
+        		}
+        		// Either auth is already been marked required for this context or our predicate resolves to true
+                return exchange.getSecurityContext().isAuthenticationRequired() || authRequired.resolve( exchange );
+            }
+        	
+        };
         final List<AuthenticationMechanism> mechanisms = Collections.<AuthenticationMechanism>singletonList(new BasicAuthenticationMechanism(realm));
         handler = new AuthenticationMechanismsHandler(handler, mechanisms);
         handler = new SecurityInitialHandler(AuthenticationMode.PRO_ACTIVE, this, handler);
@@ -125,7 +147,6 @@ public class SecurityManager implements IdentityManager {
     }
 
     private boolean verifyCredential(Account account, Credential credential) {
-        // This approach should never be copied in a realm IdentityManager.
         if (account instanceof UserAccount) {
             if (credential instanceof PasswordCredential) {
                 char[] expectedPassword = ((UserAccount) account).password;
@@ -157,7 +178,6 @@ public class SecurityManager implements IdentityManager {
     }
 
     private static class UserAccount implements Account {
-        // In no way whatsoever should a class like this be considered a good idea for a real IdentityManager implementation,
         private static final long serialVersionUID = 8120665150347502722L;
         String name;
         char[] password;

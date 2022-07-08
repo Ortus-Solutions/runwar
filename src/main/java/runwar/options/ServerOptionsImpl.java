@@ -105,6 +105,8 @@ public class ServerOptionsImpl implements ServerOptions {
     private static Map<String, String> userPasswordList;
     
     private boolean enableBasicAuth = false;
+
+    private String basicAuthPredicate = null;
     
     private boolean directBuffers = true;
     
@@ -132,7 +134,7 @@ public class ServerOptionsImpl implements ServerOptions {
     
     private Boolean resourceManagerLogging= false;
     
-    private Boolean resourceManagerFileSystemWatcher= true;
+    private Boolean resourceManagerFileSystemWatcher= false;
     
     private Boolean cacheServletPaths= false;
     
@@ -1815,7 +1817,18 @@ public class ServerOptionsImpl implements ServerOptions {
     public boolean basicAuthEnable() {
         return this.enableBasicAuth;
     }
+    
+    @Override
+    public ServerOptions basicAuthPredicate(String predicate) {
+        this.basicAuthPredicate = predicate;
+        return this;
+    }
 
+    @Override
+    public String basicAuthPredicate() {
+        return this.basicAuthPredicate;
+    }
+    
     /** 
      * @see runwar.options.ServerOptions#basicAuth(java.lang.String)
      */

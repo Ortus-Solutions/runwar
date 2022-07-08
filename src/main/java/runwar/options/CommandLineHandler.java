@@ -488,6 +488,11 @@ public class CommandLineHandler {
                 .withDescription("List of users and passwords, comma separated and equals separated.")
                 .hasArg().withArgName("bob=secret,alice=12345")
                 .create("users"));
+
+        options.addOption(OptionBuilder
+                .withLongOpt("basicauth-predicate")
+                .withDescription("Basic Auth Predicate")
+                .hasArg().create(Keys.BASICAUTHPREDICATE));
         
         options.addOption(OptionBuilder
                 .withLongOpt("buffer-size")
@@ -1128,6 +1133,11 @@ public class CommandLineHandler {
             if (hasOptionValue(line, Keys.BASICAUTHENABLE)) {
                 serverOptions.basicAuthEnable(Boolean.valueOf(line.getOptionValue(Keys.BASICAUTHENABLE)));
             }
+            
+            if (hasOptionValue(line, Keys.BASICAUTHPREDICATE)) {
+                serverOptions.basicAuthPredicate(line.getOptionValue(Keys.BASICAUTHPREDICATE));
+            }
+            
             if (hasOptionValue(line, "users")) {
                 if (!hasOptionValue(line, Keys.BASICAUTHENABLE) || line.hasOption(Keys.BASICAUTHENABLE) && Boolean.valueOf(line.getOptionValue(Keys.BASICAUTHENABLE))) {
                     serverOptions.basicAuthEnable(true);
