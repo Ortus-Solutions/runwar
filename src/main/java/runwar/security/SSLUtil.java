@@ -49,11 +49,12 @@ public class SSLUtil
         DEFAULT_HOST_NAMES = new String[]{"localhost"};
     }
     
-    public static SSLContext createSSLContext() throws IOException {
+    public static SSLContext createSSLContext( final String[] addCertificatePaths ) throws IOException {
         RunwarLogger.SECURITY_LOGGER.debug("Creating SSL context from: runwar/runwar.keystore trust store: runwar/runwar.truststore");
-        return createSSLContext(getServerKeyStore(), getTrustStore(), DEFAULT_STORE_PASSWORD.clone(), null, false, DEFAULT_HOST_NAMES);
+        return createSSLContext(getServerKeyStore(), getTrustStore(), DEFAULT_STORE_PASSWORD.clone(), addCertificatePaths, false, DEFAULT_HOST_NAMES);
     }
 
+    // Not actually used anywhere
     public static SSLContext createClientSSLContext() throws IOException {
         RunwarLogger.SECURITY_LOGGER.debug("Creating Client SSL context from: runwar/client.keystore trust store: runwar/client.truststore");
         return createSSLContext(loadKeyStore(CLIENT_KEY_STORE), loadKeyStore(CLIENT_TRUST_STORE), DEFAULT_STORE_PASSWORD.clone(), null, false, null);
@@ -72,6 +73,7 @@ public class SSLUtil
             final KeyStore keyStore = KeyStore.getInstance("JKS", "SUN");
             keyStore.load(null, passphrase);
             keyStore.setEntry("someAlias", new KeyStore.TrustedCertificateEntry(derKeystore.getCertificate("serverkey")), null);
+            addCertificates(addCertificatePaths, keyStore);
             sslContext = createSSLContext(derKeystore, keyStore, passphrase, addCertificatePaths, false, hostNames);
         }
         catch (Exception ex) {
@@ -98,6 +100,7 @@ public class SSLUtil
             throw new IOException("Unable to initialise KeyManager[]", ex3);
         }
         addCertificates(addCertificatePaths, keyStore);
+        addCertificates(addCertificatePaths, trustStore);
         TrustManager[] trustManagers;
         try {
             final TrustManagerFactory trustManagerFactory = TrustManagerFactory.getInstance(KeyManagerFactory.getDefaultAlgorithm());

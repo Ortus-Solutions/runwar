@@ -48,6 +48,7 @@ import runwar.tray.Tray;
 import runwar.undertow.MappedResourceManager;
 import runwar.undertow.HostResourceManager;
 import runwar.undertow.RequestDebugHandler;
+import runwar.undertow.SSLClientCertHeaderHandler;
 import runwar.util.ClassLoaderUtils;
 import runwar.util.PortRequisitioner;
 import runwar.util.RequestDumper;
@@ -182,7 +183,7 @@ public class Server {
     private synchronized void requisitionPorts() {
         LOG.debug("HOST to be bound:" + serverOptions.host());
         ports = new PortRequisitioner(serverOptions.host());
-        ports.add("http", serverOptions.httpPort());
+        ports.add("http", serverOptions.httpPort(), serverOptions.httpEnable());
         ports.add("stop", serverOptions.stopPort());
         ports.add("ajp", serverOptions.ajpPort(), serverOptions.ajpEnable());
         ports.add("https", serverOptions.sslPort(), serverOptions.sslEnable());
@@ -261,18 +262,18 @@ public class Server {
             }
 
             try {
+                String[] sslAddCerts = serverOptions.sslAddCerts();
                 if (serverOptions.sslCertificate() != null) {
                     File certFile = serverOptions.sslCertificate();
                     File keyFile = serverOptions.sslKey();
                     char[] keypass = serverOptions.sslKeyPass();
-                    String[] sslAddCerts = serverOptions.sslAddCerts();
 
                     sslContext = SSLUtil.createSSLContext(certFile, keyFile, keypass, sslAddCerts, new String[]{realHost});
                     if (keypass != null) {
                         Arrays.fill(keypass, '*');
                     }
                 } else {
-                    sslContext = SSLUtil.createSSLContext();
+                    sslContext = SSLUtil.createSSLContext( sslAddCerts );
                 }
                 serverBuilder.addHttpsListener(sslPort, realHost, sslContext);
             } catch (Exception e) {
@@ -399,6 +400,12 @@ public class Server {
         Xnio xnio = Xnio.getInstance("nio", Server.class.getClassLoader());
         OptionMap.Builder serverXnioOptions = serverOptions.xnioOptions();
 
+
+        if (serverOptions.clientCertNegotiation() != null) {
+        	LOG.debug("Client Cert Negotiation: " + serverOptions.clientCertNegotiation() );
+            serverXnioOptions.set(Options.SSL_CLIENT_AUTH_MODE, SslClientAuthMode.valueOf( serverOptions.clientCertNegotiation() ) );
+        }
+        
         logXnioOptions(serverXnioOptions,serverBuilder);
 
         if (serverOptions.ioThreads() != 0) {
@@ -478,6 +485,10 @@ public class Server {
         servletBuilder.addServletContextAttribute(WebSocketDeploymentInfo.ATTRIBUTE_NAME,
                 new WebSocketDeploymentInfo().setBuffers(new DefaultByteBufferPool(true, 1024 * 16)).setWorker(worker));
         LOG.debug("Added websocket context");
+        
+        if (serverOptions.basicAuthEnable()) {
+            securityManager.configureAuth( serverBuilder, options,servletBuilder);
+        }
         
         // Create default context
         createServletDeployment( servletBuilder, serverOptions.warFile(), configurer, ServletDeployment.DEFAULT, null );
@@ -709,11 +720,14 @@ public class Server {
             httpHandler = new SSLHeaderHandler(new ProxyPeerAddressHandler(httpHandler));
         }
 
-        if (serverOptions.basicAuthEnable()) {
-            securityManager.configureAuth(httpHandler, serverBuilder, options);
-        } else {
-            serverBuilder.setHandler(httpHandler);
-        }
+        // Set SSL_CLIENT_ headers if client certs are present
+        httpHandler = new SSLClientCertHeaderHandler( httpHandler, serverOptions );
+
+        serverBuilder.setHandler(httpHandler);
+        //if (serverOptions.basicAuthEnable()) {
+            //securityManager.configureAuth(httpHandler, serverBuilder, options,servletBuilder);
+        //} else {
+        //}
 
         try {
             PID = ManagementFactory.getRuntimeMXBean().getName().split("@")[0];

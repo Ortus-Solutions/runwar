@@ -62,6 +62,8 @@ public class ServerOptionsImpl implements ServerOptions {
     
     private File sslCertificate, sslKey, configFile;
     
+    private String clientCertNegotiation;
+    
     private char[] sslKeyPass = null;
     
     private char[] stopPassword = "klaatuBaradaNikto".toCharArray();
@@ -1426,6 +1428,25 @@ public class ServerOptionsImpl implements ServerOptions {
         return this.sslCertificate;
     }
 
+    /** 
+     * @see runwar.options.ServerOptions#clientCertNegotiation(java.lang.String)
+     */
+    @Override
+    public ServerOptions clientCertNegotiation(String clientCertNegotiation) {
+        this.clientCertNegotiation = clientCertNegotiation.toUpperCase();
+        return this;
+    }
+
+    /** 
+     * @see runwar.options.ServerOptions#clientCertNegotiation()
+     */
+    @Override
+    public String clientCertNegotiation() {
+        return this.clientCertNegotiation;
+    }
+
+    
+    
     /** 
      * @see runwar.options.ServerOptions#sslKey(java.io.File)
      */

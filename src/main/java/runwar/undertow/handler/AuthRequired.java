@@ -38,14 +38,21 @@ public final class AuthRequired implements HttpHandler {
         
         UndertowLogger.SECURITY_LOGGER.debugf("Authenticating request from AuthRequired handler for exchange %s", exchange);
         context.setAuthenticationRequired();
-        if( !context.isAuthenticated() ) {
-            if (context.authenticate()) {
-                if(!exchange.isComplete()) {
-                   next.handleRequest(exchange);
-                }
-            } else {
-                exchange.endExchange();
+        
+        // If we're already authenticated, continue
+        if( context.isAuthenticated() ) {
+            next.handleRequest(exchange);
+        }
+        
+        // Otherwise, let's try to authenticate
+        if (context.authenticate()) {
+        	// We were successful, but ensure the exchange hasn't been completed
+            if(!exchange.isComplete()) {
+               next.handleRequest(exchange);
             }
+        // We were unsuccessful
+        } else {
+            exchange.endExchange();
         }
     }
 

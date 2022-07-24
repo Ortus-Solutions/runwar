@@ -160,6 +160,13 @@ public class CommandLineHandler {
                 .create(Keys.SSLKEYPASS));
         
         options.addOption(OptionBuilder
+                .withLongOpt("client-cert-negotiation")
+                .withDescription("Should SSL negotiation ask for client cert?")
+                .hasArg().withArgName("NOT_REQUESTED|REQUESTED|REQUIRED")
+                .create(Keys.CLIENTCERTNEGOTIATION));
+        
+        
+        options.addOption(OptionBuilder
                 .withLongOpt("ajp-port")
                 .withDescription("AJP port.  Disabled if not set.")
                 .hasArg().withArgName("ajp port").withType(Number.class)
@@ -919,6 +926,9 @@ public class CommandLineHandler {
             }
             if (hasOptionValue(line, Keys.SSLKEYPASS)) {
                 serverOptions.sslKeyPass(line.getOptionValue(Keys.SSLKEYPASS).toCharArray());
+            }
+            if (hasOptionValue(line, Keys.CLIENTCERTNEGOTIATION)) {
+                serverOptions.clientCertNegotiation(line.getOptionValue(Keys.CLIENTCERTNEGOTIATION));
             }
             if (hasOptionValue(line, Keys.SSLENABLE)) {
                 if (!hasOptionValue(line, Keys.HTTPENABLE)) {

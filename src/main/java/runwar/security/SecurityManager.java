@@ -13,7 +13,9 @@ import io.undertow.security.idm.Credential;
 import io.undertow.security.idm.DigestCredential;
 import io.undertow.security.idm.IdentityManager;
 import io.undertow.security.idm.PasswordCredential;
+import io.undertow.security.idm.X509CertificateCredential;
 import io.undertow.security.impl.BasicAuthenticationMechanism;
+import io.undertow.security.impl.ClientCertAuthenticationMechanism;
 import io.undertow.server.HttpHandler;
 import io.undertow.server.HttpServerExchange;
 import io.undertow.servlet.api.AuthMethodConfig;
@@ -27,6 +29,8 @@ import io.undertow.predicate.Predicates;
 import io.undertow.predicate.Predicate;
 import runwar.logging.RunwarLogger;
 import runwar.options.ServerOptions;
+import io.undertow.server.HandlerWrapper;
+
 
 import java.nio.charset.Charset;
 import java.nio.charset.StandardCharsets;
@@ -40,6 +44,12 @@ import java.util.HashSet;
 import java.util.List;
 import java.util.Map;
 import java.util.Set;
+import java.util.ArrayList;
+import sun.security.mscapi.SunMSCAPI;
+import java.security.Security;
+import java.security.KeyStore;
+import java.security.cert.X509Certificate;
+import java.util.Enumeration;
 
 
 import java.util.Map.Entry;
@@ -49,7 +59,7 @@ public class SecurityManager implements IdentityManager {
     private static final Charset UTF_8 = StandardCharsets.UTF_8;
     private final Map<String, UserAccount> users = new HashMap<>();
     
-    /*
+    
     public void configureAuth(DeploymentInfo servletBuilder, ServerOptions serverOptions) {
         String realm = serverOptions.serverName() + " Realm";
         RunwarLogger.SECURITY_LOGGER.debug("Enabling Basic Auth: " + realm);
@@ -59,16 +69,16 @@ public class SecurityManager implements IdentityManager {
         }
         LoginConfig loginConfig = new LoginConfig(realm);
         Map<String, String> props = new HashMap<>();
-        props.put("charset", "ISO_8859_1");
+        /*  props.put("charset", "ISO_8859_1");
         props.put("user-agent-charsets", "Chrome,UTF-8,OPR,UTF-8");
-        props.put("silent", "false");
-        loginConfig.addFirstAuthMethod(new AuthMethodConfig("BASIC", props));
+        props.put("silent", "false");*/
+        loginConfig.addFirstAuthMethod(new AuthMethodConfig("CLIENT-CERT", props));
         servletBuilder.setIdentityManager(this).setLoginConfig(loginConfig);
         // TODO: see if we can leverage this stuff
         //addConstraints(servletBuilder, serverOptions);
 
     }
-
+/*
     public void addConstraints(DeploymentInfo servletBuilder, ServerOptions serverOptions) {
         servletBuilder.addSecurityConstraint(new SecurityConstraint()
                 .addWebResourceCollection(new WebResourceCollection()
@@ -78,7 +88,7 @@ public class SecurityManager implements IdentityManager {
     }
     */
 
-    public void configureAuth(HttpHandler nextHandler, Builder serverBuilder, ServerOptions serverOptions) {    	
+    public void configureAuth( Builder serverBuilder, ServerOptions serverOptions, DeploymentInfo servletBuilder) {    	
         String realm = serverOptions.serverName() + " Realm";
         RunwarLogger.SECURITY_LOGGER.debug("Enabling Basic Auth: " + realm);
         final Map<String, String> users = new HashMap<>(2);
@@ -86,35 +96,50 @@ public class SecurityManager implements IdentityManager {
             users.put(userNpass.getKey(), userNpass.getValue());
             RunwarLogger.SECURITY_LOGGER.debug(String.format("User:%s password:****",userNpass.getKey()));
         }
-        serverBuilder.setHandler(addSecurity(nextHandler, users, realm, serverOptions));
+
+        addSecurity(null, users, realm, serverOptions,servletBuilder);
     }
 
-    public HttpHandler addSecurity(final HttpHandler toWrap, final Map<String, String> users, String realm, ServerOptions serverOptions) {
+    public HttpHandler addSecurity(final HttpHandler toWrap, final Map<String, String> users, String realm, ServerOptions serverOptions, DeploymentInfo servletBuilder) {
         for(String userName : users.keySet()) {
             addUser(userName, users.get(userName), "role1");
         }
-        HttpHandler handler = toWrap;
-        handler = new AuthenticationCallHandler(handler);	
-        Predicate authRequired = ( serverOptions.basicAuthPredicate() != null && serverOptions.basicAuthPredicate().length() > 0 ) ? Predicates.parse( serverOptions.basicAuthPredicate() ) : null;
-        if( authRequired != null ) {
-            RunwarLogger.SECURITY_LOGGER.debug( "Basic Auth will only apply to [ " + serverOptions.basicAuthPredicate() + " ]" );	
-        }
-        handler = new AuthenticationConstraintHandler(handler){
-        	
-        	@Override
-            protected boolean isAuthenticationRequired(final HttpServerExchange exchange) {
-        		if( authRequired == null ) {
-        			return true;
-        		}
-        		// Either auth is already been marked required for this context or our predicate resolves to true
-                return exchange.getSecurityContext().isAuthenticationRequired() || authRequired.resolve( exchange );
+        final IdentityManager sm = this;
+        RunwarLogger.SECURITY_LOGGER.warn( "Setting setInitialSecurityWrapper" );	
+        servletBuilder.setInitialSecurityWrapper( new HandlerWrapper() {
+            @Override
+            public HttpHandler wrap(HttpHandler handler) {
+            	
+            	handler = new AuthenticationCallHandler(handler);	
+                Predicate authRequired = ( serverOptions.basicAuthPredicate() != null && serverOptions.basicAuthPredicate().length() > 0 ) ? Predicates.parse( serverOptions.basicAuthPredicate() ) : null;
+                if( authRequired != null ) {
+                    RunwarLogger.SECURITY_LOGGER.debug( "Basic Auth will only apply to [ " + serverOptions.basicAuthPredicate() + " ]" );	
+                }
+                handler = new AuthenticationConstraintHandler(handler){
+                	
+                	@Override
+                    protected boolean isAuthenticationRequired(final HttpServerExchange exchange) {
+                		if( authRequired == null ) {
+                			return true;
+                		}
+                		// Either auth is already been marked required for this context or our predicate resolves to true
+                        return exchange.getSecurityContext().isAuthenticationRequired() || authRequired.resolve( exchange );
+                    }
+                	
+                };
+                
+                final List<AuthenticationMechanism> mechanisms = new ArrayList<AuthenticationMechanism>();        
+                mechanisms.add( new ClientCertAuthenticationMechanism() );
+                
+                //mechanisms.add( new BasicAuthenticationMechanism(realm) );
+                
+                handler = new AuthenticationMechanismsHandler(handler, mechanisms);
+                return new SecurityInitialHandler(AuthenticationMode.PRO_ACTIVE, sm, handler);
+            	
             }
-        	
-        };
-        final List<AuthenticationMechanism> mechanisms = Collections.<AuthenticationMechanism>singletonList(new BasicAuthenticationMechanism(realm));
-        handler = new AuthenticationMechanismsHandler(handler, mechanisms);
-        handler = new SecurityInitialHandler(AuthenticationMode.PRO_ACTIVE, this, handler);
-        return handler;
+        } );
+       
+        return toWrap;
     }
 
     public void addUser(final String name, final String password, final String... roles) {
@@ -143,6 +168,31 @@ public class SecurityManager implements IdentityManager {
 
     @Override
     public Account verify(Credential credential) {
+    	RunwarLogger.SECURITY_LOGGER.warn( "verify(Credential credential) called." );
+        if (credential instanceof X509CertificateCredential) {
+
+        	RunwarLogger.SECURITY_LOGGER.warn( "instance of X509CertificateCredential" );
+            final Principal p = ((X509CertificateCredential) credential).getCertificate().getSubjectX500Principal();
+        	RunwarLogger.SECURITY_LOGGER.warn( "Principal tostring" + p.toString() );
+        	RunwarLogger.SECURITY_LOGGER.warn( "Principal name" + p.getName() );
+            if (true) {
+                return new Account() {
+
+                    @Override
+                    public Principal getPrincipal() {
+                        return p;
+                    }
+
+                    @Override
+                    public Set<String> getRoles() {
+                        return Collections.emptySet();
+                    }
+
+                };
+            }
+
+        } 
+    	
         return null;
     }
 

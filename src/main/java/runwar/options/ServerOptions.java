@@ -125,7 +125,8 @@ public interface ServerOptions {
         final static String AUTOCREATECONTEXTSSECRET="autoCreateContextsSecret";
         final static String AUTOCREATECONTEXTSMAX="autoCreateContextsMax";
         final static String AUTOCREATECONTEXTSVDIRS="autoCreateContextsVDirs";
-        final static String LOGPATTERN="logPattern";        
+        final static String LOGPATTERN="logPattern";
+        final static String CLIENTCERTNEGOTIATION="clientCertNegotiation";        
         
     }
     
@@ -431,6 +432,10 @@ public interface ServerOptions {
 
     File sslCertificate();
 
+    ServerOptions clientCertNegotiation(String clientCertNegotiation);
+
+    String clientCertNegotiation();    
+    
     ServerOptions sslKey(File file);
 
     File sslKey();

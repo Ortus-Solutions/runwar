@@ -129,7 +129,7 @@ public class LoggerFactory {
                 RUNWAR_CONTEXT.setLevel(level);
                 RUNWAR_SECURITY.setLevel(level);
                 // Very chatty, but useful for debugging basic auth
-                // UNDERTOW_REQUEST_SECURITY.setLevel(level);
+                UNDERTOW_REQUEST_SECURITY.setLevel(level);
                 
                 rootLoggerConfig.setLevel(level);
                 configureUrlRewriteLoggers(true,log4jConfig);
