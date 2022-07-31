@@ -105,7 +105,7 @@ public class Server {
     private String serverMode;
     private PrintStream originalSystemOut;
     private PrintStream originalSystemErr;
- 
+
     private static final Thread mainThread = Thread.currentThread();
 
     private static XnioWorker worker, logWorker;
@@ -116,7 +116,7 @@ public class Server {
     public Server() {
     }
 
-    // for openBrowser 
+    // for openBrowser
     public Server(int seconds) {
         Timer timer = new Timer();
         timer.schedule(this.new OpenBrowserTask(), seconds * 1000);
@@ -201,7 +201,7 @@ public class Server {
         //LoggerFactory.configure(serverOptions);
         // redirect out and err to context logger
         hookSystemStreams();
-        
+
         serverState = ServerState.STARTING;
         if (serverOptions.action().equals("stop")) {
             Stop.stopServer(serverOptions, true);
@@ -263,17 +263,18 @@ public class Server {
 
             try {
                 String[] sslAddCerts = serverOptions.sslAddCerts();
+                String[] sslAddCACerts = serverOptions.sslAddCACerts();
                 if (serverOptions.sslCertificate() != null) {
                     File certFile = serverOptions.sslCertificate();
                     File keyFile = serverOptions.sslKey();
                     char[] keypass = serverOptions.sslKeyPass();
 
-                    sslContext = SSLUtil.createSSLContext(certFile, keyFile, keypass, sslAddCerts, new String[]{realHost});
+                    sslContext = SSLUtil.createSSLContext(certFile, keyFile, keypass, sslAddCerts, sslAddCACerts, new String[]{realHost});
                     if (keypass != null) {
                         Arrays.fill(keypass, '*');
                     }
                 } else {
-                    sslContext = SSLUtil.createSSLContext( sslAddCerts );
+                    sslContext = SSLUtil.createSSLContext( sslAddCerts, sslAddCACerts );
                 }
                 serverBuilder.addHttpsListener(sslPort, realHost, sslContext);
             } catch (Exception e) {
@@ -297,7 +298,7 @@ public class Server {
         }
 
         securityManager = new SecurityManager();
-    
+
     	LOG.debug("WAR root:" + warFile.getAbsolutePath());
         if (!warFile.exists()) {
             throw new RuntimeException("war does not exist: " + warFile.getAbsolutePath());
@@ -405,7 +406,7 @@ public class Server {
         	LOG.debug("Client Cert Negotiation: " + serverOptions.clientCertNegotiation() );
             serverXnioOptions.set(Options.SSL_CLIENT_AUTH_MODE, SslClientAuthMode.valueOf( serverOptions.clientCertNegotiation() ) );
         }
-        
+
         logXnioOptions(serverXnioOptions,serverBuilder);
 
         if (serverOptions.ioThreads() != 0) {
@@ -450,7 +451,7 @@ public class Server {
         }
         System.setProperty("java.library.path", javaLibraryPath);
         LOG.trace("java.library.path:" + System.getProperty("java.library.path"));
-        
+
         final DeploymentInfo servletBuilder = deployment()
                 .setContextPath(contextPath.equals("/") ? "" : contextPath)
                 .setTempDir(new File(System.getProperty("java.io.tmpdir")))
@@ -459,7 +460,7 @@ public class Server {
                 .setDisplayName(serverName)
                 .setServerName("WildFly / Undertow")
                 .addThreadSetupAction( new ThreadSetupAction() {
-                	
+
                         public Handle setup(final HttpServerExchange exchange) {
 
                             // This allows the exchange to be available to the task thread.
@@ -475,27 +476,27 @@ public class Server {
                 });
 
         configurer.configureServlet(servletBuilder);
-        
+
         configurer.configureServerResourceHandler(servletBuilder);
-        
+
         configurer.configureRestMappings(servletBuilder);
-        
+
         // TODO: probably best to create a new worker for websockets, if we want fastness, but for now we share
         // TODO: add buffer pool size (maybe-- direct is best at 16k), enable/disable be good I reckon tho
         servletBuilder.addServletContextAttribute(WebSocketDeploymentInfo.ATTRIBUTE_NAME,
                 new WebSocketDeploymentInfo().setBuffers(new DefaultByteBufferPool(true, 1024 * 16)).setWorker(worker));
         LOG.debug("Added websocket context");
-        
+
         if (serverOptions.basicAuthEnable()) {
             securityManager.configureAuth( serverBuilder, options,servletBuilder);
         }
-        
+
         // Create default context
         createServletDeployment( servletBuilder, serverOptions.warFile(), configurer, ServletDeployment.DEFAULT, null );
 
-    	
+
         HttpHandler hostHandler = new HttpHandler() {
-        	
+
             @Override
             public void handleRequest(final HttpServerExchange exchange) throws Exception {
             	ServletDeployment deployment;
@@ -503,12 +504,12 @@ public class Server {
             	// If we're not auto-creating contexts, then just pass to our default servlet deployment
             	if( !serverOptions.autoCreateContexts() ) {
             		deployment = deployments.get( ServletDeployment.DEFAULT );
-            		
-            	// Otherwise, see if a deployment already exists 
+
+            	// Otherwise, see if a deployment already exists
             	} else {
-            		
-            		if( !isHeaderSafe( exchange, "", "X-Webserver-Context" ) ) return; 
-            		
+
+            		if( !isHeaderSafe( exchange, "", "X-Webserver-Context" ) ) return;
+
                 	String deploymentKey = exchange.getRequestHeaders().getFirst( "X-Webserver-Context" );
                 	if( deploymentKey == null ){
                 		deploymentKey = exchange.getHostName().toLowerCase();
@@ -521,7 +522,7 @@ public class Server {
 
                 		if( !isHeaderSafe( exchange, deploymentKey, "X-Tomcat-DocRoot" ) ) return;
                     	String docRoot = exchange.getRequestHeaders().getFirst( "X-Tomcat-DocRoot" );
-                    	
+
                     	if( docRoot != null && !docRoot.isEmpty() ) {
                     		File docRootFile = new File( docRoot );
                     		if( docRootFile.exists() && docRootFile.isDirectory() ) {
@@ -532,7 +533,7 @@ public class Server {
                             	if( modCFMLSharedKey == null ) {
                             		modCFMLSharedKey = "";
                             	}
-                            	
+
                             	// If a secret was provided, enforce it
                             	if( !serverOptions.autoCreateContextsSecret().equals( "" ) && !serverOptions.autoCreateContextsSecret().equals( modCFMLSharedKey ) ) {
 									exchange.getResponseHeaders().put(Headers.CONTENT_TYPE, "text/plain");
@@ -557,14 +558,14 @@ public class Server {
                                         	if( !serverOptions.autoCreateContextsSecret().equals( "" ) && !serverOptions.autoCreateContextsSecret().equals( vDirsSharedKey ) ) {
                                         		vDirs = null;
             									logOnce( deploymentKey, "VDirsSharedKeyNotMatch", "warn", "The x-vdirs header was provided, but it is being igonred because the x-vdirs-sharedkey header [" + vDirsSharedKey + "] doesn't match the auto-create-contexts-secret setting [" + ( serverOptions.autoCreateContextsSecret() == null ? "" : serverOptions.autoCreateContextsSecret() ) + "] for deploymentKey [" + deploymentKey + "]." );
-                                        	}	
+                                        	}
                                     	}
                                     }
                             	}
                             	try {
                             		deployment = createServletDeployment( servletBuilder, docRootFile, configurer, deploymentKey, vDirs );
                             	} catch ( MaxContextsException e ) {
-                            		
+
 									exchange.getResponseHeaders().put(Headers.CONTENT_TYPE, "text/plain");
 									exchange.setStatusCode(500);
 									exchange.getResponseSender().send( e.getMessage() );
@@ -575,13 +576,13 @@ public class Server {
                     		} else {
                     	        LOG.warn( "X-Tomcat-DocRoot of [" + docRoot + "] does not exist or is not directory.  Using default context." );
                         		deployment = deployments.get( ServletDeployment.DEFAULT );
-                    		}                    		
+                    		}
                     	} else {
                     		logOnce( deploymentKey, "NoDocRootHeader", "warn", "X-Tomcat-DocRoot is null or empty.  Using default context for deploymentKey [" + deploymentKey + "]." );
                     		deployment = deployments.get( ServletDeployment.DEFAULT );
                     	}
-                    	    			
-            		}                	
+
+            		}
             	}
 
         		deployment.getServletInitialHandler().handleRequest(exchange);
@@ -593,7 +594,7 @@ public class Server {
                 return "Runwar HostHandler";
             }
         };
-        
+
         LOG.debug("started servlet deployment manager");
 
         if (serverOptions.bufferSize() != 0) {
@@ -651,7 +652,7 @@ public class Server {
                 return "Runwar PathHandler";
             }
         };
-        
+
         pathHandler.addPrefixPath(contextPath, hostHandler);
         HttpHandler httpHandler = pathHandler;
 
@@ -683,8 +684,8 @@ public class Server {
         httpHandler = new LifecyleHandler(httpHandler, serverOptions);
 
         if (serverOptions.gzipEnable()) {
-            //the default packet size on the internet is 1500 bytes so 
-            //any file less than 1.5k can be sent in a single packet 
+            //the default packet size on the internet is 1500 bytes so
+            //any file less than 1.5k can be sent in a single packet
             if (serverOptions.gzipPredicate() != null) {
                 LOG.debug("Setting GZIP predicate to = " + serverOptions.gzipPredicate());
             }
@@ -920,9 +921,9 @@ public class Server {
                                          manager.stop();
                                          manager.undeploy();
                                  }
-                                 
+
                         	 }
-                        	
+
                             if (undertow != null) {
                                 undertow.stop();
                             }
@@ -975,10 +976,10 @@ public class Server {
     }
 
     public ResourceManager getResourceManager(File warFile, Long transferMinSize, Map<String, Path> aliases, File internalCFMLServerRoot) {
-    	Boolean cached = !serverOptions.directoryListingRefreshEnable() && serverOptions.cacheServletPaths(); 
+    	Boolean cached = !serverOptions.directoryListingRefreshEnable() && serverOptions.cacheServletPaths();
 
         LOG.debugf("Initialized " + ( cached ? "CACHED " : "" ) + "MappedResourceManager - base: %s, web-inf: %s, aliases: %s", warFile.getAbsolutePath(), internalCFMLServerRoot.getAbsolutePath(), aliases);
-        
+
         MappedResourceManager mappedResourceManager = new MappedResourceManager(warFile, transferMinSize, aliases, internalCFMLServerRoot, serverOptions);
         if ( !cached ) {
             return mappedResourceManager;
@@ -986,34 +987,34 @@ public class Server {
 
         LOG.debugf("ResourceManager Cache total size: %s MB", serverOptions.fileCacheTotalSizeMB() );
         LOG.debugf("ResourceManager Cache max file size: %s KB", serverOptions.fileCacheMaxFileSizeKB() );
-        
+
         // 8 hours in in milliseconds-- used for both the path metadata cache AND the file contents cache
         // Setting to -1 will never expire items from the cache, which is tempting-- but having some sort of expiration will keep errant entries from clogging the cache forever
         int METADATA_MAX_AGE = 8 * 60 * 60 * 1000;
-        /* DirectBufferCache.sliceSize: internally DirectBufferCache has a buffer pool. This pool is responsible for allocating byte buffers to store the data that is in the cache, 
+        /* DirectBufferCache.sliceSize: internally DirectBufferCache has a buffer pool. This pool is responsible for allocating byte buffers to store the data that is in the cache,
          * the size of those buffers will be sliceSize * slicesPerPage. Each byte buffer region that is allocated in the memory is split into slicesPerPage, and then each buffer
-         *  will have sliceSize. To give you an example, if you have 50 slicesPerPage and each one is 10,000 bytes long (this would be sliceSize), each time a buffer is needed, 
-         *  it allocates a region whose size is 500,000 bytes. That region is split into 50 byte buffers of length 10,000 (in bytes). 
-         *  If those buffers are all used at some point and not reclaimed, when the pool needs more buffers, it will allocate another 500,000 bytes long chunk, and so on, but there is a limit to it, 
-         *  which is maxMemory 
+         *  will have sliceSize. To give you an example, if you have 50 slicesPerPage and each one is 10,000 bytes long (this would be sliceSize), each time a buffer is needed,
+         *  it allocates a region whose size is 500,000 bytes. That region is split into 50 byte buffers of length 10,000 (in bytes).
+         *  If those buffers are all used at some point and not reclaimed, when the pool needs more buffers, it will allocate another 500,000 bytes long chunk, and so on, but there is a limit to it,
+         *  which is maxMemory
          */
         // Max file size to cache directly in memory-- measured in bytes.
-        final long maxFileSize = serverOptions.fileCacheMaxFileSizeKB() * 1024; // Convert KB to B 
-        /* DirectBufferCache.maxMemory: this is the maximum number of bytes that can be allocated by the pool. So, in the example above, supposed that slicesPerPage is 50, and sliceSize is 10,000 bytes, 
-         * if you have a maxMemory of 1,000,000 bytes, it means that the buffer pool can only allocate two chunks of 500,000 bytes each, because that's the number of 500,000 bytes long 
-         * regions that fit into 1,000,000. If none of those buffers are reclaimed at some point, and more buffers are needed, the buffer pool will refuse to do more allocations. 
+        final long maxFileSize = serverOptions.fileCacheMaxFileSizeKB() * 1024; // Convert KB to B
+        /* DirectBufferCache.maxMemory: this is the maximum number of bytes that can be allocated by the pool. So, in the example above, supposed that slicesPerPage is 50, and sliceSize is 10,000 bytes,
+         * if you have a maxMemory of 1,000,000 bytes, it means that the buffer pool can only allocate two chunks of 500,000 bytes each, because that's the number of 500,000 bytes long
+         * regions that fit into 1,000,000. If none of those buffers are reclaimed at some point, and more buffers are needed, the buffer pool will refuse to do more allocations.
          * The cache will remove the oldest entry from usage pov because it is LRU. This cache is used by CachingResourceManager to store contents of files in direct memory. */
         int maxMemory = serverOptions.fileCacheTotalSizeMB() * 1024 * 1024; // Convert MB to B
         // Number of paths to cache. i.e. /foo.txt maps to C:/webroot/foo.txt
-        // I assume the memory overhead of the meta is nearly zero since it's just a single POJO instance per path 
+        // I assume the memory overhead of the meta is nearly zero since it's just a single POJO instance per path
         final int metadataCacheSize = 10000;
         if( maxMemory > 0 && maxFileSize > 0 ) {
             int sliceSize = 1024 * 1024; // 1 KB per slice
             // DirectBufferCache slicesPerPage: the explanation is right above.
             int slicesPerPage = 10; // 10 slices per page means 10 KB per buffer
             final DirectBufferCache dataCache = new DirectBufferCache(sliceSize, slicesPerPage, maxMemory, BufferAllocator.DIRECT_BYTE_BUFFER_ALLOCATOR, METADATA_MAX_AGE);
-            
-            return new CachingResourceManager(metadataCacheSize, maxFileSize, dataCache, mappedResourceManager, METADATA_MAX_AGE);	
+
+            return new CachingResourceManager(metadataCacheSize, maxFileSize, dataCache, mappedResourceManager, METADATA_MAX_AGE);
         } else {
         	LOG.debug("ResourceManager file cache disabled since size is zero. Path lookups will still be cached." );
             return new CachingResourceManager(metadataCacheSize, maxFileSize, null, mappedResourceManager, METADATA_MAX_AGE);
@@ -1052,7 +1053,7 @@ public class Server {
         } catch (UnknownHostException e) {
         	if( host.toLowerCase().endsWith( ".localhost" ) ) {
     			// It's possible to have "fake" hosts such as mytest.localhost which aren't in DNS
-    			// or your hosts file.  Browsers will resolve them to localhost, but the call above 
+    			// or your hosts file.  Browsers will resolve them to localhost, but the call above
     			// will fail with a UnknownHostException since they aren't real
                 try {
                 	return InetAddress.getByName( "127.0.0.1" );
@@ -1277,10 +1278,10 @@ public class Server {
     public String getServerState() {
         return serverState;
     }
-    
+
     public synchronized ServletDeployment createServletDeployment( DeploymentInfo servletBuilder, File webroot, RunwarConfigurer configurer, String deploymentKey, String vDirs ) throws Exception {
     	ServletDeployment deployment;
-    	
+
     	// If another thread already created this deployment
     	if( ( deployment = deployments.get( deploymentKey ) ) != null ) {
     		return deployment;
@@ -1289,14 +1290,14 @@ public class Server {
     	if( deployments.size() > serverOptions.autoCreateContextsMax() ) {
     		throw new MaxContextsException( "Cannot create new servlet deployment.  The configured max is [" + serverOptions.autoCreateContextsMax() + "]." );
     	}
-    	
+
         LOG.info("Creating deployment [" + deploymentKey + "] in " + webroot.toString() );
-    	
+
     	File webInfDir = serverOptions.webInfDir();
         Long transferMinSize= serverOptions.transferMinSize();
         Map<String,Path> aliases = new HashMap<>();
         serverOptions.aliases().forEach((s, s2) -> aliases.put(s,Paths.get(s2)));
-        
+
         // Add any web server VDirs to Undertow. They come in this format:
         // /foo,C:\path\to\foo;/bar,C:\path\to\bar
         if( vDirs != null && !vDirs.isEmpty() ) {
@@ -1309,50 +1310,50 @@ public class Server {
 					// windows paths to forward slash
 					dirParts[1] = dirParts[1].replace("\\", "/");
 					if( !aliases.containsKey( dirParts[0] ) ) {
-						aliases.put( dirParts[0], Paths.get( dirParts[1] ) );	
+						aliases.put( dirParts[0], Paths.get( dirParts[1] ) );
 					}
 				}
 			}
         }
 
         ResourceManager resourceManager = getResourceManager(webroot, transferMinSize, aliases, webInfDir);
-        
-    	
+
+
         // For non=Adobe (Lucee), create actual servlet context
         if( serverOptions.cfEngineName().toLowerCase().indexOf("adobe") == -1 ) {
-            servletBuilder.setResourceManager(resourceManager);    	            
+            servletBuilder.setResourceManager(resourceManager);
         	DeploymentManager manager = defaultContainer().addDeployment(servletBuilder);
         	manager.deploy();
-        	
+
         	deployment = new ServletDeployment( manager.start(), manager );
             LOG.debug("New servlet context created for [" + deploymentKey + "]" );
         // For Adobe
         } else {
         	// For default deployment, create initial resource manager and deploy
         	if( deploymentKey.equals(ServletDeployment.DEFAULT) ) {
-        		
+
                 servletBuilder.setResourceManager( new HostResourceManager( resourceManager ) );
             	DeploymentManager manager = defaultContainer().addDeployment(servletBuilder);
-            	manager.deploy();            	
+            	manager.deploy();
             	deployment = new ServletDeployment( manager.start(), manager );
                 LOG.debug("Initial servlet context created for [" + deploymentKey + "]" );
-            	
-           	// For all subsequent deploys, reuse default deployment and simply add new resource manager	
+
+           	// For all subsequent deploys, reuse default deployment and simply add new resource manager
         	} else {
 
         		((HostResourceManager)servletBuilder.getResourceManager()).addResourceManager( deploymentKey, resourceManager );
             	deployment = deployments.get(ServletDeployment.DEFAULT);
                 LOG.debug("New resource manager added to deployment [" + deploymentKey + "]" );
-            	
+
         	}
-        	
+
         }
 
     	deployments.put(deploymentKey, deployment);
-    	
+
     	return deployment;
     }
-    
+
     private void logOnce( String deploymentKey, String type, String severity, String message ) {
     	String logKey = deploymentKey + type;
     	severity = severity.toLowerCase();
@@ -1380,10 +1381,10 @@ public class Server {
 			default:
 				LOG.info( message );
 			}
-			
+
 		}
     }
-    
+
     private Boolean isHeaderSafe( HttpServerExchange exchange, String deploymentKey, String headerName ) {
     	HeaderValues headerValues = exchange.getRequestHeaders().get( headerName );
     	if( headerValues != null && headerValues.size() > 1 ) {
@@ -1404,7 +1405,7 @@ public class Server {
     public static void setCurrentExchange( HttpServerExchange exchange ) {
     	currentExchange.set( exchange );
     }
-    
+
     public static class ServerState {
 
         public static final String STARTING = "STARTING";
@@ -1539,33 +1540,33 @@ public class Server {
     }
 
 	public class ServletDeployment {
-	
+
 	    private final HttpHandler servletInitialHandler;
 	    private final DeploymentManager deploymentManager;
 	    public final static String DEFAULT = "default";
-	
+
 	    public ServletDeployment(HttpHandler servletInitialHandler, DeploymentManager deploymentManager) {
 	        this.servletInitialHandler = servletInitialHandler;
 	        this.deploymentManager = deploymentManager;
 	    }
-	
+
 	    public HttpHandler getServletInitialHandler() {
 	        return servletInitialHandler;
 	    }
-	
+
 	    public DeploymentManager getDeploymentManager() {
 	        return deploymentManager;
 	    }
 	}
 
 	private class MaxContextsException extends Exception {
-		
+
 		public MaxContextsException( String message ) {
 			super( message );
 		}
-		
+
 	}
-    
+
 
 }
 
