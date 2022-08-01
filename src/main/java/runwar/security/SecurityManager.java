@@ -45,7 +45,6 @@ import java.util.List;
 import java.util.Map;
 import java.util.Set;
 import java.util.ArrayList;
-import sun.security.mscapi.SunMSCAPI;
 import java.security.Security;
 import java.security.KeyStore;
 import java.security.cert.X509Certificate;
