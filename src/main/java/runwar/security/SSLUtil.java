@@ -69,11 +69,9 @@ public class SSLUtil
         SSLContext sslContext;
         try {
             final KeyStore derKeystore = keystoreFromDERCertificate(certfile, keyFile, passphrase);
-            //addCertificates(addCertificatePaths, derKeystore);
             final KeyStore keyStore = KeyStore.getInstance("JKS", "SUN");
             keyStore.load(null, passphrase);
             keyStore.setEntry("someAlias", new KeyStore.TrustedCertificateEntry(derKeystore.getCertificate("serverkey")), null);
-            //addCertificates(addCertificatePaths, keyStore);
             sslContext = createSSLContext(derKeystore, keyStore, passphrase, addCertificatePaths, addCACertificatePaths, false, hostNames);
         }
         catch (Exception ex) {
@@ -100,7 +98,6 @@ public class SSLUtil
             throw new IOException("Unable to initialise KeyManager[]", ex3);
         }
         addCertificates(addCertificatePaths, keyStore);
-        addCertificates(addCACertificatePaths, keyStore);
         addCertificates(addCACertificatePaths, trustStore);
         TrustManager[] trustManagers;
         try {
