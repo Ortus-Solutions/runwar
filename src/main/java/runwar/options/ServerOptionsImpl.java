@@ -3,6 +3,7 @@ package runwar.options;
 import io.undertow.UndertowOptions;
 import net.minidev.json.JSONArray;
 import net.minidev.json.JSONObject;
+import net.minidev.json.parser.JSONParser;
 import org.xnio.OptionMap;
 import org.xnio.Options;
 import runwar.Server;
@@ -66,6 +67,16 @@ public class ServerOptionsImpl implements ServerOptions {
 
     private char[] sslKeyPass = null;
 
+    private String securityRealm = "";
+    
+    private Boolean clientCertEnable = false;
+    
+    private Boolean clientCertTrustHeaders = false;
+    
+    private JSONArray clientCertSubjectDNs = new JSONArray();
+    
+    private JSONArray clientCertIssuerDNs = new JSONArray();
+
     private char[] stopPassword = "klaatuBaradaNikto".toCharArray();
 
     private String action = "start";
@@ -110,7 +121,7 @@ public class ServerOptionsImpl implements ServerOptions {
 
     private boolean enableBasicAuth = false;
 
-    private String basicAuthPredicate = null;
+    private String authPredicate = null;
 
     private boolean directBuffers = true;
 
@@ -1447,6 +1458,69 @@ public class ServerOptionsImpl implements ServerOptions {
         return this.clientCertNegotiation;
     }
 
+    @Override
+    public ServerOptions securityRealm(String securityRealm){
+        this.securityRealm = securityRealm;
+        return this;
+    }
+
+    @Override
+    public String securityRealm(){
+        return this.securityRealm;
+    }
+    
+    @Override
+    public ServerOptions clientCertEnable(Boolean clientCertEnable){
+        this.clientCertEnable = clientCertEnable;
+        return this;
+    }
+    
+    @Override
+    public Boolean clientCertEnable(){
+        return this.clientCertEnable;
+    }
+    
+    @Override
+    public ServerOptions clientCertTrustHeaders(Boolean clientCertTrustHeaders){
+        this.clientCertTrustHeaders = clientCertTrustHeaders;
+        return this;
+    }
+    
+    @Override
+    public Boolean clientCertTrustHeaders(){
+        return this.clientCertTrustHeaders;
+    }
+    
+    @Override
+    public ServerOptions clientCertSubjectDNs(String clientCertSubjectDNs){
+    	try {
+    		System.out.println( "clientCertSubjectDNs: " + clientCertSubjectDNs );
+    		this.clientCertSubjectDNs = (JSONArray)(new JSONParser().parse( clientCertSubjectDNs ));
+		} catch( Exception e ) {
+			throw new RuntimeException( e );
+		}
+        return this;
+    }
+    
+    @Override
+    public JSONArray clientCertSubjectDNs(){
+        return this.clientCertSubjectDNs;
+    }
+    
+    @Override
+    public ServerOptions clientCertIssuerDNs(String clientCertIssuerDNs){
+    	try {
+    		this.clientCertIssuerDNs = (JSONArray)(new JSONParser().parse( clientCertIssuerDNs ));
+    	} catch( Exception e ) {
+    		throw new RuntimeException( e );
+    	}
+        return this;
+    }
+    
+    @Override
+    public JSONArray clientCertIssuerDNs(){
+        return this.clientCertIssuerDNs;
+    }
 
 
     /**
@@ -1842,14 +1916,14 @@ public class ServerOptionsImpl implements ServerOptions {
     }
 
     @Override
-    public ServerOptions basicAuthPredicate(String predicate) {
-        this.basicAuthPredicate = predicate;
+    public ServerOptions authPredicate(String predicate) {
+        this.authPredicate = predicate;
         return this;
     }
 
     @Override
-    public String basicAuthPredicate() {
-        return this.basicAuthPredicate;
+    public String authPredicate() {
+        return this.authPredicate;
     }
 
     /**

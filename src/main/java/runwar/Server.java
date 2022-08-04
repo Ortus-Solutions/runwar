@@ -66,10 +66,13 @@ import java.util.concurrent.ConcurrentHashMap;
 import java.util.*;
 import javax.servlet.Servlet;
 import javax.servlet.http.HttpServletResponse;
+import javax.servlet.http.HttpServletRequest;
+import javax.servlet.ServletRequest;
 
 import static io.undertow.servlet.Servlets.defaultContainer;
 import static io.undertow.servlet.Servlets.deployment;
 import io.undertow.servlet.handlers.ServletRequestContext;
+import io.undertow.server.HandlerWrapper;
 
 import static runwar.logging.RunwarLogger.CONTEXT_LOG;
 import static runwar.logging.RunwarLogger.LOG;
@@ -473,6 +476,29 @@ public class Server {
                                 }
                             };
                         }
+                })
+                // This handler is run after the security handlers, just before the request is dispatched to deployment code.
+                // I need this "inside" the servlet so it can access the HttpServletRequest
+                .addInnerHandlerChainWrapper(new HandlerWrapper() {
+                    @Override
+                    public HttpHandler wrap(HttpHandler next) {
+                        return new HttpHandler() {
+                            @Override
+                            public void handleRequest(HttpServerExchange exchange) throws Exception {
+                            	HttpServletRequest sr = (HttpServletRequest)exchange.getAttachment(ServletRequestContext.ATTACHMENT_KEY).getServletRequest();
+
+                                // Add in cert subject and issuer DN as map with key for each sub field.
+                            	if( sr.getHeader( "SSL_CLIENT_S_DN" ) != null ){
+                            		sr.setAttribute( "javax.servlet.request.X509Certificate.subjectDNMap", SecurityManager.splitDN( sr.getHeader( "SSL_CLIENT_S_DN" ), new HashMap<String,String>(), true, true ) );
+                            	}
+                            	if( sr.getHeader( "SSL_CLIENT_I_DN" ) != null ){
+                            		sr.setAttribute( "javax.servlet.request.X509Certificate.issuerDNMap", SecurityManager.splitDN( sr.getHeader( "SSL_CLIENT_I_DN" ), new HashMap<String,String>(), true, true ) );
+                            	}
+
+                            	next.handleRequest(exchange);
+                            }
+                        };
+                    }
                 });
 
         configurer.configureServlet(servletBuilder);
@@ -487,8 +513,8 @@ public class Server {
                 new WebSocketDeploymentInfo().setBuffers(new DefaultByteBufferPool(true, 1024 * 16)).setWorker(worker));
         LOG.debug("Added websocket context");
 
-        if (serverOptions.basicAuthEnable()) {
-            securityManager.configureAuth( serverBuilder, options,servletBuilder);
+        if ( serverOptions.basicAuthEnable() || serverOptions.clientCertEnable() ) {
+            securityManager.configureAuth( serverBuilder, options, servletBuilder);
         }
 
         // Create default context
@@ -612,6 +638,7 @@ public class Server {
 
             @Override
             public void handleRequest(final HttpServerExchange exchange) throws Exception {
+            	
                 if (!exchange.getResponseHeaders().contains(HTTPONLY) && addHttpOnlyHeader) {
                     exchange.getResponseHeaders().add(HTTPONLY, "true");
                 }
@@ -718,18 +745,18 @@ public class Server {
 
         if (serverOptions.proxyPeerAddressEnable()) {
             LOG.debug("Enabling Proxy Peer Address handling");
-            httpHandler = new SSLHeaderHandler(new ProxyPeerAddressHandler(httpHandler));
+            httpHandler = new ProxyPeerAddressHandler(httpHandler);
         }
 
         // Set SSL_CLIENT_ headers if client certs are present
         httpHandler = new SSLClientCertHeaderHandler( httpHandler, serverOptions );
 
+        if (serverOptions.clientCertTrustHeaders()) {
+            LOG.debug("Enabling SSL client cert handling");
+            httpHandler = new SSLHeaderHandler(httpHandler);
+        }
+        
         serverBuilder.setHandler(httpHandler);
-        //if (serverOptions.basicAuthEnable()) {
-            //securityManager.configureAuth(httpHandler, serverBuilder, options,servletBuilder);
-        //} else {
-        //}
-
         try {
             PID = ManagementFactory.getRuntimeMXBean().getName().split("@")[0];
             String pidFile = serverOptions.pidFile();

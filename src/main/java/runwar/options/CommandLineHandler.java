@@ -165,6 +165,35 @@ public class CommandLineHandler {
                 .hasArg().withArgName("NOT_REQUESTED|REQUESTED|REQUIRED")
                 .create(Keys.CLIENTCERTNEGOTIATION));
 
+        options.addOption(OptionBuilder
+                .withLongOpt("security-realm")
+                .withDescription("Name of Securty realm (shows in browser's basic auth prompt)")
+                .hasArg().withArgName("Realm")
+                .create(Keys.SECURITYREALM));
+
+        options.addOption(OptionBuilder
+                .withLongOpt("client-cert-enable")
+                .withDescription("Enable client cert authentication mechanism")
+                .hasArg().withArgName("true|false").withType(Boolean.class)
+                .create(Keys.CLIENTCERTENABLE));
+
+        options.addOption(OptionBuilder
+                .withLongOpt("client-cert-trust-headers")
+                .withDescription("Trust upstream client cert headers")
+                .hasArg().withArgName("true|false").withType(Boolean.class)
+                .create(Keys.CLIENTCERTTRUSTHEADERS));
+
+        options.addOption(OptionBuilder
+                .withLongOpt("client-cert-subjectdns")
+                .withDescription("JSON Array of Subject distinguished names to allow for client cert auth")
+                .hasArg().withArgName("Distinguished Name")
+                .create(Keys.CLIENTCERTSUBJECTDNS));
+
+        options.addOption(OptionBuilder
+                .withLongOpt("client-cert-issuerdns")
+                .withDescription("JSON Array of Issuer distinguished names to allow for client cert auth")
+                .hasArg().withArgName("[ \"CN=name, O=Org\" ]")
+                .create(Keys.CLIENTCERTISSUERDNS));
 
         options.addOption(OptionBuilder
                 .withLongOpt("ajp-port")
@@ -503,9 +532,9 @@ public class CommandLineHandler {
                 .create("users"));
 
         options.addOption(OptionBuilder
-                .withLongOpt("basicauth-predicate")
-                .withDescription("Basic Auth Predicate")
-                .hasArg().create(Keys.BASICAUTHPREDICATE));
+                .withLongOpt("auth-predicate")
+                .withDescription("Auth Predicate")
+                .hasArg().create(Keys.AUTHPREDICATE));
 
         options.addOption(OptionBuilder
                 .withLongOpt("buffer-size")
@@ -936,6 +965,26 @@ public class CommandLineHandler {
             if (hasOptionValue(line, Keys.CLIENTCERTNEGOTIATION)) {
                 serverOptions.clientCertNegotiation(line.getOptionValue(Keys.CLIENTCERTNEGOTIATION));
             }
+            if (hasOptionValue(line, Keys.SECURITYREALM)) {
+                serverOptions.securityRealm(line.getOptionValue(Keys.SECURITYREALM));
+            }
+            if (hasOptionValue(line, Keys.CLIENTCERTENABLE)) {
+                serverOptions.clientCertEnable(Boolean.valueOf(line.getOptionValue(Keys.CLIENTCERTENABLE)));
+                
+                if( serverOptions.clientCertEnable() ) {
+                    if (hasOptionValue(line, Keys.CLIENTCERTSUBJECTDNS)) {
+                        serverOptions.clientCertSubjectDNs(line.getOptionValue(Keys.CLIENTCERTSUBJECTDNS));
+                    }
+                    if (hasOptionValue(line, Keys.CLIENTCERTISSUERDNS)) {
+                        serverOptions.clientCertIssuerDNs(line.getOptionValue(Keys.CLIENTCERTISSUERDNS));
+                    }
+                }
+            }
+
+            if (hasOptionValue(line, Keys.CLIENTCERTTRUSTHEADERS)) {
+                serverOptions.clientCertTrustHeaders(Boolean.valueOf(line.getOptionValue(Keys.CLIENTCERTTRUSTHEADERS)));
+            }
+            
             if (hasOptionValue(line, Keys.SSLENABLE)) {
                 if (!hasOptionValue(line, Keys.HTTPENABLE)) {
                     serverOptions.httpEnable(false);
@@ -1153,8 +1202,8 @@ public class CommandLineHandler {
                 serverOptions.basicAuthEnable(Boolean.valueOf(line.getOptionValue(Keys.BASICAUTHENABLE)));
             }
 
-            if (hasOptionValue(line, Keys.BASICAUTHPREDICATE)) {
-                serverOptions.basicAuthPredicate(line.getOptionValue(Keys.BASICAUTHPREDICATE));
+            if (hasOptionValue(line, Keys.AUTHPREDICATE)) {
+                serverOptions.authPredicate(line.getOptionValue(Keys.AUTHPREDICATE));
             }
 
             if (hasOptionValue(line, "users")) {

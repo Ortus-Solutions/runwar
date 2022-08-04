@@ -49,6 +49,9 @@ import java.security.Security;
 import java.security.KeyStore;
 import java.security.cert.X509Certificate;
 import java.util.Enumeration;
+import javax.naming.ldap.LdapName;
+import javax.naming.ldap.Rdn;
+import net.minidev.json.JSONArray;
 
 
 import java.util.Map.Entry;
@@ -57,62 +60,24 @@ public class SecurityManager implements IdentityManager {
 
     private static final Charset UTF_8 = StandardCharsets.UTF_8;
     private final Map<String, UserAccount> users = new HashMap<>();
-    
-    
-    public void configureAuth(DeploymentInfo servletBuilder, ServerOptions serverOptions) {
-        String realm = serverOptions.serverName() + " Realm";
-        RunwarLogger.SECURITY_LOGGER.debug("Enabling Basic Auth: " + realm);
-        for(Entry<String,String> userNpass : serverOptions.basicAuth().entrySet()) {
-            addUser(userNpass.getKey(), userNpass.getValue(), "role1");
-            RunwarLogger.SECURITY_LOGGER.debug(String.format("User:%s password:****",userNpass.getKey()));
-        }
-        LoginConfig loginConfig = new LoginConfig(realm);
-        Map<String, String> props = new HashMap<>();
-        /*  props.put("charset", "ISO_8859_1");
-        props.put("user-agent-charsets", "Chrome,UTF-8,OPR,UTF-8");
-        props.put("silent", "false");*/
-        loginConfig.addFirstAuthMethod(new AuthMethodConfig("CLIENT-CERT", props));
-        servletBuilder.setIdentityManager(this).setLoginConfig(loginConfig);
-        // TODO: see if we can leverage this stuff
-        //addConstraints(servletBuilder, serverOptions);
+    private List<Map<String,String>> subjectDNs = new ArrayList<Map<String,String>>();
+    private List<Map<String,String>> issuerDNs = new ArrayList<Map<String,String>>();
 
-    }
-/*
-    public void addConstraints(DeploymentInfo servletBuilder, ServerOptions serverOptions) {
-        servletBuilder.addSecurityConstraint(new SecurityConstraint()
-                .addWebResourceCollection(new WebResourceCollection()
-                        .addUrlPattern("*"))
-                .addRoleAllowed("role1")
-                .setEmptyRoleSemantic(SecurityInfo.EmptyRoleSemantic.DENY));
-    }
-    */
-
-    public void configureAuth( Builder serverBuilder, ServerOptions serverOptions, DeploymentInfo servletBuilder) {    	
-        String realm = serverOptions.serverName() + " Realm";
-        RunwarLogger.SECURITY_LOGGER.debug("Enabling Basic Auth: " + realm);
-        final Map<String, String> users = new HashMap<>(2);
-        for(Entry<String,String> userNpass : serverOptions.basicAuth().entrySet()) {
-            users.put(userNpass.getKey(), userNpass.getValue());
-            RunwarLogger.SECURITY_LOGGER.debug(String.format("User:%s password:****",userNpass.getKey()));
-        }
-
-        addSecurity(null, users, realm, serverOptions,servletBuilder);
-    }
-
-    public HttpHandler addSecurity(final HttpHandler toWrap, final Map<String, String> users, String realm, ServerOptions serverOptions, DeploymentInfo servletBuilder) {
-        for(String userName : users.keySet()) {
-            addUser(userName, users.get(userName), "role1");
-        }
+    public void configureAuth( Builder serverBuilder, ServerOptions serverOptions, DeploymentInfo servletBuilder) {
+    	splitDNs( serverOptions.clientCertSubjectDNs(), subjectDNs );
+    	splitDNs( serverOptions.clientCertIssuerDNs(), issuerDNs );
+        
         final IdentityManager sm = this;
-        RunwarLogger.SECURITY_LOGGER.warn( "Setting setInitialSecurityWrapper" );	
         servletBuilder.setInitialSecurityWrapper( new HandlerWrapper() {
             @Override
             public HttpHandler wrap(HttpHandler handler) {
             	
             	handler = new AuthenticationCallHandler(handler);	
-                Predicate authRequired = ( serverOptions.basicAuthPredicate() != null && serverOptions.basicAuthPredicate().length() > 0 ) ? Predicates.parse( serverOptions.basicAuthPredicate() ) : null;
+                Predicate authRequired = ( serverOptions.authPredicate() != null && serverOptions.authPredicate().length() > 0 ) ? Predicates.parse( serverOptions.authPredicate() ) : null;
                 if( authRequired != null ) {
-                    RunwarLogger.SECURITY_LOGGER.debug( "Basic Auth will only apply to [ " + serverOptions.basicAuthPredicate() + " ]" );	
+                    RunwarLogger.SECURITY_LOGGER.debug( "Authentication will only apply to [ " + serverOptions.authPredicate() + " ]" );	
+                } else {
+                    RunwarLogger.SECURITY_LOGGER.debug( "Authentication will apply to all requests" );
                 }
                 handler = new AuthenticationConstraintHandler(handler){
                 	
@@ -127,18 +92,28 @@ public class SecurityManager implements IdentityManager {
                 	
                 };
                 
-                final List<AuthenticationMechanism> mechanisms = new ArrayList<AuthenticationMechanism>();        
-                mechanisms.add( new ClientCertAuthenticationMechanism() );
+                final List<AuthenticationMechanism> mechanisms = new ArrayList<AuthenticationMechanism>();
+
+                if( serverOptions.clientCertEnable() ) {                	
+                    RunwarLogger.SECURITY_LOGGER.debug( "Client Cert Auth mechanism enabled" );
+                    mechanisms.add( new ClientCertAuthenticationMechanism() );
+                }
                 
-                //mechanisms.add( new BasicAuthenticationMechanism(realm) );
+                if( serverOptions.basicAuthEnable() ) {
+                    RunwarLogger.SECURITY_LOGGER.debug( "Basic Auth mechanism enabled for realm [" + serverOptions.securityRealm() + "]" );
+                    for(Entry<String,String> userNpass : serverOptions.basicAuth().entrySet()) {
+                        addUser(userNpass.getKey(), userNpass.getValue(), "role1");
+                        RunwarLogger.SECURITY_LOGGER.debug(String.format("User:%s password:****",userNpass.getKey()));
+                    }
+                    
+                    mechanisms.add( new BasicAuthenticationMechanism(serverOptions.securityRealm()) );
+                }
                 
                 handler = new AuthenticationMechanismsHandler(handler, mechanisms);
                 return new SecurityInitialHandler(AuthenticationMode.PRO_ACTIVE, sm, handler);
             	
             }
         } );
-       
-        return toWrap;
     }
 
     public void addUser(final String name, final String password, final String... roles) {
@@ -167,28 +142,38 @@ public class SecurityManager implements IdentityManager {
 
     @Override
     public Account verify(Credential credential) {
-    	RunwarLogger.SECURITY_LOGGER.warn( "verify(Credential credential) called." );
         if (credential instanceof X509CertificateCredential) {
 
-        	RunwarLogger.SECURITY_LOGGER.warn( "instance of X509CertificateCredential" );
-            final Principal p = ((X509CertificateCredential) credential).getCertificate().getSubjectX500Principal();
-        	RunwarLogger.SECURITY_LOGGER.warn( "Principal tostring" + p.toString() );
-        	RunwarLogger.SECURITY_LOGGER.warn( "Principal name" + p.getName() );
-            if (true) {
-                return new Account() {
+            final Principal subjectPrincipal = ((X509CertificateCredential) credential).getCertificate().getSubjectX500Principal();
+            String subjectDN = subjectPrincipal.getName();
+            String issuerDN = ((X509CertificateCredential) credential).getCertificate().getIssuerX500Principal().getName();
+            
+        	RunwarLogger.SECURITY_LOGGER.debug( "Authenticating X509CertificateCredential with SubjectDN: [" + subjectDN + "] and IssuerDN: [" + issuerDN + "]" );
+        	
 
-                    @Override
-                    public Principal getPrincipal() {
-                        return p;
-                    }
+        	// Check any subject or issuer DN requirements
+        	if( !DNMatch( subjectDNs, subjectDN ) )  {
+            	RunwarLogger.SECURITY_LOGGER.debug( "Client cert auth rejected, does not match required subjectDN fields: " + subjectDNs.toString() );
+        		return null;
+        	}
+        	if( !DNMatch( issuerDNs, issuerDN ) )  {
+            	RunwarLogger.SECURITY_LOGGER.debug( "Client cert auth rejected, does not match required issuerDN fields: " + issuerDNs.toString() );
+        		return null;
+        	}
+        	
+            return new Account() {
 
-                    @Override
-                    public Set<String> getRoles() {
-                        return Collections.emptySet();
-                    }
+                @Override
+                public Principal getPrincipal() {
+                    return subjectPrincipal;
+                }
 
-                };
-            }
+                @Override
+                public Set<String> getRoles() {
+                    return Collections.emptySet();
+                }
+
+            };
 
         } 
     	
@@ -225,6 +210,58 @@ public class SecurityManager implements IdentityManager {
         }
         return false;
     }
+
+    private Boolean DNMatch( List<Map<String,String>> DNs, String certDN )  {
+    	// nothing to match means allow anything
+    	if( DNs.size() == 0 ) {
+    		return true;
+    	}
+    	Map<String,String> certDNMap = splitDN( certDN, new HashMap<String,String>(), true, false );
+    	
+    	// Loop over all the DNs we need to match.  Any match is ok, they don't all need to match
+    	checkEachDN: for ( Map<String,String> requireDN : DNs ) {
+    		// For a given DN, all fields need to match
+    		for( String requireField : requireDN.keySet() ) {
+    			if( !certDNMap.containsKey( requireField ) || !certDNMap.get( requireField ).equals( requireDN.get( requireField ) ) ) {
+    				// We hit a dead end on this DN, so try the next
+    				continue checkEachDN;
+    			}
+    		}
+    		// We made it through all the fields in a required DN, we can stop here!
+    		return true;
+        }
+    	// None of the DNs matched.
+    	return false;
+
+	}
+
+    public void splitDNs( JSONArray DNs, List<Map<String,String>> list) {
+    	DNs.forEach((DN) -> {
+    		list.add( splitDN( (String)DN, new HashMap<String, String>(), false, false ) );
+      });
+    }
+
+    public static Map<String,String> splitDN( String DN, Map<String,String> map, Boolean ignoreInvalid, Boolean retainCase) {
+    	try {
+    		LdapName ldapDN = new LdapName(DN);
+    		for(Rdn rdn: ldapDN.getRdns()) {
+    			if( retainCase ) {
+        			map.put( rdn.getType(), ((String)rdn.getValue()) );	
+    			} else {
+        			map.put( rdn.getType().toLowerCase(), ((String)rdn.getValue()).toLowerCase() );    				
+    			}
+    		}
+    	} catch( Exception e ) {
+    		if( ignoreInvalid ) {
+    			RunwarLogger.SECURITY_LOGGER.warn( "Invalid cert distinguished name ignored: [" + DN + "]" );
+    	    	return map;
+    		} else {
+        		throw new RuntimeException( "Could not parse Client Cert Auth subject or issuer DN [" + DN + "]", e);	
+    		}
+    	}
+    	return map;
+    }
+	
 
     private static class UserAccount implements Account {
         private static final long serialVersionUID = 8120665150347502722L;

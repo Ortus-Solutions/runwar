@@ -96,7 +96,7 @@ public interface ServerOptions {
         final static String SSLADDCERTS = "ssladdcerts";
         final static String SSLADDCACERTS = "ssladdcacerts";
         final static String BASICAUTHENABLE = "basicauth";
-        final static String BASICAUTHPREDICATE = "basicauthpredicate";
+        final static String AUTHPREDICATE = "authpredicate";
         final static String BUFFERSIZE = "buffersize";
         final static String IOTHREADS = "iothreads";
         final static String WORKERTHREADS = "workerthreads";
@@ -128,6 +128,11 @@ public interface ServerOptions {
         final static String AUTOCREATECONTEXTSVDIRS="autoCreateContextsVDirs";
         final static String LOGPATTERN="logPattern";
         final static String CLIENTCERTNEGOTIATION="clientCertNegotiation";
+        final static String SECURITYREALM="securityrealm";
+        final static String CLIENTCERTENABLE="clientcertenable";
+        final static String CLIENTCERTTRUSTHEADERS="clientcerttrustheaders";
+        final static String CLIENTCERTSUBJECTDNS="clientcertsubjectdns";
+        final static String CLIENTCERTISSUERDNS="clientcertissuerdns";
 
     }
 
@@ -437,6 +442,26 @@ public interface ServerOptions {
 
     String clientCertNegotiation();
 
+    ServerOptions securityRealm(String securityRealm);
+
+    String securityRealm();
+
+    ServerOptions clientCertEnable(Boolean clientCertEnable);
+
+    Boolean clientCertEnable();
+
+    ServerOptions clientCertTrustHeaders(Boolean clientCertTrustHeaders);
+
+    Boolean clientCertTrustHeaders();
+
+    ServerOptions clientCertSubjectDNs(String clientCertSubjectDNs);
+
+    JSONArray clientCertSubjectDNs();
+
+    ServerOptions clientCertIssuerDNs(String clientCertIssuerDNs);
+
+    JSONArray clientCertIssuerDNs();
+
     ServerOptions sslKey(File file);
 
     File sslKey();
@@ -523,9 +548,9 @@ public interface ServerOptions {
 
     boolean basicAuthEnable();
 
-    ServerOptions basicAuthPredicate(String predicate);
+    ServerOptions authPredicate(String predicate);
 
-    String basicAuthPredicate();
+    String authPredicate();
 
     ServerOptions basicAuth(String userPasswordList);
 

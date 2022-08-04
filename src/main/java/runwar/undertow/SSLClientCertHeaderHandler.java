@@ -9,6 +9,7 @@ import io.undertow.server.HttpServerExchange;
 import io.undertow.server.RenegotiationRequiredException;
 import io.undertow.server.SSLSessionInfo;
 import io.undertow.server.handlers.builder.HandlerBuilder;
+import io.undertow.servlet.handlers.ServletRequestContext;
 import io.undertow.util.Certificates;
 import io.undertow.util.HeaderMap;
 import io.undertow.util.HexConverter;
@@ -17,15 +18,19 @@ import io.undertow.util.HttpString;
 import javax.net.ssl.SSLPeerUnverifiedException;
 import javax.security.cert.CertificateException;
 import java.security.cert.X509Certificate;
+import javax.servlet.ServletRequest;
 
 import java.security.cert.Certificate;
 import java.security.cert.CertificateEncodingException;
 import java.util.Collections;
 import java.util.Map;
 import java.util.Set;
+import java.math.BigInteger;
+import java.util.HashMap;
 
 import runwar.options.ServerOptions;
 import static runwar.logging.RunwarLogger.LOG;
+import runwar.security.SecurityManager;
 
 /**
  * Handler that sets HTTP request headers based on SSL client cert
@@ -40,8 +45,11 @@ public class SSLClientCertHeaderHandler implements HttpHandler {
 	private static final HttpString SSL_CLIENT_CERT = new HttpString("SSL_CLIENT_CERT" );	
 	private static final HttpString X_ARR_CLIENTCERT = new HttpString("X-ARR-ClientCert" );	
 	private static final HttpString SSL_CLIENT_S_DN = new HttpString("SSL_CLIENT_S_DN" );	
-	private static final HttpString CERT_SUBJECT = new HttpString("CERT_SUBJECT" );
+	private static final HttpString CERT_SUBJECT = new HttpString("CERT_SUBJECT" );	
+	private static final HttpString CERT_KEYSIZE = new HttpString("CERT_KEYSIZE" );
+	private static final HttpString CERT_SERIALNUMBER = new HttpString("CERT_SERIALNUMBER" );	
 	private static final HttpString SSL_CLIENT_I_DN = new HttpString("SSL_CLIENT_I_DN" );
+	private static final HttpString CERT_ISSUER = new HttpString("CERT_ISSUER" );
 	private static final HttpString SSL_CLIENT_VERIFY = new HttpString("SSL_CLIENT_VERIFY" );
 	private static final HttpString SSL_SESSION_ID = new HttpString("SSL_SESSION_ID" );
 
@@ -65,12 +73,19 @@ public class SSLClientCertHeaderHandler implements HttpHandler {
         	requestHeaders.remove( SSL_CLIENT_I_DN );
         	requestHeaders.remove( SSL_CLIENT_VERIFY );
         	requestHeaders.remove( SSL_SESSION_ID );
-        	
+        	requestHeaders.remove( CERT_ISSUER );
+        	requestHeaders.remove( CERT_KEYSIZE );
+        	requestHeaders.remove( CERT_SERIALNUMBER );
+
             SSLSessionInfo ssl = exchange.getConnection().getSslSessionInfo();
             // SSL is enabled
             if(ssl != null) {
 
             	X509Certificate clientCert = getClientCert( ssl );
+
+            	requestHeaders.add( CERT_KEYSIZE, ssl.getKeySize() );
+            	
+            	
                 // A client cert was negotiated
                 if( clientCert != null ) {
                 	LOG.trace( "Client SSL cert present, setting request headers" );
@@ -89,8 +104,13 @@ public class SSLClientCertHeaderHandler implements HttpHandler {
                 	// Subject distinguished name
                 	requestHeaders.add( SSL_CLIENT_S_DN, clientCert.getSubjectDN().toString() );
                 	requestHeaders.add( CERT_SUBJECT, clientCert.getSubjectDN().toString() );
-                	
+
+                	// Issuer distinguished name
                 	requestHeaders.add( SSL_CLIENT_I_DN, clientCert.getIssuerDN().toString() );
+                	requestHeaders.add( CERT_ISSUER, clientCert.getIssuerDN().toString() );
+                	                	
+                	// Convert negative binint to positive, then base 16, then add hyphens
+                	requestHeaders.add( CERT_SERIALNUMBER, new BigInteger(1, clientCert.getSerialNumber().toByteArray()).toString(16).replaceAll("(?<=..)(..)", "-$1") );
                 	
                 	// The hex-encoded SSL session id
                 	if( ssl.getSessionId() != null ) {
@@ -100,6 +120,7 @@ public class SSLClientCertHeaderHandler implements HttpHandler {
                 	}
                 	
                 	requestHeaders.add( SSL_CLIENT_VERIFY, "SUCCESS" );
+                	
                 } else {
                 	requestHeaders.add( SSL_CLIENT_VERIFY, "NONE" );
                 }
