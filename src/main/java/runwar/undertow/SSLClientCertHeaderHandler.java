@@ -47,7 +47,8 @@ public class SSLClientCertHeaderHandler implements HttpHandler {
 	private static final HttpString SSL_CLIENT_S_DN = new HttpString("SSL_CLIENT_S_DN" );	
 	private static final HttpString CERT_SUBJECT = new HttpString("CERT_SUBJECT" );	
 	private static final HttpString CERT_KEYSIZE = new HttpString("CERT_KEYSIZE" );
-	private static final HttpString CERT_SERIALNUMBER = new HttpString("CERT_SERIALNUMBER" );	
+	private static final HttpString CERT_SERIALNUMBER = new HttpString("CERT_SERIALNUMBER" );
+	private static final HttpString SSL_CLIENT_M_SERIAL	 = new HttpString("SSL_CLIENT_M_SERIAL	" );
 	private static final HttpString SSL_CLIENT_I_DN = new HttpString("SSL_CLIENT_I_DN" );
 	private static final HttpString CERT_ISSUER = new HttpString("CERT_ISSUER" );
 	private static final HttpString SSL_CLIENT_VERIFY = new HttpString("SSL_CLIENT_VERIFY" );
@@ -76,6 +77,7 @@ public class SSLClientCertHeaderHandler implements HttpHandler {
         	requestHeaders.remove( CERT_ISSUER );
         	requestHeaders.remove( CERT_KEYSIZE );
         	requestHeaders.remove( CERT_SERIALNUMBER );
+        	requestHeaders.remove( SSL_CLIENT_M_SERIAL	 );
 
             SSLSessionInfo ssl = exchange.getConnection().getSslSessionInfo();
             // SSL is enabled
@@ -110,7 +112,10 @@ public class SSLClientCertHeaderHandler implements HttpHandler {
                 	requestHeaders.add( CERT_ISSUER, clientCert.getIssuerDN().toString() );
                 	                	
                 	// Convert negative binint to positive, then base 16, then add hyphens
-                	requestHeaders.add( CERT_SERIALNUMBER, new BigInteger(1, clientCert.getSerialNumber().toByteArray()).toString(16).replaceAll("(?<=..)(..)", "-$1") );
+                	String certSerial = new BigInteger(1, clientCert.getSerialNumber().toByteArray()).toString(16).replaceAll("(?<=..)(..)", "-$1");
+                	requestHeaders.add( CERT_SERIALNUMBER, certSerial );
+                	requestHeaders.add( SSL_CLIENT_M_SERIAL, certSerial );
+                		
                 	
                 	// The hex-encoded SSL session id
                 	if( ssl.getSessionId() != null ) {
