@@ -520,6 +520,16 @@ public class CommandLineHandler {
                 .create(Keys.SSLADDCACERTS));
 
         options.addOption(OptionBuilder
+                .withLongOpt("ssl-add-ca-truststore")
+                .withDescription("CA Truststore")
+                .hasArg().create(Keys.SSLTRUSTSTORE));
+
+        options.addOption(OptionBuilder
+                .withLongOpt("ssl-add-ca-truststore-pass")
+                .withDescription("CA Truststore Password")
+                .hasArg().create(Keys.SSLTRUSTSTOREPASS));
+
+        options.addOption(OptionBuilder
                 .withLongOpt("basicauth-enable")
                 .withDescription("Enable Basic Auth")
                 .hasArg().withArgName("true|false").withType(Boolean.class)
@@ -1197,6 +1207,12 @@ public class CommandLineHandler {
             }
             if (hasOptionValue(line, Keys.SSLADDCACERTS)) {
                 serverOptions.sslAddCACerts(line.getOptionValue(Keys.SSLADDCACERTS));
+            }
+            if (hasOptionValue(line, Keys.SSLTRUSTSTORE)) {
+                serverOptions.sslTruststore(line.getOptionValue(Keys.SSLTRUSTSTORE));
+            }
+            if (hasOptionValue(line, Keys.SSLTRUSTSTOREPASS)) {
+                serverOptions.sslTruststorePass(line.getOptionValue(Keys.SSLTRUSTSTOREPASS));
             }
             if (hasOptionValue(line, Keys.BASICAUTHENABLE)) {
                 serverOptions.basicAuthEnable(Boolean.valueOf(line.getOptionValue(Keys.BASICAUTHENABLE)));

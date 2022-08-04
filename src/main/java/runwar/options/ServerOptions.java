@@ -95,6 +95,8 @@ public interface ServerOptions {
         final static String FILTERPATHINFO = "filterpathinfo";
         final static String SSLADDCERTS = "ssladdcerts";
         final static String SSLADDCACERTS = "ssladdcacerts";
+        final static String SSLTRUSTSTORE = "ssltruststore";
+        final static String SSLTRUSTSTOREPASS = "ssltruststorepass";
         final static String BASICAUTHENABLE = "basicauth";
         final static String AUTHPREDICATE = "authpredicate";
         final static String BUFFERSIZE = "buffersize";
@@ -569,6 +571,14 @@ public interface ServerOptions {
     ServerOptions sslAddCACerts(String[] sslCerts);
 
     String[] sslAddCACerts();
+
+    ServerOptions sslTruststore(String sslTruststore);
+
+    String sslTruststore();
+
+    ServerOptions sslTruststorePass(String sslTruststorePass);
+
+    String sslTruststorePass();
 
     boolean sslEccDisable();
 

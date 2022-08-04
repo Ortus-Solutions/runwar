@@ -267,17 +267,19 @@ public class Server {
             try {
                 String[] sslAddCerts = serverOptions.sslAddCerts();
                 String[] sslAddCACerts = serverOptions.sslAddCACerts();
+                String sslTruststore = serverOptions.sslTruststore();
+                String sslTruststorePass = serverOptions.sslTruststorePass();
                 if (serverOptions.sslCertificate() != null) {
                     File certFile = serverOptions.sslCertificate();
                     File keyFile = serverOptions.sslKey();
                     char[] keypass = serverOptions.sslKeyPass();
 
-                    sslContext = SSLUtil.createSSLContext(certFile, keyFile, keypass, sslAddCerts, sslAddCACerts, new String[]{realHost});
+                    sslContext = SSLUtil.createSSLContext(certFile, keyFile, keypass, sslAddCerts, sslTruststore, sslTruststorePass, sslAddCACerts, new String[]{realHost});
                     if (keypass != null) {
                         Arrays.fill(keypass, '*');
                     }
                 } else {
-                    sslContext = SSLUtil.createSSLContext( sslAddCerts, sslAddCACerts );
+                    sslContext = SSLUtil.createSSLContext( sslAddCerts, sslTruststore, sslTruststorePass, sslAddCACerts );
                 }
                 serverBuilder.addHttpsListener(sslPort, realHost, sslContext);
             } catch (Exception e) {

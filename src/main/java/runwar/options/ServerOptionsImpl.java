@@ -113,6 +113,10 @@ public class ServerOptionsImpl implements ServerOptions {
 
     private String[] sslAddCACerts = null;
 
+    private String sslTruststore = null;
+
+    private String sslTruststorePass = "";
+
     private String[] cmdlineArgs = null;
 
     private String[] loadBalance = null;
@@ -2010,6 +2014,28 @@ public class ServerOptionsImpl implements ServerOptions {
     @Override
     public String[] sslAddCACerts() {
         return this.sslAddCACerts;
+    }
+
+    @Override
+    public ServerOptions sslTruststore(String sslTruststore) {
+        this.sslTruststore = sslTruststore;
+        return this;
+    }
+
+    @Override
+    public String sslTruststore() {
+        return this.sslTruststore;
+    }
+
+    @Override
+    public ServerOptions sslTruststorePass(String sslTruststorePass) {
+        this.sslTruststorePass = sslTruststorePass;
+        return this;
+    }
+
+    @Override
+    public String sslTruststorePass() {
+        return this.sslTruststorePass;
     }
 
     /**
