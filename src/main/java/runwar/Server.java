@@ -247,6 +247,13 @@ public class Server {
         	LOG.debug("HTTP Enabled:" + serverOptions.httpEnable());
         }
 
+    	if( serverOptions.clientCertRenegotiation() ) {
+            LOG.info("SSL Client cert renegotiation is enabled.  Disabling HTTP/2 and TLS1.3");
+            serverOptions.http2Enable(false);
+            if( !serverOptions.xnioOptions().getMap().contains( Options.SSL_ENABLED_PROTOCOLS ) ) {
+                serverOptions.xnioOptions().setSequence( Options.SSL_ENABLED_PROTOCOLS, "TLSv1.1", "TLSv1.2" );
+            }
+    	}
         if (serverOptions.http2Enable()) {
             LOG.info("Enabling HTTP/2");
             serverBuilder.setServerOption(UndertowOptions.ENABLE_HTTP2, true);
@@ -408,8 +415,8 @@ public class Server {
 
 
         if (serverOptions.clientCertNegotiation() != null) {
-        	LOG.debug("Client Cert Negotiation: " + serverOptions.clientCertNegotiation() );
-            serverXnioOptions.set(Options.SSL_CLIENT_AUTH_MODE, SslClientAuthMode.valueOf( serverOptions.clientCertNegotiation() ) );
+	    	LOG.debug("Client Cert Negotiation: " + serverOptions.clientCertNegotiation() );
+	        serverXnioOptions.set(Options.SSL_CLIENT_AUTH_MODE, SslClientAuthMode.valueOf( serverOptions.clientCertNegotiation() ) );
         }
 
         logXnioOptions(serverXnioOptions,serverBuilder);
@@ -710,8 +717,6 @@ public class Server {
             httpHandler = Handlers.predicates(ph, httpHandler);
         }
 
-        httpHandler = new LifecyleHandler(httpHandler, serverOptions);
-
         if (serverOptions.gzipEnable()) {
             //the default packet size on the internet is 1500 bytes so
             //any file less than 1.5k can be sent in a single packet
@@ -757,6 +762,8 @@ public class Server {
             LOG.debug("Enabling SSL client cert handling");
             httpHandler = new SSLHeaderHandler(httpHandler);
         }
+        
+        httpHandler = new LifecyleHandler(httpHandler, serverOptions);
         
         serverBuilder.setHandler(httpHandler);
         try {

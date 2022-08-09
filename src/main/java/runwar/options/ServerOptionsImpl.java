@@ -117,6 +117,8 @@ public class ServerOptionsImpl implements ServerOptions {
 
     private String sslTruststorePass = "";
 
+    private Boolean clientCertRenegotiation = false;
+
     private String[] cmdlineArgs = null;
 
     private String[] loadBalance = null;
@@ -2030,6 +2032,17 @@ public class ServerOptionsImpl implements ServerOptions {
     @Override
     public ServerOptions sslTruststorePass(String sslTruststorePass) {
         this.sslTruststorePass = sslTruststorePass;
+        return this;
+    }
+
+    @Override
+    public Boolean clientCertRenegotiation() {
+        return this.clientCertRenegotiation;
+    }
+
+    @Override
+    public ServerOptions clientCertRenegotiation(Boolean clientCertRenegotiation) {
+        this.clientCertRenegotiation = clientCertRenegotiation;
         return this;
     }
 

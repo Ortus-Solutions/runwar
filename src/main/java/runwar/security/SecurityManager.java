@@ -95,8 +95,8 @@ public class SecurityManager implements IdentityManager {
                 final List<AuthenticationMechanism> mechanisms = new ArrayList<AuthenticationMechanism>();
 
                 if( serverOptions.clientCertEnable() ) {                	
-                    RunwarLogger.SECURITY_LOGGER.debug( "Client Cert Auth mechanism enabled" );
-                    mechanisms.add( new ClientCertAuthenticationMechanism() );
+                    RunwarLogger.SECURITY_LOGGER.debug( "Client Cert Auth mechanism enabled.  Renegotiation: " + serverOptions.clientCertRenegotiation() );
+                    mechanisms.add( new ClientCertAuthenticationMechanism( serverOptions.clientCertRenegotiation() ) );
                 }
                 
                 if( serverOptions.basicAuthEnable() ) {

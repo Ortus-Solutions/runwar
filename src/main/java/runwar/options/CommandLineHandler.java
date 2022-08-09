@@ -530,6 +530,11 @@ public class CommandLineHandler {
                 .hasArg().create(Keys.SSLTRUSTSTOREPASS));
 
         options.addOption(OptionBuilder
+                .withLongOpt("client-cert-renegotiation")
+                .withDescription("Whether or not ot renegotiate client cert")
+                .hasArg().create(Keys.CLIENTCERTRENEGOTIATION));
+
+        options.addOption(OptionBuilder
                 .withLongOpt("basicauth-enable")
                 .withDescription("Enable Basic Auth")
                 .hasArg().withArgName("true|false").withType(Boolean.class)
@@ -973,7 +978,10 @@ public class CommandLineHandler {
                 serverOptions.sslKeyPass(line.getOptionValue(Keys.SSLKEYPASS).toCharArray());
             }
             if (hasOptionValue(line, Keys.CLIENTCERTNEGOTIATION)) {
-                serverOptions.clientCertNegotiation(line.getOptionValue(Keys.CLIENTCERTNEGOTIATION));
+                serverOptions.clientCertNegotiation(line.getOptionValue(Keys.CLIENTCERTNEGOTIATION));   
+            }
+            if (hasOptionValue(line, Keys.CLIENTCERTRENEGOTIATION)) {
+                serverOptions.clientCertRenegotiation(Boolean.valueOf(line.getOptionValue(Keys.CLIENTCERTRENEGOTIATION)));                    
             }
             if (hasOptionValue(line, Keys.SECURITYREALM)) {
                 serverOptions.securityRealm(line.getOptionValue(Keys.SECURITYREALM));
