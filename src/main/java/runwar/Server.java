@@ -647,7 +647,7 @@ public class Server {
 
             @Override
             public void handleRequest(final HttpServerExchange exchange) throws Exception {
-            	
+
                 if (!exchange.getResponseHeaders().contains(HTTPONLY) && addHttpOnlyHeader) {
                     exchange.getResponseHeaders().add(HTTPONLY, "true");
                 }
@@ -756,15 +756,15 @@ public class Server {
         }
 
         // Set SSL_CLIENT_ headers if client certs are present
-        httpHandler = new SSLClientCertHeaderHandler( httpHandler, serverOptions );
+        httpHandler = new SSLClientCertHeaderHandler( httpHandler, serverOptions, serverOptions.cfEngineName().toLowerCase().contains( "lucee" ) );
 
         if (serverOptions.clientCertTrustHeaders()) {
             LOG.debug("Enabling SSL client cert handling");
             httpHandler = new SSLHeaderHandler(httpHandler);
         }
-        
+
         httpHandler = new LifecyleHandler(httpHandler, serverOptions);
-        
+
         serverBuilder.setHandler(httpHandler);
         try {
             PID = ManagementFactory.getRuntimeMXBean().getName().split("@")[0];

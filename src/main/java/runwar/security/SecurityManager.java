@@ -41,6 +41,7 @@ import java.util.Arrays;
 import java.util.Collections;
 import java.util.HashMap;
 import java.util.HashSet;
+import java.util.LinkedList;
 import java.util.List;
 import java.util.Map;
 import java.util.Set;
@@ -66,21 +67,21 @@ public class SecurityManager implements IdentityManager {
     public void configureAuth( Builder serverBuilder, ServerOptions serverOptions, DeploymentInfo servletBuilder) {
     	splitDNs( serverOptions.clientCertSubjectDNs(), subjectDNs );
     	splitDNs( serverOptions.clientCertIssuerDNs(), issuerDNs );
-        
+
         final IdentityManager sm = this;
         servletBuilder.setInitialSecurityWrapper( new HandlerWrapper() {
             @Override
             public HttpHandler wrap(HttpHandler handler) {
-            	
-            	handler = new AuthenticationCallHandler(handler);	
+
+            	handler = new AuthenticationCallHandler(handler);
                 Predicate authRequired = ( serverOptions.authPredicate() != null && serverOptions.authPredicate().length() > 0 ) ? Predicates.parse( serverOptions.authPredicate() ) : null;
                 if( authRequired != null ) {
-                    RunwarLogger.SECURITY_LOGGER.debug( "Authentication will only apply to [ " + serverOptions.authPredicate() + " ]" );	
+                    RunwarLogger.SECURITY_LOGGER.debug( "Authentication will only apply to [ " + serverOptions.authPredicate() + " ]" );
                 } else {
                     RunwarLogger.SECURITY_LOGGER.debug( "Authentication will apply to all requests" );
                 }
                 handler = new AuthenticationConstraintHandler(handler){
-                	
+
                 	@Override
                     protected boolean isAuthenticationRequired(final HttpServerExchange exchange) {
                 		if( authRequired == null ) {
@@ -89,29 +90,29 @@ public class SecurityManager implements IdentityManager {
                 		// Either auth is already been marked required for this context or our predicate resolves to true
                         return exchange.getSecurityContext().isAuthenticationRequired() || authRequired.resolve( exchange );
                     }
-                	
+
                 };
-                
+
                 final List<AuthenticationMechanism> mechanisms = new ArrayList<AuthenticationMechanism>();
 
-                if( serverOptions.clientCertEnable() ) {                	
+                if( serverOptions.clientCertEnable() ) {
                     RunwarLogger.SECURITY_LOGGER.debug( "Client Cert Auth mechanism enabled.  Renegotiation: " + serverOptions.clientCertRenegotiation() );
                     mechanisms.add( new ClientCertAuthenticationMechanism( serverOptions.clientCertRenegotiation() ) );
                 }
-                
+
                 if( serverOptions.basicAuthEnable() ) {
                     RunwarLogger.SECURITY_LOGGER.debug( "Basic Auth mechanism enabled for realm [" + serverOptions.securityRealm() + "]" );
                     for(Entry<String,String> userNpass : serverOptions.basicAuth().entrySet()) {
                         addUser(userNpass.getKey(), userNpass.getValue(), "role1");
                         RunwarLogger.SECURITY_LOGGER.debug(String.format("User:%s password:****",userNpass.getKey()));
                     }
-                    
+
                     mechanisms.add( new BasicAuthenticationMechanism(serverOptions.securityRealm()) );
                 }
-                
+
                 handler = new AuthenticationMechanismsHandler(handler, mechanisms);
                 return new SecurityInitialHandler(AuthenticationMode.PRO_ACTIVE, sm, handler);
-            	
+
             }
         } );
     }
@@ -147,9 +148,9 @@ public class SecurityManager implements IdentityManager {
             final Principal subjectPrincipal = ((X509CertificateCredential) credential).getCertificate().getSubjectX500Principal();
             String subjectDN = subjectPrincipal.getName();
             String issuerDN = ((X509CertificateCredential) credential).getCertificate().getIssuerX500Principal().getName();
-            
+
         	RunwarLogger.SECURITY_LOGGER.debug( "Authenticating X509CertificateCredential with SubjectDN: [" + subjectDN + "] and IssuerDN: [" + issuerDN + "]" );
-        	
+
 
         	// Check any subject or issuer DN requirements
         	if( !DNMatch( subjectDNs, subjectDN ) )  {
@@ -160,7 +161,7 @@ public class SecurityManager implements IdentityManager {
             	RunwarLogger.SECURITY_LOGGER.debug( "Client cert auth rejected, does not match required issuerDN fields: " + issuerDNs.toString() );
         		return null;
         	}
-        	
+
             return new Account() {
 
                 @Override
@@ -175,8 +176,8 @@ public class SecurityManager implements IdentityManager {
 
             };
 
-        } 
-    	
+        }
+
         return null;
     }
 
@@ -217,7 +218,7 @@ public class SecurityManager implements IdentityManager {
     		return true;
     	}
     	Map<String,String> certDNMap = splitDN( certDN, new HashMap<String,String>(), true, false );
-    	
+
     	// Loop over all the DNs we need to match.  Any match is ok, they don't all need to match
     	checkEachDN: for ( Map<String,String> requireDN : DNs ) {
     		// For a given DN, all fields need to match
@@ -246,9 +247,9 @@ public class SecurityManager implements IdentityManager {
     		LdapName ldapDN = new LdapName(DN);
     		for(Rdn rdn: ldapDN.getRdns()) {
     			if( retainCase ) {
-        			map.put( rdn.getType(), ((String)rdn.getValue()) );	
+        			map.put( rdn.getType(), ((String)rdn.getValue()) );
     			} else {
-        			map.put( rdn.getType().toLowerCase(), ((String)rdn.getValue()).toLowerCase() );    				
+        			map.put( rdn.getType().toLowerCase(), ((String)rdn.getValue()).toLowerCase() );
     			}
     		}
     	} catch( Exception e ) {
@@ -256,12 +257,32 @@ public class SecurityManager implements IdentityManager {
     			RunwarLogger.SECURITY_LOGGER.warn( "Invalid cert distinguished name ignored: [" + DN + "]" );
     	    	return map;
     		} else {
-        		throw new RuntimeException( "Could not parse Client Cert Auth subject or issuer DN [" + DN + "]", e);	
+        		throw new RuntimeException( "Could not parse Client Cert Auth subject or issuer DN [" + DN + "]", e);
     		}
     	}
     	return map;
     }
-	
+
+    /**
+     * Turns X500 name which starts with most specific...
+     * CN=brad, O=Ortus
+     * to an LDAP name which starts with least specific...
+     * O=Ortus, CN=brad
+     *
+     * @param DN The distinguished name to reverse
+     * @return A reversed DB containing all the RDS from the original DN.
+     */
+    public static String reverseDN( String DN ) {
+    	try {
+            List<Rdn> rdns = new LinkedList<Rdn>();
+            rdns.addAll( new LdapName( DN ).getRdns() );
+            Collections.reverse( rdns );
+    		return new LdapName( rdns ).toString();
+    	} catch( Exception e ) {
+    		return DN;
+    	}
+    }
+
 
     private static class UserAccount implements Account {
         private static final long serialVersionUID = 8120665150347502722L;
