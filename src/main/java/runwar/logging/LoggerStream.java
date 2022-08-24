@@ -29,21 +29,21 @@ public class LoggerStream extends OutputStream {
     public void write(byte[] b) throws IOException {
         String string = new String(b);
         if (shouldLog(string))
-            logger.log(logLevel, string.trim());
+            logger.log(logLevel, string);
     }
 
     @Override
     public void write(byte[] b, int off, int len) throws IOException {
         String string = new String(b, off, len);
         if (shouldLog(string))
-            logger.log(logLevel, string.trim());
+            logger.log(logLevel, string);
     }
 
     @Override
     public void write(int b) throws IOException {
         String string = String.valueOf((char) b);
         if (shouldLog(string))
-            logger.log(logLevel, string.trim());
+            logger.log(logLevel, string);
     }
 
     private static boolean shouldLog(String string) {

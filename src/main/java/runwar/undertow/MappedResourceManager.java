@@ -234,7 +234,12 @@ public class MappedResourceManager extends FileResourceManager {
         		}
         		
         		Boolean found = false;
-        		for( String thisChild : new File( realPath + "/" ).list() ) {
+        		String[] children = new File( realPath + "/" ).list();
+        		// This will happen if we have a matched file in the middle of a path like /foo/index.cfm/bar
+        		if( children == null ) {
+        			return null;
+        		}
+        		for( String thisChild : children ) {
         			// We're taking the FIRST MATCH.  Buyer beware
         			if( thisSegment.equalsIgnoreCase(thisChild)) {
         				realPath += "/" + thisChild;
@@ -244,7 +249,7 @@ public class MappedResourceManager extends FileResourceManager {
         		}
     			// If we made it through the inner loop without a match, we've hit a dead end
         		if( !found ) {
-        			return null;	
+        			return null;
         		}
         	}
 			// If we made it through the outer loop, we've found a match

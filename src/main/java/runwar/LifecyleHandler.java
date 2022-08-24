@@ -34,7 +34,7 @@ public class LifecyleHandler implements HttpHandler {
     	// An example would be using the response-code handler which simply ends the exchange
         inExchange.addDefaultResponseListener(exchange -> {
         	
-        	// This usually happens when the client/browser closes the connection before the server has reponded.
+        	// This usually happens when the client/browser closes the connection before the server has responded.
         	// This may not be worth logging, since it doesn't really indicate any sort of issue
             if (!exchange.isResponseChannelAvailable()) {
                 RunwarLogger.CONTEXT_LOG.debug("The response channel was closed prematurely.  Request path: " + exchange.getRequestPath() + " status-code: " + exchange.getStatusCode() );

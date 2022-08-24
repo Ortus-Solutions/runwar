@@ -11,7 +11,7 @@ import net.minidev.json.JSONArray;
 import org.xnio.OptionMap;
 
 public interface ServerOptions {
-    
+
     public static final class Keys {
         final static String CONFIG = "config";
         final static String DIRS = "dirs";
@@ -94,7 +94,12 @@ public interface ServerOptions {
         final static String SERVLETRESTMAPPINGS = "servletrestmappings";
         final static String FILTERPATHINFO = "filterpathinfo";
         final static String SSLADDCERTS = "ssladdcerts";
+        final static String SSLADDCACERTS = "ssladdcacerts";
+        final static String SSLTRUSTSTORE = "ssltruststore";
+        final static String SSLTRUSTSTOREPASS = "ssltruststorepass";
+        final static String CLIENTCERTRENEGOTIATION = "clientcertrenegotiation";        
         final static String BASICAUTHENABLE = "basicauth";
+        final static String AUTHPREDICATE = "authpredicate";
         final static String BUFFERSIZE = "buffersize";
         final static String IOTHREADS = "iothreads";
         final static String WORKERTHREADS = "workerthreads";
@@ -116,7 +121,7 @@ public interface ServerOptions {
         final static String DEFAULTSERVLETALLOWEDEXT = "defaultServletAllowedExt";
         final static String CASESENSITIVEWEBSERVER="caseSensitiveWebServer";
         final static String RESOURCEMANAGERLOGGING="resourceManagerLogging";
-        final static String RESOURCEMANAGERFILESYSTEMWATCHER="resourceManagerFileSystemWatcher";        
+        final static String RESOURCEMANAGERFILESYSTEMWATCHER="resourceManagerFileSystemWatcher";
         final static String CACHESERVLETPATHS="cacheServletPaths";
         final static String FILECACHETOTALSIZEMB="fileCacheTotalSizeMB";
         final static String FILECACHEMAXFILESIZEKB="fileCacheMaxFileSizeKB";
@@ -124,10 +129,16 @@ public interface ServerOptions {
         final static String AUTOCREATECONTEXTSSECRET="autoCreateContextsSecret";
         final static String AUTOCREATECONTEXTSMAX="autoCreateContextsMax";
         final static String AUTOCREATECONTEXTSVDIRS="autoCreateContextsVDirs";
-        final static String LOGPATTERN="logPattern";        
-        
+        final static String LOGPATTERN="logPattern";
+        final static String CLIENTCERTNEGOTIATION="clientCertNegotiation";
+        final static String SECURITYREALM="securityrealm";
+        final static String CLIENTCERTENABLE="clientcertenable";
+        final static String CLIENTCERTTRUSTHEADERS="clientcerttrustheaders";
+        final static String CLIENTCERTSUBJECTDNS="clientcertsubjectdns";
+        final static String CLIENTCERTISSUERDNS="clientcertissuerdns";
+
     }
-    
+
     String defaultShell();
 
     ServerOptions commandLineArgs(String[] args);
@@ -321,9 +332,9 @@ public interface ServerOptions {
     ServerOptions webXmlFile(File webXmlFile);
 
     File webXmlOverrideFile();
-    
+
     ServerOptions webXmlOverrideFile(File webXmlOverrideFile);
-    
+
     boolean webXmlOverrideForce();
 
     ServerOptions webXmlOverrideForce(boolean enable);
@@ -341,11 +352,11 @@ public interface ServerOptions {
     ServerOptions trayConfig(JSONArray trayConfig);
 
     boolean trayEnable();
-    
+
     boolean dockEnable();
 
     ServerOptions trayEnable(boolean enable);
-    
+
     ServerOptions dockEnable(boolean enable);
 
     File statusFile();
@@ -377,35 +388,35 @@ public interface ServerOptions {
     ServerOptions welcomeFiles(String[] welcomeFiles);
 
     String warUriString();
-    
+
     String browser();
-    
+
     ServerOptions browser(String browser);
-    
+
     String defaultServletAllowedExt();
-    
+
     ServerOptions defaultServletAllowedExt(String defaultServletAllowedExt);
 
     Boolean caseSensitiveWebServer();
-    
+
     ServerOptions caseSensitiveWebServer(Boolean caseSensitiveWebServer);
 
     Boolean resourceManagerLogging();
-    
+
     Boolean resourceManagerFileSystemWatcher();
-    
+
     Boolean cacheServletPaths();
-    
+
     Integer fileCacheTotalSizeMB();
-    
+
     Integer fileCacheMaxFileSizeKB();
 
     Boolean autoCreateContexts();
-    
+
     String autoCreateContextsSecret();
-    
+
     Integer autoCreateContextsMax();
-    
+
     Boolean autoCreateContextsVDirs();
 
     ServerOptions resourceManagerLogging(Boolean resourceManagerLogging);
@@ -413,22 +424,46 @@ public interface ServerOptions {
     ServerOptions resourceManagerFileSystemWatcher(Boolean resourceManagerFileSystemWatcher);
 
     ServerOptions cacheServletPaths(Boolean cacheServletPaths);
-    
+
     ServerOptions fileCacheTotalSizeMB( Integer fileCacheTotalSizeMB );
-    
+
     ServerOptions fileCacheMaxFileSizeKB( Integer fileCacheMaxFileSizeKB );
-    
+
     ServerOptions autoCreateContexts(Boolean autoCreateContexts);
 
     ServerOptions autoCreateContextsSecret(String autoCreateContextsSecret);
-    
+
     ServerOptions autoCreateContextsMax(Integer autoCreateContextsMax);
-    
+
     ServerOptions autoCreateContextsVDirs(Boolean autoCreateContextsVDirs);
 
     ServerOptions sslCertificate(File file);
 
     File sslCertificate();
+
+    ServerOptions clientCertNegotiation(String clientCertNegotiation);
+
+    String clientCertNegotiation();
+
+    ServerOptions securityRealm(String securityRealm);
+
+    String securityRealm();
+
+    ServerOptions clientCertEnable(Boolean clientCertEnable);
+
+    Boolean clientCertEnable();
+
+    ServerOptions clientCertTrustHeaders(Boolean clientCertTrustHeaders);
+
+    Boolean clientCertTrustHeaders();
+
+    ServerOptions clientCertSubjectDNs(String clientCertSubjectDNs);
+
+    JSONArray clientCertSubjectDNs();
+
+    ServerOptions clientCertIssuerDNs(String clientCertIssuerDNs);
+
+    JSONArray clientCertIssuerDNs();
 
     ServerOptions sslKey(File file);
 
@@ -463,7 +498,7 @@ public interface ServerOptions {
     ServerOptions gzipEnable(boolean enable);
 
     boolean gzipEnable();
-    
+
     ServerOptions gzipPredicate(String enable);
 
     String gzipPredicate();
@@ -516,6 +551,10 @@ public interface ServerOptions {
 
     boolean basicAuthEnable();
 
+    ServerOptions authPredicate(String predicate);
+
+    String authPredicate();
+
     ServerOptions basicAuth(String userPasswordList);
 
     ServerOptions basicAuth(Map<String, String> userPassList);
@@ -527,6 +566,24 @@ public interface ServerOptions {
     ServerOptions sslAddCerts(String[] sslCerts);
 
     String[] sslAddCerts();
+
+    ServerOptions sslAddCACerts(String sslCerts);
+
+    ServerOptions sslAddCACerts(String[] sslCerts);
+
+    String[] sslAddCACerts();
+
+    ServerOptions sslTruststore(String sslTruststore);
+
+    String sslTruststore();
+
+    ServerOptions sslTruststorePass(String sslTruststorePass);
+
+    String sslTruststorePass();
+
+    Boolean clientCertRenegotiation();
+
+    ServerOptions clientCertRenegotiation(Boolean clientCertRenegotiation);
 
     boolean sslEccDisable();
 
@@ -569,15 +626,15 @@ public interface ServerOptions {
     ServerOptions secureCookies(boolean enable);
 
     boolean cookieHttpOnly();
-    
+
     ServerOptions cookieHttpOnly(boolean enable);
-    
+
     boolean cookieSecure();
-    
+
     ServerOptions cookieSecure(boolean enable);
-    
+
     boolean http2Enable();
-    
+
     String serverMode();
 
     boolean startedFromCommandLine();
@@ -603,10 +660,10 @@ public interface ServerOptions {
     ServerOptions undertowOptions(String options);
 
     ServerOptions undertowOptions(OptionMap.Builder options);
-    
+
     File predicateFile();
-    
+
     ServerOptions predicateFile(File predicateFile);
-    
+
     String getLogPattern();
 }
