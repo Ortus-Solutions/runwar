@@ -5,7 +5,7 @@
 #
 # If $JVM_JAVA_HOME is specified it will override JAVA_HOME and Java will not automatically be installed
 #
-JVM_MAJOR_VERSION_DEFAULT=8
+JVM_MAJOR_VERSION_DEFAULT=11
 JVM_RELEASE_DEFAULT=latest
 JVM_IMPL_DEFAULT=hotspot
 JVM_TYPE_DEFAULT=jdk
@@ -129,8 +129,8 @@ shaurl_unarchive() {
 	shaurl_file "${archiveURL}" "${shaURL}" "${archiveFile}"
 	mkdir -p "${destDir}"
 	echo "Expanding ${archiveURL} to ${destDir}"
-	stripCount=$(tar -tzf "${archiveFile}" | grep '/lib/ext/$' | awk -F"/" '{print NF-4}')
-	if tar -xf "${archiveFile}" --strip-components=$stripCount -C "${destDir}"; then
+	#stripCount=$(tar -tzf "${archiveFile}" | grep '/lib/ext/$' | awk -F"/" '{print NF-4}')
+	if tar -xf "${archiveFile}" --strip-components=1 -C "${destDir}"; then
 		if ! rm "${archiveFile}" || ! rm "${archiveFile}.sha256.txt"; then
 			echo "Could not delete either ${archiveFile} or ${archiveFile}.sha256.txt"
 		fi

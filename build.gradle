@@ -32,7 +32,7 @@ wrapper{
     doLast{
         // customise gradlew for our JVM auto-download script
         def javaRelease = System.getenv( 'JVM_RELEASE' ) ?: 'latest'
-        def javaMajorVersion = System.getenv( 'JVM_MAJOR_VERSION' ) ?: 8
+        def javaMajorVersion = System.getenv( 'JVM_MAJOR_VERSION' ) ?: 11
         def javaDir = System.getenv( 'JVM_HOME' ) ?: "gradle/jvm/${javaMajorVersion}/latest"
         def envVars = "\nexport JVM_MAJOR_VERSION=${ javaMajorVersion }\nexport JVM_DIR=\"${ javaDir }\"\nexport JVM_RELEASE=${ javaRelease }\nexport GRADLE_USER_HOME=\"\${HOME}/.gradle\"\n"
         envVars += ". \"\${APP_HOME}/gradle/jvm-setup.sh\"\n"

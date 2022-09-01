@@ -40,8 +40,8 @@ cd "`dirname \"$PRG\"`/" >/dev/null
 APP_HOME="`pwd -P`"
 cd "$SAVED" >/dev/null
 
-export JVM_MAJOR_VERSION=8
-export JVM_DIR="gradle/jvm/8/latest"
+export JVM_MAJOR_VERSION=11
+export JVM_DIR="gradle/jvm/11/latest"
 export JVM_RELEASE=latest
 export GRADLE_USER_HOME="${HOME}/.gradle"
 . "${APP_HOME}/gradle/jvm-setup.sh"
