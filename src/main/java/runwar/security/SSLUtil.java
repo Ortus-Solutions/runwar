@@ -52,7 +52,7 @@ public class SSLUtil
     public static SSLContext createSSLContext( final String[] addCertificatePaths, String sslTruststore, String sslTruststorePass, final String[] addCACertificatePaths ) throws IOException {
     	if( sslTruststore == null ) {
             RunwarLogger.SECURITY_LOGGER.debug("Creating SSL context from: runwar/runwar.keystore trust store: runwar/runwar.truststore");
-            return createSSLContext(getServerKeyStore(), getTrustStore(), DEFAULT_STORE_PASSWORD.clone(), addCertificatePaths, addCACertificatePaths, false, DEFAULT_HOST_NAMES);	
+            return createSSLContext(getServerKeyStore(), getTrustStore(), DEFAULT_STORE_PASSWORD.clone(), addCertificatePaths, addCACertificatePaths, false, DEFAULT_HOST_NAMES);
     	} else {
             RunwarLogger.SECURITY_LOGGER.debug( "Creating SSL context from: runwar/runwar.keystore trust store: " + sslTruststore );
             return createSSLContext(getServerKeyStore(), loadKeyStoreFromFile( sslTruststore, sslTruststorePass.toCharArray() ), DEFAULT_STORE_PASSWORD.clone(), addCertificatePaths, addCACertificatePaths, false, DEFAULT_HOST_NAMES);
@@ -66,26 +66,42 @@ public class SSLUtil
     }
 
     public static SSLContext createSSLContext(final File certfile, final File keyFile, char[] passphrase, final String[] addCertificatePaths, String sslTruststore, String sslTruststorePass, final String[] addCACertificatePaths, final String[] hostNames) throws IOException {
-        if (passphrase == null || passphrase.length == 0) {
-            RunwarLogger.SECURITY_LOGGER.debug("Using default store passphrase of '" + String.copyValueOf(DEFAULT_STORE_PASSWORD) + "'");
-            passphrase = DEFAULT_STORE_PASSWORD.clone();
+        if (passphrase == null ) {
+            RunwarLogger.SECURITY_LOGGER.debug("Using default store passphrase of empty string");
+            passphrase = "".toCharArray();
         }
         SSLContext sslContext;
         try {
-            final KeyStore derKeystore = keystoreFromDERCertificate(certfile, keyFile, passphrase);
-            KeyStore keyStore;
-            
-        	if( sslTruststore == null ) {
-        		RunwarLogger.SECURITY_LOGGER.debug("Creating SSL context from cert: [" + certfile + "]  key: [" + keyFile + "] and empty trust store");
-        		keyStore = KeyStore.getInstance("JKS", "SUN");
-                keyStore.load(null, passphrase);	
-        	} else {
-        		RunwarLogger.SECURITY_LOGGER.debug("Creating SSL context from cert: [" + certfile + "]  key: [" + keyFile + "] trust store: [" + sslTruststore + "]");
-                keyStore = loadKeyStoreFromFile( sslTruststore, sslTruststorePass.toCharArray() );
-        	}
-            
-            keyStore.setEntry("someAlias", new KeyStore.TrustedCertificateEntry(derKeystore.getCertificate("serverkey")), null);
-            sslContext = createSSLContext(derKeystore, keyStore, passphrase, addCertificatePaths, addCACertificatePaths, false, hostNames);
+            KeyStore trustStore;
+            KeyStore keystore;
+
+            // Parse as PKCS12l which is an entire keystore with cert and key combined with optional password
+            if( certfile.getCanonicalPath().toLowerCase().endsWith( ".pfx" ) ) {
+                RunwarLogger.SECURITY_LOGGER.debug("Creating SSL context from PKCS12l keystore: [" + certfile + "]");
+                InputStream stream = new FileInputStream( certfile );
+                keystore = KeyStore.getInstance( "PKCS12" );
+                keystore.load( stream, passphrase );
+
+            // Load up as DER cert with external DER key file/pass
+            } else if( keyFile != null ) {
+                RunwarLogger.SECURITY_LOGGER.debug("Creating SSL context from cert: [" + certfile + "]  key: [" + keyFile + "]");
+                keystore = keystoreFromDERCertificate(certfile, keyFile, passphrase);
+                //trustStore.setEntry("someAlias", new KeyStore.TrustedCertificateEntry(derKeystore.getCertificate("serverkey")), null);
+            } else {
+                throw new IOException("Keystore could not be created.  No matching Key file was passed for the Cert file." );
+            }
+
+            if( sslTruststore == null ) {
+                RunwarLogger.SECURITY_LOGGER.debug("Creating SSL context from empty trust store");
+                trustStore = KeyStore.getInstance("JKS", "SUN");
+                trustStore.load(null, passphrase);
+            } else {
+                RunwarLogger.SECURITY_LOGGER.debug("Creating SSL context from trust store: [" + sslTruststore + "]");
+                trustStore = loadKeyStoreFromFile( sslTruststore, sslTruststorePass.toCharArray() );
+            }
+
+
+            sslContext = createSSLContext(keystore, trustStore, passphrase, addCertificatePaths, addCACertificatePaths, false, hostNames);
         }
         catch (Exception ex) {
             throw new IOException("Could not load certificate", ex);
