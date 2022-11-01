@@ -8,6 +8,7 @@ import io.undertow.server.SSLSessionInfo;
 import io.undertow.util.Certificates;
 import io.undertow.util.HexConverter;
 import io.undertow.util.HttpString;
+import io.undertow.servlet.handlers.ServletRequestContext;
 
 import javax.net.ssl.SSLPeerUnverifiedException;
 import java.security.cert.X509Certificate;
@@ -17,6 +18,7 @@ import java.security.cert.CertificateEncodingException;
 import java.util.Map;
 import java.math.BigInteger;
 import java.util.HashMap;
+import javax.servlet.ServletRequest;
 
 import runwar.options.ServerOptions;
 import static runwar.logging.RunwarLogger.LOG;
@@ -45,6 +47,8 @@ public class SSLClientCertHeaderHandler implements HttpHandler {
 	private static final HttpString CERT_ISSUER = new HttpString("CERT_ISSUER" );
 	private static final HttpString SSL_CLIENT_VERIFY = new HttpString("SSL_CLIENT_VERIFY" );
 	private static final HttpString SSL_SESSION_ID = new HttpString("SSL_SESSION_ID" );
+	private static final HttpString SUBJECT_DN_MAP = new HttpString("javax.servlet.request.X509Certificate.subjectDNMap" );
+	private static final HttpString ISSUER_DN_MAP = new HttpString("javax.servlet.request.X509Certificate.issuerDNMap" );
 
     public SSLClientCertHeaderHandler(HttpHandler next, ServerOptions serverOptions, Boolean addHTTPHeaders ) {
         this.next = next;
@@ -61,8 +65,11 @@ public class SSLClientCertHeaderHandler implements HttpHandler {
 
         // If Undertow is in the business of accepting client certs, discard any incoming HTTP headers so we can ensure they are valid
         String clientCertNegotiation = serverOptions.clientCertNegotiation();
-        if( clientCertNegotiation != null && ( clientCertNegotiation.equals( "REQUIRED" ) || clientCertNegotiation.equals( "REQUESTED" ) ) ) {
+		// If cert renegotion is enabled, we'll also assume they want Runwar to take charge of cert-related headers
+        Boolean clientCertRenegotiation = serverOptions.clientCertRenegotiation();
+        if( clientCertNegotiation != null && ( clientCertNegotiation.equals( "REQUIRED" ) || clientCertNegotiation.equals( "REQUESTED" ) ) || clientCertRenegotiation ) {
 
+			// Runwar has determined it's "in charge" of cert-related headers, so it's going to wipe any incoming data from upstream so you know you can trust it
         	removeCGIElement( exchange, SSL_CLIENT_CERT );
         	removeCGIElement( exchange, X_ARR_CLIENTCERT );
         	removeCGIElement( exchange, SSL_CLIENT_S_DN );
@@ -75,62 +82,64 @@ public class SSLClientCertHeaderHandler implements HttpHandler {
         	removeCGIElement( exchange, CERT_SERIALNUMBER );
         	removeCGIElement( exchange, SSL_CLIENT_M_SERIAL );
 
-            SSLSessionInfo ssl = exchange.getConnection().getSslSessionInfo();
-            // SSL is enabled
-            if(ssl != null) {
-
-            	X509Certificate clientCert = getClientCert( ssl );
-
-            	setCGIElement( exchange, CERT_KEYSIZE, String.valueOf( ssl.getKeySize() ) );
-
-
-                // A client cert was negotiated
-                if( clientCert != null ) {
-                	LOG.trace( "Client SSL cert present, setting request headers" );
-
-                	try {
-                		String PEMCert = Certificates.toPem( clientCert );
-
-                    	// 	PEM-encoded client certificate
-                    	setCGIElement( exchange, SSL_CLIENT_CERT, PEMCert );
-                    	setCGIElement( exchange, X_ARR_CLIENTCERT, PEMCert );
-                	} catch ( CertificateEncodingException e ) {
-                    	setCGIElement( exchange, SSL_CLIENT_CERT, "CertificateEncodingException: " + e.getMessage() );
-                    	setCGIElement( exchange, X_ARR_CLIENTCERT, "CertificateEncodingException: " + e.getMessage() );
-                	}
-
-                	// Subject distinguished name
-					String LDAPSName = SecurityManager.reverseDN( clientCert.getSubjectDN().toString() );
-                	setCGIElement( exchange, SSL_CLIENT_S_DN, LDAPSName );
-                	setCGIElement( exchange, CERT_SUBJECT, LDAPSName );
-
-                	// Issuer distinguished name
-					String LDAPIName = SecurityManager.reverseDN( clientCert.getIssuerDN().toString() );
-                	setCGIElement( exchange, SSL_CLIENT_I_DN, LDAPIName );
-                	setCGIElement( exchange, CERT_ISSUER, LDAPIName );
-
-                	// Convert negative binint to positive, then base 16, then add hyphens
-                	String certSerial = new BigInteger(1, clientCert.getSerialNumber().toByteArray()).toString(16).replaceAll("(?<=..)(..)", "-$1");
-                	setCGIElement( exchange, CERT_SERIALNUMBER, certSerial );
-                	setCGIElement( exchange, SSL_CLIENT_M_SERIAL, certSerial );
-
-
-                	// The hex-encoded SSL session id
-                	if( ssl.getSessionId() != null ) {
-                    	setCGIElement( exchange, SSL_SESSION_ID, HexConverter.convertToHexString(ssl.getSessionId()) );
-                	} else {
-                    	setCGIElement( exchange, SSL_SESSION_ID, "" );
-                	}
-
-                	setCGIElement( exchange, SSL_CLIENT_VERIFY, "SUCCESS" );
-
-                } else {
-                	setCGIElement( exchange, SSL_CLIENT_VERIFY, "NONE" );
-                }
-            }
-
         }
 
+		SSLSessionInfo ssl = exchange.getConnection().getSslSessionInfo();
+		// There is SSL session info
+		if(ssl != null) {
+
+			X509Certificate clientCert = getClientCert( ssl );
+
+			setCGIElement( exchange, CERT_KEYSIZE, String.valueOf( ssl.getKeySize() ) );
+
+			// A client cert was negotiated
+			if( clientCert != null ) {
+				LOG.trace( "Client SSL cert present, setting request headers" );
+
+				try {
+					String PEMCert = Certificates.toPem( clientCert );
+
+					// 	PEM-encoded client certificate
+					setCGIElement( exchange, SSL_CLIENT_CERT, PEMCert );
+					setCGIElement( exchange, X_ARR_CLIENTCERT, PEMCert );
+				} catch ( CertificateEncodingException e ) {
+					setCGIElement( exchange, SSL_CLIENT_CERT, "CertificateEncodingException: " + e.getMessage() );
+					setCGIElement( exchange, X_ARR_CLIENTCERT, "CertificateEncodingException: " + e.getMessage() );
+				}
+
+				// Subject distinguished name
+				String LDAPSName = SecurityManager.reverseDN( clientCert.getSubjectDN().toString() );
+				setCGIElement( exchange, SSL_CLIENT_S_DN, LDAPSName );
+				setCGIElement( exchange, CERT_SUBJECT, LDAPSName );
+
+				// Issuer distinguished name
+				String LDAPIName = SecurityManager.reverseDN( clientCert.getIssuerDN().toString() );
+				setCGIElement( exchange, SSL_CLIENT_I_DN, LDAPIName );
+				setCGIElement( exchange, CERT_ISSUER, LDAPIName );
+
+				// Convert negative binint to positive, then base 16, then add hyphens
+				String certSerial = new BigInteger(1, clientCert.getSerialNumber().toByteArray()).toString(16).replaceAll("(?<=..)(..)", "-$1");
+				setCGIElement( exchange, CERT_SERIALNUMBER, certSerial );
+				setCGIElement( exchange, SSL_CLIENT_M_SERIAL, certSerial );
+
+				// Add in cert subject and issuer DN as map with key for each sub field.
+				ServletRequest sr = exchange.getAttachment(ServletRequestContext.ATTACHMENT_KEY).getServletRequest();
+				sr.setAttribute( SUBJECT_DN_MAP.toString(), SecurityManager.splitDN( LDAPSName, new HashMap<String,String>(), true, true ) );
+				sr.setAttribute( ISSUER_DN_MAP.toString(), SecurityManager.splitDN( LDAPIName, new HashMap<String,String>(), true, true ) );
+
+				// The hex-encoded SSL session id
+				if( ssl.getSessionId() != null ) {
+					setCGIElement( exchange, SSL_SESSION_ID, HexConverter.convertToHexString(ssl.getSessionId()) );
+				} else {
+					setCGIElement( exchange, SSL_SESSION_ID, "" );
+				}
+
+				setCGIElement( exchange, SSL_CLIENT_VERIFY, "SUCCESS" );
+
+			} else {
+				setCGIElement( exchange, SSL_CLIENT_VERIFY, "NONE" );
+			}
+		}
 
         next.handleRequest(exchange);
     }
@@ -149,6 +158,7 @@ public class SSLClientCertHeaderHandler implements HttpHandler {
     }
 
     private void removeCGIElement( HttpServerExchange exchange, HttpString name ) {
+		exchange.getAttachment(ServletRequestContext.ATTACHMENT_KEY).getServletRequest().removeAttribute( name.toString() );
         exchange.getAttachment( HttpServerExchange.REQUEST_ATTRIBUTES ).remove( name.toString() );
 		if( addHTTPHeaders ) {
 			exchange.getRequestHeaders().remove( name );
@@ -156,7 +166,7 @@ public class SSLClientCertHeaderHandler implements HttpHandler {
     }
 
     private void setCGIElement( HttpServerExchange exchange, HttpString name, String value ) {
-        exchange.getAttachment( HttpServerExchange.REQUEST_ATTRIBUTES ).put( name.toString(), value );
+		exchange.getAttachment(ServletRequestContext.ATTACHMENT_KEY).getServletRequest().setAttribute( name.toString(), value );
 		if( addHTTPHeaders ) {
 			exchange.getRequestHeaders().put( name, value );
 		}

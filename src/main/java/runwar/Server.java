@@ -491,22 +491,19 @@ public class Server {
                 .addInnerHandlerChainWrapper(new HandlerWrapper() {
                     @Override
                     public HttpHandler wrap(HttpHandler next) {
-                        return new HttpHandler() {
+
+                    /*    HttpHandler httpHandler = HttpHandler() {
                             @Override
                             public void handleRequest(HttpServerExchange exchange) throws Exception {
-                            	HttpServletRequest sr = (HttpServletRequest)exchange.getAttachment(ServletRequestContext.ATTACHMENT_KEY).getServletRequest();
 
-                                // Add in cert subject and issuer DN as map with key for each sub field.
-                            	if( sr.getHeader( "SSL_CLIENT_S_DN" ) != null ){
-                            		sr.setAttribute( "javax.servlet.request.X509Certificate.subjectDNMap", SecurityManager.splitDN( sr.getHeader( "SSL_CLIENT_S_DN" ), new HashMap<String,String>(), true, true ) );
-                            	}
-                            	if( sr.getHeader( "SSL_CLIENT_I_DN" ) != null ){
-                            		sr.setAttribute( "javax.servlet.request.X509Certificate.issuerDNMap", SecurityManager.splitDN( sr.getHeader( "SSL_CLIENT_I_DN" ), new HashMap<String,String>(), true, true ) );
-                            	}
 
                             	next.handleRequest(exchange);
                             }
                         };
+*/
+                        // Set SSL_CLIENT_ headers if client certs are present
+                        return new SSLClientCertHeaderHandler( next, serverOptions, serverOptions.cfEngineName().toLowerCase().contains( "lucee" ) );
+
                     }
                 });
 
@@ -755,11 +752,8 @@ public class Server {
             httpHandler = new ProxyPeerAddressHandler(httpHandler);
         }
 
-        // Set SSL_CLIENT_ headers if client certs are present
-        httpHandler = new SSLClientCertHeaderHandler( httpHandler, serverOptions, serverOptions.cfEngineName().toLowerCase().contains( "lucee" ) );
-
         if (serverOptions.clientCertTrustHeaders()) {
-            LOG.debug("Enabling SSL client cert handling");
+            LOG.debug("Checking for upstream client cert HTTP headers");
             httpHandler = new SSLHeaderHandler(httpHandler);
         }
 
@@ -851,6 +845,8 @@ public class Server {
         for (Option option : undertowOptionsMap) {
         	LOG.debug("UndertowOption " + option.getName() + ':' + undertowOptionsMap.get(option));
             serverBuilder.setServerOption(option, undertowOptionsMap.get(option));
+            serverBuilder.setSocketOption(UndertowOptions.IDLE_TIMEOUT, 999999999);
+            serverBuilder.setSocketOption(option, undertowOptionsMap.get(option));
         }
     }
 

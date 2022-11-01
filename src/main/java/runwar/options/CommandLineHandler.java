@@ -957,9 +957,6 @@ public class CommandLineHandler {
             if (hasOptionValue(line, Keys.SSLCERT)) {
                 File certFile = serverOptions.sslSelfSign() ? new File(line.getOptionValue(Keys.SSLCERT)) : getFile(line.getOptionValue(Keys.SSLCERT));
                 serverOptions.sslCertificate(certFile);
-                if (!hasOptionValue(line, Keys.SSLKEY) || !hasOptionValue(line, Keys.SSLKEY)) {
-                    throw new RuntimeException("Using a SSL certificate requires -sslkey /path/to/file and -sslkeypass pass**** arguments!");
-                }
                 if (!hasOptionValue(line, Keys.SSLENABLE)) {
                     CONF_LOG.trace("SSL not enable and cert specified; enabling SSL");
                     serverOptions.sslEnable(true);
@@ -978,17 +975,17 @@ public class CommandLineHandler {
                 serverOptions.sslKeyPass(line.getOptionValue(Keys.SSLKEYPASS).toCharArray());
             }
             if (hasOptionValue(line, Keys.CLIENTCERTNEGOTIATION)) {
-                serverOptions.clientCertNegotiation(line.getOptionValue(Keys.CLIENTCERTNEGOTIATION));   
+                serverOptions.clientCertNegotiation(line.getOptionValue(Keys.CLIENTCERTNEGOTIATION));
             }
             if (hasOptionValue(line, Keys.CLIENTCERTRENEGOTIATION)) {
-                serverOptions.clientCertRenegotiation(Boolean.valueOf(line.getOptionValue(Keys.CLIENTCERTRENEGOTIATION)));                    
+                serverOptions.clientCertRenegotiation(Boolean.valueOf(line.getOptionValue(Keys.CLIENTCERTRENEGOTIATION)));
             }
             if (hasOptionValue(line, Keys.SECURITYREALM)) {
                 serverOptions.securityRealm(line.getOptionValue(Keys.SECURITYREALM));
             }
             if (hasOptionValue(line, Keys.CLIENTCERTENABLE)) {
                 serverOptions.clientCertEnable(Boolean.valueOf(line.getOptionValue(Keys.CLIENTCERTENABLE)));
-                
+
                 if( serverOptions.clientCertEnable() ) {
                     if (hasOptionValue(line, Keys.CLIENTCERTSUBJECTDNS)) {
                         serverOptions.clientCertSubjectDNs(line.getOptionValue(Keys.CLIENTCERTSUBJECTDNS));
@@ -1002,7 +999,7 @@ public class CommandLineHandler {
             if (hasOptionValue(line, Keys.CLIENTCERTTRUSTHEADERS)) {
                 serverOptions.clientCertTrustHeaders(Boolean.valueOf(line.getOptionValue(Keys.CLIENTCERTTRUSTHEADERS)));
             }
-            
+
             if (hasOptionValue(line, Keys.SSLENABLE)) {
                 if (!hasOptionValue(line, Keys.HTTPENABLE)) {
                     serverOptions.httpEnable(false);
