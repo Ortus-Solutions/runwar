@@ -46,11 +46,11 @@ public class MappedResourceManager extends FileResourceManager {
     private Boolean forceCaseInsensitiveWebServer;
     private HashMap<String, Path> aliases;
     private File WEBINF = null, CFIDE = null;
-    private static boolean isCaseSensitiveFS = caseSensitivityCheck(); 
+    private static boolean isCaseSensitiveFS = caseSensitivityCheck();
     private static final Pattern CFIDE_REGEX_PATTERN;
     private static final Pattern WEBINF_REGEX_PATTERN;
     private final FileResource baseResource;
-    
+
     // testing
     private final List<ResourceChangeListener> listeners = new ArrayList<>();
     private List<FileSystemWatcher> fileSystemWatchers = new ArrayList<>();
@@ -69,11 +69,11 @@ public class MappedResourceManager extends FileResourceManager {
             MAPPER_LOG.debug("Resource change listener disabled for [" + base.toString() + "]");
         }
         this.aliases = (HashMap<String, Path>) aliases;
-        this.serverOptions = serverOptions; 
+        this.serverOptions = serverOptions;
         this.forceCaseSensitiveWebServer = serverOptions.caseSensitiveWebServer() != null && serverOptions.caseSensitiveWebServer();
         this.forceCaseInsensitiveWebServer = serverOptions.caseSensitiveWebServer() != null && !serverOptions.caseSensitiveWebServer();
         this.baseResource = new FileResource( getBase(), this, "/");
-        
+
         if(webinfDir != null){
             WEBINF = webinfDir;
             CFIDE = new File(WEBINF.getParentFile(),"CFIDE");
@@ -89,13 +89,13 @@ public class MappedResourceManager extends FileResourceManager {
             return null;
         }
         MAPPER_LOG.debug("* requested: '" + path + "'");
-        
+
         if( path.equals( "/" ) ) {
         	MAPPER_LOG.debugf("** path mapped to: '%s'", getBase());
             return this.baseResource;
         }
 
-        
+
         try {
 	        Path reqFile = null;
 	        final Matcher webInfMatcher = WEBINF_REGEX_PATTERN.matcher(path);
@@ -121,21 +121,21 @@ public class MappedResourceManager extends FileResourceManager {
 	                reqFile = getAliasedFile(aliases, path);
 	            }
 	        }
-	        
+
 	        if (reqFile != null ) {
 	 	        reqFile = pathExists(reqFile);
 	        }
-	        
+
 	        if (reqFile == null ) {
  	           MAPPER_LOG.debugf( "** No real resource found on disk for: '%s'", path );
  	           //Resource superResult = super.getResource(path);
  	           return null;
-	        }	        		
-	        		
+	        }
+
             if(reqFile.toString().indexOf('\\') > 0) {
                 reqFile = Paths.get(reqFile.toString().replace('/', '\\'));
             }
-            
+
             // Check for Windows doing silly things with file canonicalization
             String originalPath = reqFile.toString();
 
@@ -147,7 +147,7 @@ public class MappedResourceManager extends FileResourceManager {
 
             // If this is a case insensitive file system like Windows and we're not forcing the web server to be case sensitive
             // then compare the paths regardless of case.  Or if this is a case sensitive file system like Linux
-            // and we're forcing it to be case insensitive            
+            // and we're forcing it to be case insensitive
             if( (!isCaseSensitiveFS && !forceCaseSensitiveWebServer) || ( isCaseSensitiveFS && forceCaseInsensitiveWebServer ) ) {
             	originalPathCase = originalPath.toLowerCase();
             	realPathCase = realPath.toLowerCase();
@@ -162,10 +162,10 @@ public class MappedResourceManager extends FileResourceManager {
             if( !originalPathCase.equals( realPathCase ) ) {
             	throw new InvalidPathException( "Real file path [" + realPath + "] doesn't match [" + originalPath + "]", "" );
             }
-            
+
             MAPPER_LOG.debugf("** path mapped to real file: '%s'", reqFile);
 	        return new FileResource(reqFile.toFile(), this, path);
-            
+
         } catch( InvalidPathException e ){
             MAPPER_LOG.debugf("** InvalidPathException for: '%s'",path != null ? path : "null");
             MAPPER_LOG.debug("** " + e.getMessage());
@@ -215,7 +215,7 @@ public class MappedResourceManager extends FileResourceManager {
        }
        if( isCaseSensitiveFS && forceCaseInsensitiveWebServer ) {
             MAPPER_LOG.debugf("*** Case insensitive check for %s",path);
-                        
+
         	String realPath = "";
         	String[] pathSegments = path.toString().replace('\\', '/').split( "/" );
         	if( pathSegments.length > 0 && pathSegments[0].contains(":") ){
@@ -232,7 +232,7 @@ public class MappedResourceManager extends FileResourceManager {
         		if( thisSegment.length() == 0 ) {
         			continue;
         		}
-        		
+
         		Boolean found = false;
         		String[] children = new File( realPath + "/" ).list();
         		// This will happen if we have a matched file in the middle of a path like /foo/index.cfm/bar
@@ -267,12 +267,13 @@ public class MappedResourceManager extends FileResourceManager {
     public boolean isResourceChangeListenerSupported() {
         return allowResourceChangeListeners;
     }
-    
+
     private static boolean caseSensitivityCheck() {
 	    try {
-	        File currentWorkingDir = new File(System.getProperty("user.dir"));
+	        File currentWorkingDir = new File(System.getProperty("user.home"));
 	        File case1 = new File(currentWorkingDir, "case1");
 	        File case2 = new File(currentWorkingDir, "Case1");
+            MAPPER_LOG.debug("Testing case sensitivity of file system by writing to [" + case1.toString() + "]");
 	        case1.createNewFile();
 	        if (case2.createNewFile()) {
 	        	MAPPER_LOG.debug("FileSystem of working directory is case sensitive");
@@ -313,24 +314,24 @@ public class MappedResourceManager extends FileResourceManager {
             aliases.forEach( (alias,path) -> {
             	// In case there is a broken alias pointing nowhere
             	if(  Files.exists( path ) ) {
-                	createFileSystemWatcher( path.toString(), alias );	
+                	createFileSystemWatcher( path.toString(), alias );
             	}
             } );
-            
+
         }
     }
-    
+
     FileSystemWatcher createFileSystemWatcher( String basePath, String prefix ) {
 
     	MAPPER_LOG.trace("Creating file system watcher in [ " + basePath + " ] with alias [ " + prefix + " ]");
-    	
+
     	final String thePrefix;
     	if( prefix.startsWith("/") ) {
     		thePrefix = prefix.substring(1);
     	} else {
     		thePrefix = prefix;
     	}
-    	
+
     	FileSystemWatcher fileSystemWatcher = Xnio.getInstance().createFileSystemWatcher("Watcher for " + basePath, OptionMap.EMPTY);
         fileSystemWatcher.watchPath(new File(basePath), new FileChangeCallback() {
             @Override
@@ -384,5 +385,5 @@ public class MappedResourceManager extends FileResourceManager {
     	} );
         super.close();
     }
-    
+
 }
