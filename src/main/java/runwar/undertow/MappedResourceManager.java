@@ -107,6 +107,7 @@ public class MappedResourceManager extends FileResourceManager {
 	                reqFile = Paths.get(WEBINF.getAbsolutePath(), webInfMatcher.group(1).replace("WEB-INF", ""));
 	            }
 	            MAPPER_LOG.trace("** matched WEB-INF : " + reqFile.toAbsolutePath().toString());
+                reqFile = pathExists(reqFile);
 	        } else if (cfideMatcher.matches()) {
 	            if(cfideMatcher.group(1) == null) {
 	                reqFile = Paths.get(CFIDE.toURI());
@@ -114,21 +115,21 @@ public class MappedResourceManager extends FileResourceManager {
 	                reqFile = Paths.get(CFIDE.getAbsolutePath(), cfideMatcher.group(1).replace("CFIDE", ""));
 	            }
 	            MAPPER_LOG.trace("** matched /CFIDE : " + reqFile.toAbsolutePath().toString());
+                reqFile = pathExists(reqFile);
 	        } else if (!webInfMatcher.matches()) {
 	            reqFile = Paths.get(getBase().getAbsolutePath(), path);
 	            MAPPER_LOG.trace("* checking with base path: '" + reqFile.toAbsolutePath().toString() + "'");
-	            if (!Files.exists(reqFile)) {
+                reqFile = pathExists(reqFile);
+	            if ( reqFile == null ) {
 	                reqFile = getAliasedFile(aliases, path);
+                    if (reqFile != null ) {
+                        reqFile = pathExists(reqFile);
+                    }
 	            }
-	        }
-
-	        if (reqFile != null ) {
-	 	        reqFile = pathExists(reqFile);
 	        }
 
 	        if (reqFile == null ) {
  	           MAPPER_LOG.debugf( "** No real resource found on disk for: '%s'", path );
- 	           //Resource superResult = super.getResource(path);
  	           return null;
 	        }
 
