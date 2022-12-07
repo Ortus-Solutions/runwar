@@ -256,6 +256,12 @@ public class CommandLineHandler {
                 .create("d"));
 
         options.addOption(OptionBuilder
+                .withLongOpt("mime-types")
+                .withDescription("List of mime types to add")
+                .hasArg().withArgName("log;text/plain,foo;content/type")
+                .create(Keys.MIMETYPES));
+
+        options.addOption(OptionBuilder
                 .withLongOpt("lib-dirs")
                 .withDescription("List of directories to add contents of to classloader")
                 .hasArg().withArgName("path,path,...")
@@ -1035,6 +1041,9 @@ public class CommandLineHandler {
             }
             if (hasOptionValue(line, Keys.DIRS)) {
                 serverOptions.contentDirs(line.getOptionValue(Keys.DIRS));
+            }
+            if (hasOptionValue(line, Keys.MIMETYPES)) {
+                serverOptions.mimeTypes(line.getOptionValue(Keys.MIMETYPES));
             }
             if (hasOptionValue(line, Keys.LOGREQUESTSBASENAME)) {
                 serverOptions.logRequestsEnable(true);

@@ -97,7 +97,7 @@ public interface ServerOptions {
         final static String SSLADDCACERTS = "ssladdcacerts";
         final static String SSLTRUSTSTORE = "ssltruststore";
         final static String SSLTRUSTSTOREPASS = "ssltruststorepass";
-        final static String CLIENTCERTRENEGOTIATION = "clientcertrenegotiation";        
+        final static String CLIENTCERTRENEGOTIATION = "clientcertrenegotiation";
         final static String BASICAUTHENABLE = "basicauth";
         final static String AUTHPREDICATE = "authpredicate";
         final static String BUFFERSIZE = "buffersize";
@@ -136,6 +136,7 @@ public interface ServerOptions {
         final static String CLIENTCERTTRUSTHEADERS="clientcerttrustheaders";
         final static String CLIENTCERTSUBJECTDNS="clientcertsubjectdns";
         final static String CLIENTCERTISSUERDNS="clientcertissuerdns";
+        final static String MIMETYPES="mimetypes";
 
     }
 
@@ -666,4 +667,10 @@ public interface ServerOptions {
     ServerOptions predicateFile(File predicateFile);
 
     String getLogPattern();
+
+    ServerOptions mimeTypes(String mimeTypes);
+
+    ServerOptions mimeTypes(Map<String,String> mimeTypes);
+
+    Map<String,String> mimeTypes();
 }
