@@ -118,6 +118,8 @@ class RunwarConfigurer {
             LOG.debugf("Adding Mime type %s = '%s'", ext, contentType);
             servletBuilder.addMimeMapping(new MimeMapping(ext, contentType));
         });
+        // Only needed until this is complete: https://issues.redhat.com/browse/UNDERTOW-2218
+        servletBuilder.addMimeMapping(new MimeMapping("webp", "image/webp"));
     }
 
     private void configureServerWar(DeploymentInfo servletBuilder) {
