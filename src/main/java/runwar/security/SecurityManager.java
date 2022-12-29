@@ -4,7 +4,7 @@ import io.undertow.UndertowLogger;
 import io.undertow.Undertow.Builder;
 import io.undertow.security.api.AuthenticationMechanism;
 import io.undertow.security.api.AuthenticationMode;
-import io.undertow.security.handlers.AuthenticationCallHandler;
+import io.undertow.servlet.handlers.security.ServletAuthenticationCallHandler;
 import io.undertow.security.handlers.AuthenticationConstraintHandler;
 import io.undertow.security.handlers.AuthenticationMechanismsHandler;
 import io.undertow.security.handlers.SecurityInitialHandler;
@@ -73,7 +73,7 @@ public class SecurityManager implements IdentityManager {
             @Override
             public HttpHandler wrap(HttpHandler handler) {
 
-            	handler = new AuthenticationCallHandler(handler);
+            	handler = new ServletAuthenticationCallHandler(handler);
                 Predicate authRequired = ( serverOptions.authPredicate() != null && serverOptions.authPredicate().length() > 0 ) ? Predicates.parse( serverOptions.authPredicate() ) : null;
                 if( authRequired != null ) {
                     RunwarLogger.SECURITY_LOGGER.debug( "Authentication will only apply to [ " + serverOptions.authPredicate() + " ]" );
@@ -81,6 +81,7 @@ public class SecurityManager implements IdentityManager {
                     RunwarLogger.SECURITY_LOGGER.debug( "Authentication will apply to all requests" );
                 }
                 handler = new AuthenticationConstraintHandler(handler){
+
 
                 	@Override
                     protected boolean isAuthenticationRequired(final HttpServerExchange exchange) {
