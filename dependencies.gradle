@@ -99,12 +99,6 @@ dependencies {
     // ansi colors for logging system output
     compile("com.jcabi:jcabi-log:0.18.1") { transitive = false }
 
-    if( org.gradle.util.VersionNumber.parse( System.getProperty( 'java.version' ) ) > org.gradle.util.VersionNumber.parse( '1.8' ) ) {
-        implementation 'org.jboss.spec.javax.xml.bind:jboss-jaxb-api_2.3_spec:1.0.1.Final'
-    }
-    //runtimeOnly 'org.cfmlprojects:javashim:1.0.1' // for Railo (sun.misc.VM)
-    implementation 'org.jboss.spec.javax.xml.bind:jboss-jaxb-api_2.3_spec:1.0.1.Final'
-
     // tests
     testCompile("org.apache.httpcomponents:httpclient:4.5.12")
     testCompile("org.apache.httpcomponents:httpmime:4.5.12")
