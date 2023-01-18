@@ -22,7 +22,7 @@ import org.apache.logging.log4j.core.filter.ThresholdFilter;
 import org.apache.logging.log4j.core.appender.rolling.SizeBasedTriggeringPolicy;
 import org.apache.logging.log4j.core.appender.rolling.DefaultRolloverStrategy;
 
-public class LoggerFactory { 
+public class LoggerFactory {
 
     private static volatile boolean initialized = false;
     private static volatile String logFile;
@@ -35,12 +35,12 @@ public class LoggerFactory {
     private static ServerOptions serverOptions;
 
     public static synchronized void configure(ServerOptions options) {
-        
+
     	LoggerContext loggerContext = ((LoggerContext)LogManager.getContext(false));
     	loggerContext.setConfiguration(new NullConfiguration());
     	loggerContext.updateLoggers();
     	Configuration log4jConfig = loggerContext.getConfiguration();
-    	
+
         serverOptions = options;
         logLevel = serverOptions.logLevel().toUpperCase();
         appenders = new ArrayList<>();
@@ -53,9 +53,9 @@ public class LoggerFactory {
         rootLoggerConfig.getAppenders().forEach( (appenderName,appender) -> rootLoggerConfig.removeAppender(appenderName) );
         rootLoggerConfig.setLevel(Level.WARN);
         rootLoggerConfig.addAppender(consoleAppender,level,null);
-        
 
-        LoggerConfig DORKBOX_LOG = new LoggerConfig( "dorkbox.systemTray.SystemTray", Level.ERROR, false );
+
+        LoggerConfig DORKBOX_LOG = new LoggerConfig( "dorkbox.systemTray.SystemTray", Level.TRACE, false );
         loggers.add(DORKBOX_LOG);
 
         LoggerConfig OSCACHE_LOG = new LoggerConfig( "com.opensymphony.oscache.base.Config", Level.WARN, false );
@@ -71,7 +71,7 @@ public class LoggerFactory {
         loggers.add(UNDERTOW_PREDICATE_LOG);
 
         LoggerConfig UNDERTOW_PROXY_LOG = new LoggerConfig( "io.undertow.proxy", Level.WARN, false );
-        loggers.add(UNDERTOW_PROXY_LOG);        
+        loggers.add(UNDERTOW_PROXY_LOG);
 
         LoggerConfig UNDERTOW_REQUEST_DUMPER_LOG = new LoggerConfig( "io.undertow.request.dump", Level.INFO, false );
         loggers.add(UNDERTOW_REQUEST_DUMPER_LOG);
@@ -113,16 +113,16 @@ public class LoggerFactory {
         if (serverOptions.debug() || !logLevel.equalsIgnoreCase("info")) {
 
             if( serverOptions.resourceManagerLogging() ) {
-                RUNWAR_REQUEST.setLevel(level);	
+                RUNWAR_REQUEST.setLevel(level);
             }
-        	
+
             if (logLevel.equalsIgnoreCase("trace")) {
                 DORKBOX_LOG.setLevel(level);
                 appenders.forEach(a -> DORKBOX_LOG.addAppender(a, DORKBOX_LOG.getLevel(), null));
                 UNDERTOW_LOG.setLevel(level);
                 UNDERTOW_PREDICATE_LOG.setLevel(level);
                 UNDERTOW_PROXY_LOG.setLevel(level);
-                UNDERTOW_IO_LOG.setLevel(level);                
+                UNDERTOW_IO_LOG.setLevel(level);
                 HTTP_CLIENT_LOG.setLevel(level);
                 RUNWAR_CONFIG.setLevel(level);
                 RUNWAR_SERVER.setLevel(level);
@@ -130,20 +130,20 @@ public class LoggerFactory {
                 RUNWAR_SECURITY.setLevel(level);
                 // Very chatty, but useful for debugging basic auth
                 UNDERTOW_REQUEST_SECURITY.setLevel(level);
-                
+
                 rootLoggerConfig.setLevel(level);
                 configureUrlRewriteLoggers(true,log4jConfig);
-            } else {                
+            } else {
                 RUNWAR_SECURITY.setLevel(Level.DEBUG);
                 UNDERTOW_PREDICATE_LOG.setLevel(Level.DEBUG);
-                UNDERTOW_PROXY_LOG.setLevel(Level.DEBUG);                
+                UNDERTOW_PROXY_LOG.setLevel(Level.DEBUG);
                 configureUrlRewriteLoggers(false,log4jConfig);
             }
         }
 
         if (serverOptions.hasLogDir()) {
             logFile = serverOptions.logDir().getPath() + '/' + serverOptions.logFileName() + ".out.txt";
-            
+
             RollingFileAppender fa = RollingFileAppender.newBuilder()
 	    		.setName("FileLogger")
 	    		.withFileName(logFile)
@@ -160,7 +160,7 @@ public class LoggerFactory {
 	    				.withMax("10")
 	    				.build())
 	    		.build();
-            
+
             fa.start();
             appenders.add(fa);
             rootLoggerConfig.addAppender(fa,Level.toLevel(logLevel),null);
@@ -186,7 +186,7 @@ public class LoggerFactory {
     }
 
     private static ConsoleAppender consoleAppender(String pattern) {
-    	
+
     	ConsoleAppender appender = ConsoleAppender.newBuilder()
 			.setName("rw.console")
 			.setLayout(
@@ -195,9 +195,9 @@ public class LoggerFactory {
 						.build() )
 			.setFilter(ThresholdFilter.createFilter(Level.toLevel(logLevel), Filter.Result.ACCEPT, Filter.Result.DENY))
 			.build();
-    	
+
     	appender.start();
-    	
+
         return appender;
     }
 
@@ -254,7 +254,7 @@ public class LoggerFactory {
                 logger.addAppender(consoleAppender(serverOptions.getLogPattern()),logger.getLevel(),null);
             });
         }
-        
+
         if (serverOptions.urlRewriteLog() != null) {
             rewriteLogAppender = RollingFileAppender.newBuilder()
             		.setName("URLRewriteFileLogger")
@@ -274,13 +274,13 @@ public class LoggerFactory {
             		.build();
 
             rewriteLogAppender.start();
-            
+
             RunwarLogger.CONF_LOG.infof("Enabling URL rewrite log: %s", rewriteLogAppender.getFileName());
             urlrewriteLoggers.forEach(logger -> {
                 logger.addAppender(rewriteLogAppender,logger.getLevel(),null);
             });
         }
-        
+
     }
 
     public static void listLoggers() {
@@ -288,12 +288,12 @@ public class LoggerFactory {
     	LoggerContext loggerContext = ((LoggerContext)LogManager.getContext(false));
     	Configuration log4jConfig = loggerContext.getConfiguration();
         System.out.println("Printing out " + log4jConfig.getLoggers().size() + " loggers.");
-        
+
         log4jConfig.getLoggers().forEach( (loggerName,loggerConfig) -> {
             System.out.println("Logger: " + loggerConfig.getName() + " (" + loggerConfig.getLevel().name() + ")");
             loggerConfig.getAppenders().forEach( (appenderName,appender) -> System.out.println("  appender: " + appenderName) );
         } );
-        
+
     }
 
 }

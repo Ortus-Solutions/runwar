@@ -80,6 +80,11 @@ public class Tray {
         SystemTray.AUTO_SIZE = true;
         SystemTray.FORCE_GTK2 = true;
         SystemTray.AUTO_FIX_INCONSISTENCIES = true;
+        RunwarLogger.LOG.trace("SystemTray Version: " + SystemTray.getVersion() );
+        if( server.getServerOptions().logLevel().toUpperCase().equals( "TRACE" ) ) {
+            RunwarLogger.LOG.trace("Settting SystemTray.DEBUG = true");
+            SystemTray.DEBUG = true;
+        }
         System.setProperty("SWT_GTK3", "0");
 //        SystemTray.FORCE_TRAY_TYPE = TrayType.;
         if (GraphicsEnvironment.isHeadless()) {
@@ -265,7 +270,7 @@ public class Tray {
             }
         }
     }
-    
+
     public String checkAndFixUrl(String url, ServerOptions serverOptions){
         if(!url.startsWith("http")){
             if(url.startsWith("/")){
