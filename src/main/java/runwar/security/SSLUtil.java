@@ -13,6 +13,9 @@ import org.bouncycastle.openssl.PEMEncryptedKeyPair;
 import org.bouncycastle.openssl.PEMKeyPair;
 import org.bouncycastle.openssl.PEMParser;
 import org.bouncycastle.openssl.jcajce.JcaPEMKeyConverter;
+import org.bouncycastle.pkcs.PKCS8EncryptedPrivateKeyInfo;
+import org.bouncycastle.openssl.jcajce.JceOpenSSLPKCS8DecryptorProviderBuilder;
+import org.bouncycastle.operator.InputDecryptorProvider;
 import org.bouncycastle.openssl.jcajce.JcePEMDecryptorProviderBuilder;
 import org.xnio.IoUtils;
 import runwar.logging.RunwarLogger;
@@ -294,38 +297,32 @@ public class SSLUtil
     private static PrivateKey loadPemPrivateKey(final File file, final char[] passphrase) throws Exception {
         Security.addProvider(new BouncyCastleProvider());
         try(final PEMParser pemParser = new PEMParser(new BufferedReader(new FileReader(file)))){
-            final PEMDecryptorProvider build = new JcePEMDecryptorProviderBuilder().build(passphrase);
-            final JcaPEMKeyConverter jcaPEMKeyConverter = new JcaPEMKeyConverter();
-            PrivateKey privateKey;
+            final PEMDecryptorProvider decProv = new JcePEMDecryptorProviderBuilder().build(passphrase);
+            final JcaPEMKeyConverter converter = new JcaPEMKeyConverter().setProvider("BC");
             final Object object = pemParser.readObject();
+
+            if( object == null ) {
+                throw new IOException("No private key found in the file.  Please check the private key file format." );
+            }
+
             if (object instanceof PEMEncryptedKeyPair) {
-                privateKey = jcaPEMKeyConverter.getKeyPair(((PEMEncryptedKeyPair)object).decryptKeyPair(build)).getPrivate();
+                RunwarLogger.SECURITY_LOGGER.debug( "Encrypted private key - we will use provided password" );
+                return converter.getKeyPair(((PEMEncryptedKeyPair) object).decryptKeyPair(decProv)).getPrivate();
+            } else if (object instanceof PEMKeyPair) {
+                RunwarLogger.SECURITY_LOGGER.debug( "Unencrypted private key - no password needed" );
+                return converter.getKeyPair((PEMKeyPair) object).getPrivate();
+            } else if (object instanceof PrivateKeyInfo) {
+                RunwarLogger.SECURITY_LOGGER.debug( "Private key in PrivateKeyInfo format" );
+                return converter.getPrivateKey( (PrivateKeyInfo)object );
+            } else if (object instanceof PKCS8EncryptedPrivateKeyInfo) {
+                RunwarLogger.SECURITY_LOGGER.debug( "Private key in PKCS8EncryptedPrivateKeyInfo format - we will use provided password" );
+                PKCS8EncryptedPrivateKeyInfo privateKeyInfo = (PKCS8EncryptedPrivateKeyInfo)object;
+                InputDecryptorProvider pkcs8Prov = new JceOpenSSLPKCS8DecryptorProviderBuilder().build(passphrase);
+                PrivateKeyInfo decryptedPrivateKeyInfo = privateKeyInfo.decryptPrivateKeyInfo(pkcs8Prov);
+                return converter.getPrivateKey(decryptedPrivateKeyInfo);
+            } else {
+                throw new IOException("Unsupported private key format: [" + object.getClass().getName() + "].  Please report this as a bug." );
             }
-            else {
-                PrivateKeyInfo privateKeyInfo;
-                if (object instanceof PEMKeyPair) {
-                    privateKeyInfo = ((PEMKeyPair)object).getPrivateKeyInfo();
-                }
-                else {
-                    privateKeyInfo = (PrivateKeyInfo)object;
-                }
-                if (privateKeyInfo != null) {
-                    privateKey = new JcaPEMKeyConverter().getPrivateKey(privateKeyInfo);
-                }
-                else {
-                    final KeyStore keyStore = KeyStore.getInstance("PKCS12", "BC");
-                    final FileInputStream fileInputStream = new FileInputStream(file);
-                    keyStore.load(fileInputStream, passphrase);
-                    fileInputStream.close();
-                    final Enumeration<String> aliases = keyStore.aliases();
-                    String alias = "";
-                    while (aliases.hasMoreElements()) {
-                        alias = aliases.nextElement();
-                    }
-                    privateKey = (PrivateKey)keyStore.getKey(alias, passphrase);
-                }
-            }
-            return privateKey;
         }
     }
 
