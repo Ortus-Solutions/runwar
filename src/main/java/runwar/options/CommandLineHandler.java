@@ -19,6 +19,7 @@ import runwar.Server;
 import static runwar.options.ServerOptions.Keys;
 import static runwar.logging.RunwarLogger.CONF_LOG;
 
+@SuppressWarnings("deprecation")
 public class CommandLineHandler {
 
     private static PosixParser parser;
