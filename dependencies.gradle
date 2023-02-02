@@ -78,6 +78,12 @@ dependencies {
     compile group: 'org.jooq', name: 'joox-java-6', version: '1.6.2'
 
     // logging
+    // Older libs require the older version of slf4j. Specificallyk test with "server cd" command which sends the following warnings to the console
+    /*  SLF4J: Failed to load class "org.slf4j.impl.StaticLoggerBinder".
+        SLF4J: Defaulting to no-operation (NOP) logger implementation
+        SLF4J: See http://www.slf4j.org/codes.html#StaticLoggerBinder for further details. */
+    compile("org.apache.logging.log4j:log4j-slf4j-impl:2.19.0")
+    // This is the newer version which is required for SystemTray's logging to work.
     compile("org.apache.logging.log4j:log4j-slf4j2-impl:2.19.0")
     compile("org.apache.logging.log4j:log4j-core:2.19.0")
 
