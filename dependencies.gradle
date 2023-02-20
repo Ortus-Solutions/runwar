@@ -13,7 +13,8 @@ ext {
     undertowVersion = '2.2.22.Final'
     urlRewriteVersion = '5.0.1-SNAPSHOT'
     proguardVersion = '6.0.2'
-    systemTrayVersion = '4.2'
+    //systemTrayVersion = '3.17'
+    systemTrayVersion = '4.2.2'
     jbossJspApiVersion = '1.0.3'
     mavenRepo = "${System.getProperty("user.home")}/cfdistro/artifacts/"
 }
@@ -61,7 +62,7 @@ dependencies {
     /////
 
     // squish the dorkbox stuff together for java 9+
-    dorkboxDependency("com.dorkbox:Notify:3.7")
+    dorkboxDependency("com.dorkbox:Notify:4.0")
     dorkboxDependency("com.dorkbox:SystemTray:${systemTrayVersion}") {
         exclude group: 'ch.qos.logback', module: 'logback-core'
         exclude group: 'ch.qos.logback', module: 'logback-classic'

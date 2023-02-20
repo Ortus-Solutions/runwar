@@ -20,12 +20,13 @@ import dorkbox.systemTray.Menu;
 import dorkbox.systemTray.MenuItem;
 import dorkbox.systemTray.Separator;
 import dorkbox.systemTray.SystemTray;
-import dorkbox.util.OS;
+import dorkbox.os.OS;
 import javax.swing.JOptionPane;
 import javax.swing.JScrollPane;
 import javax.swing.JTextArea;
 import dorkbox.notify.Notify;
-import dorkbox.notify.Pos;
+import dorkbox.notify.Position;
+import dorkbox.notify.Theme;
 import java.util.concurrent.ExecutorService;
 import java.util.concurrent.Executors;
 import java.util.concurrent.Future;
@@ -611,12 +612,12 @@ public class Tray {
                 }
 
                 // Consistent with server popups
-                Pos position = OS.isMacOsX() ? Pos.TOP_RIGHT : Pos.BOTTOM_RIGHT;
-                Notify.create()
+                Position position = OS.INSTANCE.isMacOsX() ? Position.TOP_RIGHT : Position.BOTTOM_RIGHT;
+                Notify.Companion.create()
                         .title("Run Command")
                         .text("Executed " + command)
                         .position(position)
-                        .darkStyle()
+                        .theme(Theme.Companion.getDefaultDark())
                         .hideAfter(5000)
                         .showConfirm();
 

@@ -36,9 +36,10 @@ import java.util.jar.Pack200;
 import java.util.zip.GZIPInputStream;
 
 import dorkbox.notify.Notify;
-import dorkbox.notify.Pos;
-import dorkbox.util.ActionHandler;
-import dorkbox.util.OS;
+import dorkbox.notify.Position;
+import dorkbox.notify.Theme;
+//import dorkbox.util.ActionHandler;
+import dorkbox.os.OS;
 import runwar.logging.LoggerFactory;
 import runwar.logging.RunwarLogger;
 import runwar.options.ServerOptions;
@@ -121,7 +122,7 @@ public class LaunchUtil {
         InputStream is = process.getInputStream();
         InputStreamReader isr = new InputStreamReader(is);
         BufferedReader br = new BufferedReader(isr);
-        
+
 
         long PID = 0;
         // PID is only accessable on Java 9+
@@ -166,7 +167,7 @@ public class LaunchUtil {
                     exit = process.exitValue();
                     if (exit == 0) {
                     	if( line != null ) {
-                    		RunwarLogger.LOG.debug(line);	
+                    		RunwarLogger.LOG.debug(line);
                     	}
                         // Process finished
                         while ((line = br.readLine()) != null) {
@@ -179,7 +180,7 @@ public class LaunchUtil {
                         break;
                     } else {
                     	if( line != null ) {
-                            printExceptionLine(line);	
+                            printExceptionLine(line);
                     	}
                         while ((line = br.readLine()) != null) {
                             printExceptionLine(line);
@@ -381,18 +382,18 @@ public class LaunchUtil {
             return;
         }
         try {
-            Pos position = OS.isMacOsX() ? Pos.TOP_RIGHT : Pos.BOTTOM_RIGHT;
-            final Notify notify = Notify.create()
+            Position position = OS.INSTANCE.isMacOsX() ? Position.TOP_RIGHT : Position.BOTTOM_RIGHT;
+            final Notify notify = Notify.Companion.create()
                     .title(title)
                     .text(text)
                     .hideAfter(hideAfter)
                     .position(position)
-                    .darkStyle()
-                    .onAction(new ActionHandler<Notify>() {
-                        @Override
-                        public void handle(final Notify arg0) {
-                        }
-                    });
+                    .theme(Theme.Companion.getDefaultDark());
+                   // .onAction(new ActionHandler<Notify>() {
+                   //     @Override
+                   //     public void handle(final Notify arg0) {
+                   //     }
+                   // });
 
             // ensure the messages disappear
             Timer timer = new Timer(true);
@@ -425,7 +426,8 @@ public class LaunchUtil {
                     break;
             }
         } catch (Exception e) {
-            printMessage(title, text, type);
+            throw new RuntimeException(e);
+           // printMessage(title, text, type);
             //RunwarLogger.ROOT_LOGGER.error(e);
         }
     }
@@ -903,5 +905,5 @@ public class LaunchUtil {
             throw new RuntimeException(e);
         }
     }
-    
+
 }
