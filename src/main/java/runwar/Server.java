@@ -491,16 +491,6 @@ public class Server {
                 .addInnerHandlerChainWrapper(new HandlerWrapper() {
                     @Override
                     public HttpHandler wrap(HttpHandler next) {
-
-                    /*    HttpHandler httpHandler = HttpHandler() {
-                            @Override
-                            public void handleRequest(HttpServerExchange exchange) throws Exception {
-
-
-                            	next.handleRequest(exchange);
-                            }
-                        };
-*/
                         // Set SSL_CLIENT_ headers if client certs are present
                         return new SSLClientCertHeaderHandler( next, serverOptions, serverOptions.cfEngineName().toLowerCase().contains( "lucee" ) );
 
