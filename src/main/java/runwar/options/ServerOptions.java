@@ -137,6 +137,8 @@ public interface ServerOptions {
         final static String CLIENTCERTSUBJECTDNS="clientcertsubjectdns";
         final static String CLIENTCERTISSUERDNS="clientcertissuerdns";
         final static String MIMETYPES="mimetypes";
+        final static String CONSOLELAYOUT="consoleLayout";
+        final static String CONSOLELAYOUTOPTIONS="consoleLayoutOptions";
 
     }
 
@@ -659,6 +661,14 @@ public interface ServerOptions {
     OptionMap.Builder undertowOptions();
 
     ServerOptions undertowOptions(String options);
+
+    String consoleLayout();
+
+    ServerOptions consoleLayout(String consoleLayout);
+
+    Map consoleLayoutOptions();
+
+    ServerOptions consoleLayoutOptions(String consoleLayoutOptions);
 
     ServerOptions undertowOptions(OptionMap.Builder options);
 

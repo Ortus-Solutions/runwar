@@ -104,6 +104,7 @@ shadowJar {
     archiveClassifier = null
     mergeServiceFiles()
     exclude('**/*.java')
+    transform(com.github.jengelman.gradle.plugins.shadow.transformers.Log4j2PluginsCacheFileTransformer)
     manifest {
        attributes(
      	 "Multi-Release": true )

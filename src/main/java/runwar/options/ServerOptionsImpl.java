@@ -177,6 +177,10 @@ public class ServerOptionsImpl implements ServerOptions {
 
     private Set<String> contentDirectories = new HashSet<>();
 
+    private String consoleLayout="PatternLayout";
+
+    private Map<String, Object> consoleLayoutOptions = new HashMap<String, Object>();
+
     public String getLogPattern() {
         return logPattern;
     }
@@ -2594,6 +2598,35 @@ public class ServerOptionsImpl implements ServerOptions {
     @Override
     public ServerOptions undertowOptions(OptionMap.Builder options) {
         this.undertowOptions = options;
+        return this;
+    }
+
+    @Override
+    public String consoleLayout() {
+        return this.consoleLayout;
+    }
+
+    @Override
+    public ServerOptions consoleLayout(String consoleLayout) {
+        this.consoleLayout = consoleLayout;
+        return this;
+    }
+
+    @Override
+    public Map<String, Object> consoleLayoutOptions() {
+        if( consoleLayout().equals( "PatternLayout" ) && !this.consoleLayoutOptions.containsKey( "pattern" ) ) {
+            this.consoleLayoutOptions.put( "pattern", getLogPattern() );
+        }
+        return this.consoleLayoutOptions;
+    }
+
+    @Override
+    public ServerOptions consoleLayoutOptions(String consoleLayoutOptions) {
+    	try {
+          this.consoleLayoutOptions = (JSONObject)(new JSONParser().parse( consoleLayoutOptions ));
+    	} catch( Exception e ) {
+    		throw new RuntimeException( e );
+    	}
         return this;
     }
 

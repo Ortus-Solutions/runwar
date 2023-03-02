@@ -6,6 +6,8 @@ import runwar.options.ServerOptionsImpl;
 import java.util.ArrayList;
 import java.util.Enumeration;
 import java.util.List;
+import java.util.Map;
+import java.util.Set;
 import org.apache.logging.log4j.core.Appender;
 import org.apache.logging.log4j.core.Filter;
 import org.apache.logging.log4j.core.appender.ConsoleAppender;
@@ -13,10 +15,20 @@ import org.apache.logging.log4j.Level;
 import org.apache.logging.log4j.LogManager;
 import org.apache.logging.log4j.core.LoggerContext;
 import org.apache.logging.log4j.core.config.Configuration;
+import org.apache.logging.log4j.core.config.properties.PropertiesConfiguration;
+import org.apache.logging.log4j.core.appender.rolling.RolloverStrategy;
+import org.apache.logging.log4j.core.config.builder.api.ComponentBuilder;
+import org.apache.logging.log4j.core.config.builder.api.LayoutComponentBuilder;
+import org.apache.logging.log4j.core.config.builder.api.AppenderComponentBuilder;
 import org.apache.logging.log4j.Logger;
+import org.apache.logging.log4j.core.Layout;
 import org.apache.logging.log4j.core.layout.PatternLayout;
+import org.apache.logging.log4j.core.layout.Rfc5424Layout;
+import org.apache.logging.log4j.layout.template.json.JsonTemplateLayout;
 import org.apache.logging.log4j.core.appender.RollingFileAppender;
 import org.apache.logging.log4j.core.config.NullConfiguration;
+import org.apache.logging.log4j.core.config.DefaultConfiguration;
+import org.apache.logging.log4j.core.config.builder.impl.DefaultConfigurationBuilder;
 import org.apache.logging.log4j.core.config.LoggerConfig;
 import org.apache.logging.log4j.core.filter.ThresholdFilter;
 import org.apache.logging.log4j.core.appender.rolling.SizeBasedTriggeringPolicy;
@@ -34,19 +46,76 @@ public class LoggerFactory {
     private static volatile ConsoleAppender consoleAppender;
     private static ServerOptions serverOptions;
 
+    @SuppressWarnings("unchecked")
     public static synchronized void configure(ServerOptions options) {
-
-    	LoggerContext loggerContext = ((LoggerContext)LogManager.getContext(false));
-    	loggerContext.setConfiguration(new NullConfiguration());
-    	loggerContext.updateLoggers();
-    	Configuration log4jConfig = loggerContext.getConfiguration();
 
         serverOptions = options;
         logLevel = serverOptions.logLevel().toUpperCase();
+    	LoggerContext loggerContext = ((LoggerContext)LogManager.getContext(false));
+        Level level = Level.toLevel(logLevel);
+
+        DefaultConfigurationBuilder builder = new DefaultConfigurationBuilder();
+
+        // Create the layout the user requested
+        if( serverOptions.debug() ) System.out.println("Using Console logger layout: " + serverOptions.consoleLayout() );
+        LayoutComponentBuilder appenderlayout = builder
+            .newLayout( serverOptions.consoleLayout() );
+        // Add any attributes to the layout
+        for (Map.Entry<String, Object> entry : (Set<Map.Entry<String, Object>>)(serverOptions.consoleLayoutOptions().entrySet()) ) {
+        if( serverOptions.debug() ) System.out.println("Console logger layout option: " + entry.getKey() + "=" + entry.getValue() );
+            appenderlayout.addAttribute( entry.getKey(), entry.getValue());
+        }
+
+        builder.add(
+            builder
+                .newAppender("rw.console", "Console")
+                .add( appenderlayout )
+                .add(
+                    builder
+                        .newFilter("ThresholdFilter", Filter.Result.ACCEPT, Filter.Result.DENY)
+                        .addAttribute("level", Level.INFO)
+                )
+        );
+
+        if (serverOptions.hasLogDir()) {
+            logFile = serverOptions.logDir().getPath() + '/' + serverOptions.logFileName() + ".out.txt";
+
+            builder.add(
+                builder
+                    .newAppender("FileLogger", "RollingFile")
+                    .addAttribute("fileName", logFile)
+                    .addAttribute("filePattern", logFile + "%i")
+                    .addAttribute("append", true)
+                    .add( appenderlayout )
+                    .add(
+                        builder
+                            .newFilter("ThresholdFilter", Filter.Result.ACCEPT, Filter.Result.DENY)
+                            .addAttribute("level", level)
+                    )
+                    .addComponent(
+                        builder
+                            .newComponent("Policies")
+                            .addComponent(
+                                builder
+                                    .newComponent("SizeBasedTriggeringPolicy")
+                                    .addAttribute("size", "10MB")
+                            )
+                    )
+                    .addComponent(
+                        builder
+                            .newComponent("DefaultRolloverStrategy")
+                            .addAttribute("max", 10)
+                    )
+            );
+        }
+
+    	loggerContext.setConfiguration( builder.build() );
+    	loggerContext.updateLoggers();
+    	Configuration log4jConfig = loggerContext.getConfiguration();
+
         appenders = new ArrayList<>();
         loggers = new ArrayList<>();
-        Level level = Level.toLevel(logLevel);
-        consoleAppender = consoleAppender(serverOptions.getLogPattern());
+        consoleAppender = log4jConfig.getAppender( "rw.console" );
         appenders.add(consoleAppender);
         LoggerConfig rootLoggerConfig = log4jConfig.getLoggerConfig(LogManager.ROOT_LOGGER_NAME);
         // For some reason the null configuration above doesn't remove the default console appender in the root logger.
@@ -54,6 +123,10 @@ public class LoggerFactory {
         rootLoggerConfig.setLevel(Level.WARN);
         rootLoggerConfig.addAppender(consoleAppender,level,null);
 
+         if (serverOptions.hasLogDir()) {
+            appenders.add(log4jConfig.getAppender( "FileLogger" ) );
+            rootLoggerConfig.addAppender(log4jConfig.getAppender( "FileLogger" ),level,null);
+         }
 
         LoggerConfig DORKBOX_LOG = new LoggerConfig( "dorkbox.systemTray.SystemTray", Level.TRACE, false );
         loggers.add(DORKBOX_LOG);
@@ -141,31 +214,6 @@ public class LoggerFactory {
             }
         }
 
-        if (serverOptions.hasLogDir()) {
-            logFile = serverOptions.logDir().getPath() + '/' + serverOptions.logFileName() + ".out.txt";
-
-            RollingFileAppender fa = RollingFileAppender.newBuilder()
-	    		.setName("FileLogger")
-	    		.withFileName(logFile)
-	            .withFilePattern( logFile + "%i")
-	    		.setLayout(
-	    				PatternLayout.newBuilder()
-	    					.withPattern(serverOptions.getLogPattern())
-	    					.build() )
-	    		.setFilter(ThresholdFilter.createFilter(Level.toLevel(logLevel), Filter.Result.ACCEPT, Filter.Result.DENY))
-	    		.withAppend(true)
-	    		.withPolicy(SizeBasedTriggeringPolicy.createPolicy("10MB"))
-	    		.withStrategy(
-	    				DefaultRolloverStrategy.newBuilder()
-	    				.withMax("10")
-	    				.build())
-	    		.build();
-
-            fa.start();
-            appenders.add(fa);
-            rootLoggerConfig.addAppender(fa,Level.toLevel(logLevel),null);
-        }
-
         loggers.forEach(logger -> {
         	appenders.forEach(appender -> logger.addAppender(appender,logger.getLevel(),null) );
             log4jConfig.addLogger(logger.getName(), logger);
@@ -188,11 +236,12 @@ public class LoggerFactory {
     private static ConsoleAppender consoleAppender(String pattern) {
 
     	ConsoleAppender appender = ConsoleAppender.newBuilder()
-			.setName("rw.console")
+			.setName("rw.console2")
 			.setLayout(
-					PatternLayout.newBuilder()
-						.withPattern(pattern)
-						.build() )
+                PatternLayout.newBuilder()
+                    .withPattern(serverOptions.getLogPattern())
+                    .build()
+            )
 			.setFilter(ThresholdFilter.createFilter(Level.toLevel(logLevel), Filter.Result.ACCEPT, Filter.Result.DENY))
 			.build();
 
@@ -207,14 +256,10 @@ public class LoggerFactory {
 
     public static synchronized boolean initialize() {
     	return true;
-        //return initialize(false);
     }
 
     public static synchronized boolean initialize(boolean force) {
     	return true;
-        //    if (!initialized || force)
-//            configure(new ServerOptionsImpl().logDir(""));
-  // 	      return initialized;
     }
 
     public static void configureUrlRewriteLoggers(boolean isTrace, Configuration log4jConfig) {
@@ -244,14 +289,14 @@ public class LoggerFactory {
             RunwarLogger.CONF_LOG.infof("Enabling URL rewrite log level: %s", "TRACE");
             urlrewriteLoggers.forEach(logger -> {
                 logger.setLevel(Level.TRACE);
-                logger.addAppender(consoleAppender(serverOptions.getLogPattern()),logger.getLevel(),null);
+                logger.addAppender(log4jConfig.getAppender( "rw.console" ),logger.getLevel(),null);
             });
         } else {
             RunwarLogger.CONF_LOG.infof("Enabling URL rewrite log level: %s", "DEBUG");
             REWRITE_EXECUTION_LOG.setLevel(Level.DEBUG);
             REWRITE_WRITER_LOG.setLevel(Level.DEBUG);
             urlrewriteLoggers.forEach(logger -> {
-                logger.addAppender(consoleAppender(serverOptions.getLogPattern()),logger.getLevel(),null);
+                logger.addAppender(log4jConfig.getAppender( "rw.console" ),logger.getLevel(),null);
             });
         }
 

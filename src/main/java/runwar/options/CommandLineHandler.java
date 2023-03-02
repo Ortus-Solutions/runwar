@@ -737,6 +737,19 @@ public class CommandLineHandler {
                 .hasArg().withArgName("[%-5p] %c: %m%n")
                 .create(Keys.LOGPATTERN));
 
+        options.addOption(OptionBuilder
+                .withLongOpt("console-layout")
+                .withDescription("Log4j layout name for console logging")
+                .hasArg().withArgName("PatternLayout")
+                .create(Keys.CONSOLELAYOUT));
+
+        options.addOption(OptionBuilder
+                .withLongOpt("console-layout-options")
+                .withDescription("Log4j layout options")
+                .hasArg().withArgName("{\"option\":\"value\"}")
+                .create(Keys.CONSOLELAYOUTOPTIONS));
+
+
         options.addOption(new Option("h", Keys.HELP, false, "print this message"));
         options.addOption(new Option("v", "version", false, "print runwar version and undertow version"));
 
@@ -775,6 +788,14 @@ public class CommandLineHandler {
 
             if (hasOptionValue(line, Keys.LOGPATTERN)) {
                 serverOptions.logPattern(line.getOptionValue(Keys.LOGPATTERN));
+            }
+
+            if (hasOptionValue(line, Keys.CONSOLELAYOUT)) {
+                serverOptions.consoleLayout(line.getOptionValue(Keys.CONSOLELAYOUT));
+            }
+
+            if (hasOptionValue(line, Keys.CONSOLELAYOUTOPTIONS)) {
+                serverOptions.consoleLayoutOptions(line.getOptionValue(Keys.CONSOLELAYOUTOPTIONS));
             }
 
             if (line.hasOption(Keys.WAR)) {
