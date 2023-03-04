@@ -68,13 +68,13 @@ public class ServerOptionsImpl implements ServerOptions {
     private char[] sslKeyPass = null;
 
     private String securityRealm = "";
-    
+
     private Boolean clientCertEnable = false;
-    
+
     private Boolean clientCertTrustHeaders = false;
-    
+
     private JSONArray clientCertSubjectDNs = new JSONArray();
-    
+
     private JSONArray clientCertIssuerDNs = new JSONArray();
 
     private char[] stopPassword = "klaatuBaradaNikto".toCharArray();
@@ -171,9 +171,15 @@ public class ServerOptionsImpl implements ServerOptions {
 
     private Boolean autoCreateContextsVDirs=false;
 
-    private final Map<String, String> aliases = new HashMap<>();
+    private final Map<String, String> aliases = new HashMap<String, String>();
+
+    private final Map<String, String> mimeTypes = new HashMap<String, String>();
 
     private Set<String> contentDirectories = new HashSet<>();
+
+    private String consoleLayout="PatternLayout";
+
+    private Map<String, Object> consoleLayoutOptions = new HashMap<String, Object>();
 
     public String getLogPattern() {
         return logPattern;
@@ -752,6 +758,28 @@ public class ServerOptionsImpl implements ServerOptions {
     public ServerOptions aliases(Map<String,String> aliases) {
         this.aliases.putAll(aliases);
         return this;
+    }
+
+    @Override
+    public ServerOptions mimeTypes(String mimeTypes) {
+        Stream.of(mimeTypes.split(",")).forEach(mimeType -> {
+            String[] mimePair = mimeType.trim().split(";");
+            if (mimePair.length == 2) {
+                this.mimeTypes.put( mimePair[0], mimePair[1] );
+            }
+        });
+        return this;
+    }
+
+    @Override
+    public ServerOptions mimeTypes(Map<String,String> mimeTypes) {
+        this.mimeTypes.putAll(aliases);
+        return this;
+    }
+
+    @Override
+    public Map<String,String> mimeTypes() {
+        return this.mimeTypes;
     }
 
     /**
@@ -1474,29 +1502,29 @@ public class ServerOptionsImpl implements ServerOptions {
     public String securityRealm(){
         return this.securityRealm;
     }
-    
+
     @Override
     public ServerOptions clientCertEnable(Boolean clientCertEnable){
         this.clientCertEnable = clientCertEnable;
         return this;
     }
-    
+
     @Override
     public Boolean clientCertEnable(){
         return this.clientCertEnable;
     }
-    
+
     @Override
     public ServerOptions clientCertTrustHeaders(Boolean clientCertTrustHeaders){
         this.clientCertTrustHeaders = clientCertTrustHeaders;
         return this;
     }
-    
+
     @Override
     public Boolean clientCertTrustHeaders(){
         return this.clientCertTrustHeaders;
     }
-    
+
     @Override
     public ServerOptions clientCertSubjectDNs(String clientCertSubjectDNs){
     	try {
@@ -1507,12 +1535,12 @@ public class ServerOptionsImpl implements ServerOptions {
 		}
         return this;
     }
-    
+
     @Override
     public JSONArray clientCertSubjectDNs(){
         return this.clientCertSubjectDNs;
     }
-    
+
     @Override
     public ServerOptions clientCertIssuerDNs(String clientCertIssuerDNs){
     	try {
@@ -1522,7 +1550,7 @@ public class ServerOptionsImpl implements ServerOptions {
     	}
         return this;
     }
-    
+
     @Override
     public JSONArray clientCertIssuerDNs(){
         return this.clientCertIssuerDNs;
@@ -2570,6 +2598,35 @@ public class ServerOptionsImpl implements ServerOptions {
     @Override
     public ServerOptions undertowOptions(OptionMap.Builder options) {
         this.undertowOptions = options;
+        return this;
+    }
+
+    @Override
+    public String consoleLayout() {
+        return this.consoleLayout;
+    }
+
+    @Override
+    public ServerOptions consoleLayout(String consoleLayout) {
+        this.consoleLayout = consoleLayout;
+        return this;
+    }
+
+    @Override
+    public Map<String, Object> consoleLayoutOptions() {
+        if( consoleLayout().equals( "PatternLayout" ) && !this.consoleLayoutOptions.containsKey( "pattern" ) ) {
+            this.consoleLayoutOptions.put( "pattern", getLogPattern() );
+        }
+        return this.consoleLayoutOptions;
+    }
+
+    @Override
+    public ServerOptions consoleLayoutOptions(String consoleLayoutOptions) {
+    	try {
+          this.consoleLayoutOptions = (JSONObject)(new JSONParser().parse( consoleLayoutOptions ));
+    	} catch( Exception e ) {
+    		throw new RuntimeException( e );
+    	}
         return this;
     }
 

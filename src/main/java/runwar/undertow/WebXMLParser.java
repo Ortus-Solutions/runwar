@@ -57,10 +57,10 @@ public class WebXMLParser {
             if (displayName != null) {
                 info.setDisplayName(displayName);
             }
-            
+
             Match contextParams = $(doc).find("context-param");
             trace("Total No. of context-params: %s", contextParams.size());
-            
+
             contextParams.each(ctx -> {
                 String pName = getRequired(ctx,"param-name");
                 String pValue = getRequired(ctx,"param-value");
@@ -76,7 +76,7 @@ public class WebXMLParser {
             if ( overrideEnabled && sizeListeners > 0 ) {
                 trace("Removing %s listener(s) from deployment due to web.xml override", info.getListeners().size());
                 info.getListeners().clear();
-            }              
+            }
             listeners.each(ctx -> {
                 String pName = getRequired(ctx,"listener-class");
                 CONF_LOG.tracef("Listener: %s", pName);
@@ -93,11 +93,11 @@ public class WebXMLParser {
             //do servlets
             Match servlets = $(doc).find("servlet");
             int sizeServlets = servlets.size();
-            trace("Total No. of servlets: %s", sizeServlets);  
+            trace("Total No. of servlets: %s", sizeServlets);
             if ( overrideEnabled && sizeServlets > 0 ) {
                 trace("Removing %s servlet(s) from deployment due to web.xml override", info.getServlets().size());
                 info.getServlets().clear();
-            }           
+            }
             servlets.each(servletElement -> {
                 String servletName = getRequired(servletElement, "servlet-name");
                 String servletClassName = getRequired(servletElement, "servlet-class");
@@ -141,9 +141,9 @@ public class WebXMLParser {
                     Match urlPatterns = $(mappingElement).find("url-pattern");
                     urlPatterns.each(urlPatternElement -> {
                         String urlPattern = $(urlPatternElement).text();
-                        
-                        
-                        
+
+
+
                         if ( isREST( servletName ) && ( ignoreRestMappings || !servletRestEnable ) ) {
                             CONF_LOG.tracef("Skipping mapping servlet-name: %s, url-partern: %s", servletName, urlPattern);
                         } else {
@@ -214,7 +214,7 @@ public class WebXMLParser {
                                     dispatcher);
                             info.addFilterUrlMapping(filterName, urlPattern, DispatcherType.valueOf(dispatcher));
                         });
-                    }	
+                    }
                 }
                 String servletName = $(ctx).find("servlet-name").text();
                 if (servletName != null) {
@@ -244,15 +244,15 @@ public class WebXMLParser {
             // do mime mappings
             Match mimeMappings = $(doc).find("mime-mapping");
             int sizeMimeMapping = mimeMappings.size();
-            trace("Total No. of mime-mappings: %s", sizeMimeMapping);            
+            trace("Total No. of mime-mappings: %s", sizeMimeMapping);
             if ( overrideEnabled && sizeMimeMapping > 0 ) {
                 trace("Removing %s mime mapping(s) from deployment due to web.xml override", info.getMimeMappings().size());
                 info.getMimeMappings().clear();
-            }            
+            }
             mimeMappings.each(ctx -> {
                 String extension = $(ctx).find("extension").text();
                 String mimeType = $(ctx).find("mime-type").text();
-                CONF_LOG.tracef("filter-name: %s, filter-class: %s", extension, mimeType);
+                CONF_LOG.tracef("extension: %s, mime-type: %s", extension, mimeType);
                 info.addMimeMapping(new MimeMapping(extension, mimeType));
             });
 
@@ -263,7 +263,7 @@ public class WebXMLParser {
             if ( overrideEnabled && sizeErrorPages > 0 ) {
                 trace("Removing %s error page(s) from deployment due to web.xml override", info.getErrorPages().size());
                 info.getErrorPages().clear();
-            }              
+            }
             errorPages.each(ctx -> {
                 String location = $(ctx).find("location").text();
                 String errorCode = $(ctx).find("error-code").text();
@@ -307,11 +307,11 @@ public class WebXMLParser {
             throw new RuntimeException(e);
         }
     }
-    
+
     private static boolean isREST(String servletName) {
         return servletName.toLowerCase().equals("restservlet") || servletName.toLowerCase().equals("cfrestservlet");
     }
-    
+
     private static String getRequired(Context ctx, String param) {
         final String result = $(ctx).find(param).text();
         if(result == null) {
@@ -333,5 +333,5 @@ public class WebXMLParser {
     private static void trace(String string, Object elements) {
         CONF_LOG.tracef(string, elements);
     }
-    
+
 }

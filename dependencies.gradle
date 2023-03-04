@@ -10,10 +10,11 @@ configurations {
 }
 
 ext {
-    undertowVersion = '2.2.21.Final'
+    undertowVersion = '2.2.22.Final'
     urlRewriteVersion = '5.0.1-SNAPSHOT'
     proguardVersion = '6.0.2'
     systemTrayVersion = '3.17'
+    //systemTrayVersion = '4.2'
     jbossJspApiVersion = '1.0.3'
     mavenRepo = "${System.getProperty("user.home")}/cfdistro/artifacts/"
 }
@@ -77,8 +78,15 @@ dependencies {
     compile group: 'org.jooq', name: 'joox-java-6', version: '1.6.2'
 
     // logging
-    compile("org.apache.logging.log4j:log4j-slf4j-impl:2.18.0")
-    compile("org.apache.logging.log4j:log4j-core:2.18.0")
+    // Older libs require the older version of slf4j. Specificallyk test with "server cd" command which sends the following warnings to the console
+    /*  SLF4J: Failed to load class "org.slf4j.impl.StaticLoggerBinder".
+        SLF4J: Defaulting to no-operation (NOP) logger implementation
+        SLF4J: See http://www.slf4j.org/codes.html#StaticLoggerBinder for further details. */
+    compile("org.apache.logging.log4j:log4j-slf4j-impl:2.20.0")
+    // This is the newer version which is required for SystemTray's logging to work.
+    compile("org.apache.logging.log4j:log4j-slf4j2-impl:2.20.0")
+    compile("org.apache.logging.log4j:log4j-core:2.20.0")
+    compile("org.apache.logging.log4j:log4j-layout-template-json:2.20.0")
     compile("org.jboss.logging:jboss-logging:3.4.3.Final")
     compile("org.jboss.logging:jboss-logging-annotations:2.2.1.Final")
 
@@ -98,12 +106,6 @@ dependencies {
     compile("org.bouncycastle:bcpkix-jdk15on:1.57")
     // ansi colors for logging system output
     compile("com.jcabi:jcabi-log:0.18.1") { transitive = false }
-
-    if( org.gradle.util.VersionNumber.parse( System.getProperty( 'java.version' ) ) > org.gradle.util.VersionNumber.parse( '1.8' ) ) {
-        implementation 'org.jboss.spec.javax.xml.bind:jboss-jaxb-api_2.3_spec:1.0.1.Final'
-    }
-    //runtimeOnly 'org.cfmlprojects:javashim:1.0.1' // for Railo (sun.misc.VM)
-    implementation 'org.jboss.spec.javax.xml.bind:jboss-jaxb-api_2.3_spec:1.0.1.Final'
 
     // tests
     testCompile("org.apache.httpcomponents:httpclient:4.5.12")

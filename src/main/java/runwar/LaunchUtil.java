@@ -121,7 +121,7 @@ public class LaunchUtil {
         InputStream is = process.getInputStream();
         InputStreamReader isr = new InputStreamReader(is);
         BufferedReader br = new BufferedReader(isr);
-        
+
 
         long PID = 0;
         // PID is only accessable on Java 9+
@@ -166,7 +166,7 @@ public class LaunchUtil {
                     exit = process.exitValue();
                     if (exit == 0) {
                     	if( line != null ) {
-                    		RunwarLogger.LOG.debug(line);	
+                    		RunwarLogger.LOG.debug(line);
                     	}
                         // Process finished
                         while ((line = br.readLine()) != null) {
@@ -179,7 +179,7 @@ public class LaunchUtil {
                         break;
                     } else {
                     	if( line != null ) {
-                            printExceptionLine(line);	
+                            printExceptionLine(line);
                     	}
                         while ((line = br.readLine()) != null) {
                             printExceptionLine(line);
@@ -253,24 +253,22 @@ public class LaunchUtil {
             }
             relaunching = true;
             LoggerFactory.initialize();
-            String path = LaunchUtil.class.getProtectionDomain().getCodeSource().getLocation().getPath();
-            RunwarLogger.LOG.info("Starting background " + processName + " from: " + path + " ");
-            String decodedPath = URLDecoder.decode(path, "UTF-8");
-            decodedPath = new File(decodedPath).getPath();
             List<String> cmdarray = new ArrayList<String>();
             cmdarray.add(getJreExecutable().toString());
             List<String> VMArgs = jvmArgs != null ? jvmArgs : getCurrentVMArgs();
             for (String arg : VMArgs) {
                 cmdarray.add(arg);
             }
-            cmdarray.add("-jar");
+            cmdarray.add("-cp");
+            cmdarray.add( System.getProperty("java.class.path") );
+            cmdarray.add( "runwar.Start" );
+
             for (String propertyName : replicateProps) {
                 String property = System.getProperty(propertyName);
                 if (property != null) {
                     cmdarray.add("-D" + propertyName + "=" + property);
                 }
             }
-            cmdarray.add(decodedPath);
             for (String arg : args) {
                 cmdarray.add(arg);
             }
@@ -903,5 +901,5 @@ public class LaunchUtil {
             throw new RuntimeException(e);
         }
     }
-    
+
 }

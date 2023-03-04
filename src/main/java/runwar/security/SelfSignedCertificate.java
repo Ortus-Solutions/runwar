@@ -16,7 +16,7 @@ import org.bouncycastle.operator.DefaultAlgorithmNameFinder;
 import org.bouncycastle.operator.OperatorCreationException;
 import org.bouncycastle.operator.jcajce.JcaContentSignerBuilder;
 
-import javax.xml.bind.DatatypeConverter;
+import java.util.Base64;
 import java.io.FileWriter;
 import java.io.IOException;
 import java.io.StringWriter;
@@ -276,7 +276,7 @@ public final class SelfSignedCertificate {
 
         try (StringWriter sw = new StringWriter()) {
             sw.write("-----BEGIN CERTIFICATE-----\n");
-            sw.write(DatatypeConverter.printBase64Binary(serialized).replaceAll("(.{64})", "$1\n"));
+            sw.write(Base64.getEncoder().encodeToString(serialized).replaceAll("(.{64})", "$1\n"));
             sw.write("\n-----END CERTIFICATE-----\n");
             return sw.toString();
         } catch (Exception e) {
@@ -289,7 +289,7 @@ public final class SelfSignedCertificate {
         byte[] serialized = privateKey.getEncoded();
         try (StringWriter sw = new StringWriter()) {
             sw.write("-----BEGIN PRIVATE KEY-----\n");
-            sw.write(DatatypeConverter.printBase64Binary(serialized).replaceAll("(.{64})", "$1\n"));
+            sw.write(Base64.getEncoder().encodeToString(serialized).replaceAll("(.{64})", "$1\n"));
             sw.write("\n-----END PRIVATE KEY-----\n");
             return sw.toString();
         } catch (Exception e) {

@@ -60,10 +60,10 @@ class RunwarConfigurer {
 
         if (cfengine.equals("adobe") || cfengine.equals("") && new File(cfusionDir).exists()) {
             String cfformDir = new File(webInfDir,"cfform").getAbsolutePath().replace('\\', '/');
-            
+
         	final String cfClasspath = "%s/lib/updates,%s/lib/,%s/lib/axis2,%s/gateway/lib/,%s/../cfform/jars,%s/../flex/jars,%s/lib/oosdk/lib,%s/lib/oosdk/classes".replaceAll("%s", cfusionDir);
             final HashMap<String,String> cfprops = new HashMap<>();
-            
+
             // TODO: See if the next 6 lines are actuallly needed or not in a CF WAR.
             cfprops.put("coldfusion.home", cfusionDir);
             cfprops.put("coldfusion.rootDir", cfusionDir);
@@ -71,7 +71,7 @@ class RunwarConfigurer {
             cfprops.put("flex.dir", cfformDir);
             cfprops.put("coldfusion.jsafe.defaultalgo", "FIPS186Random");
             cfprops.put("coldfusion.classPath", cfClasspath);
-            
+
             // Hide error messages about MediaLib stuff
             cfprops.put("com.sun.media.jai.disableMediaLib", "true");
             // Make the embedded version of Jetty inside Adobe CF shut up since it dumps everything to the error stream
@@ -79,7 +79,7 @@ class RunwarConfigurer {
             cfprops.put("java.security.auth.policy", cfusionDir + "/lib/neo_jaas.policy");
             cfprops.put("java.nixlibrary.path", cfusionDir + "/lib");
             cfprops.put("java.library.path", cfusionDir + "/lib");
-        	
+
             LOG.debug("Setting coldfusion.home: '" + cfusionDir + "'");
             LOG.debug("Setting coldfusion.classpath: '" + cfClasspath + "'");
             LOG.debug("Setting flex.dir (cfform): '" + cfformDir + "'");
@@ -113,6 +113,13 @@ class RunwarConfigurer {
                 LOG.debug(servletBuilder.getServletContextAttributes().toString());
             }
         }
+
+        serverOptions.mimeTypes().forEach((ext, contentType) -> {
+            LOG.debugf("Adding Mime type %s = '%s'", ext, contentType);
+            servletBuilder.addMimeMapping(new MimeMapping(ext, contentType));
+        });
+        // Only needed until this is complete: https://issues.redhat.com/browse/UNDERTOW-2218
+        servletBuilder.addMimeMapping(new MimeMapping("webp", "image/webp"));
     }
 
     private void configureServerWar(DeploymentInfo servletBuilder) {
@@ -123,12 +130,12 @@ class RunwarConfigurer {
             throw new RuntimeException("FATAL: Could not load any libs for war: " + warFile.getAbsolutePath());
         }
         servletBuilder.setClassLoader(getClassLoader());
-        
+
         WebXMLParser.parseWebXml(serverOptions.webXmlFile(), servletBuilder, serverOptions.ignoreWebXmlWelcomePages(), serverOptions.ignoreWebXmlRestMappings(), false, serverOptions.servletRestEnable());
         File webXMLOverrideFile = serverOptions.webXmlOverrideFile();
         if(webXMLOverrideFile!=null){
             LOG.debug("Using webxml override: '" + webXMLOverrideFile.getAbsolutePath() + "'");
-            WebXMLParser.parseWebXml(webXMLOverrideFile, servletBuilder, serverOptions.ignoreWebXmlWelcomePages(), 
+            WebXMLParser.parseWebXml(webXMLOverrideFile, servletBuilder, serverOptions.ignoreWebXmlWelcomePages(),
                                         serverOptions.ignoreWebXmlRestMappings(), serverOptions.webXmlOverrideForce(), serverOptions.servletRestEnable());
         }
     }
@@ -234,7 +241,7 @@ class RunwarConfigurer {
     static List<URL> getJarList( String libDirs ) throws IOException {
         List<URL> classpath = new ArrayList<>();
         String[] list = libDirs.split( "," );
-        for( String path : list ) 
+        for( String path : list )
         {
             if( ".".equals( path ) || "..".equals( path ) )
             {
@@ -242,7 +249,7 @@ class RunwarConfigurer {
             }
 
             File file = new File( path );
-            if( file.exists() && file.isDirectory() ) 
+            if( file.exists() && file.isDirectory() )
             {
                 File fileList[] = file.listFiles();
                 for( File item : fileList )
@@ -261,7 +268,7 @@ class RunwarConfigurer {
                 }
             }
         }
-        return classpath;        
+        return classpath;
     }
 
 
@@ -341,7 +348,7 @@ class RunwarConfigurer {
         }
 
         LOG.debug("Extensions allowed by the default servlet for static files: " + allowedExt);
-        
+
         allowedExt = allowedExt.toLowerCase();
         StringBuilder allowedExtBuilder = new StringBuilder();
         for( String ext : allowedExt.split(",") ) {
@@ -355,7 +362,7 @@ class RunwarConfigurer {
         // this prevents us from having to use our own ResourceHandler (directory listing, welcome files, see below) and error handler for now
         servletBuilder.addServlet( new ServletInfo(io.undertow.servlet.handlers.ServletPathMatches.DEFAULT_SERVLET_NAME, DefaultServlet.class)
                 .addInitParam("directory-listing", Boolean.toString(serverOptions.directoryListingEnable()))
-                .addInitParam("default-allowed", "false")                
+                .addInitParam("default-allowed", "false")
         		.addInitParam("allowed-extensions", allowedExt)
         		.addInitParam("allow-post", "true") );
 
@@ -390,7 +397,7 @@ class RunwarConfigurer {
         }
 
     }
-    
+
     void expandExtension(String input, StringBuilder allowedExtBuilder) {
         char[] currentCombo = input.toCharArray();
 
@@ -400,7 +407,7 @@ class RunwarConfigurer {
 
         // While the bit vector still has some bits set
         while(!bv.isEmpty()) {
-            // Loop through the array of characters and set each one to uppercase or lowercase, 
+            // Loop through the array of characters and set each one to uppercase or lowercase,
             // depending on whether its corresponding bit is set
             for(int i = 0; i < currentCombo.length; ++i) {
                 if(bv.get(i)) // If the bit is set
@@ -414,7 +421,7 @@ class RunwarConfigurer {
             allowedExtBuilder.append(",");
 
             // Decrement the bit vector
-            DecrementBitVector(bv, currentCombo.length);            
+            DecrementBitVector(bv, currentCombo.length);
         }
 
         // Now the bit vector contains all zeroes, which corresponds to all of the letters being lowercase.
@@ -425,11 +432,11 @@ class RunwarConfigurer {
 
 
     public void DecrementBitVector(BitSet bv, int numberOfBits) {
-        int currentBit = numberOfBits - 1;          
+        int currentBit = numberOfBits - 1;
         while(currentBit >= 0) {
             bv.flip(currentBit);
 
-            // If the bit became a 0 when we flipped it, then we're done. 
+            // If the bit became a 0 when we flipped it, then we're done.
             // Otherwise we have to continue flipping bits
             if(!bv.get(currentBit))
                 break;
