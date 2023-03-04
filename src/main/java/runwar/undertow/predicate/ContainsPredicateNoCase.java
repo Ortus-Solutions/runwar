@@ -50,7 +50,7 @@ public class ContainsPredicateNoCase implements Predicate {
         System.arraycopy(values, 0, this.values, 0, values.length);
 
         for (int i = 0; i < values.length; ++i) {
-            values[i] = values[i].toLowerCase();
+            this.values[i] = this.values[i].toLowerCase();
         }
     }
 
