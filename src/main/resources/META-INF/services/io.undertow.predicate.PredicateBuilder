@@ -3,3 +3,5 @@ runwar.undertow.predicate.RegularExpressionNoCasePredicateBuilder
 runwar.undertow.predicate.PathSuffixNoCasePredicate$Builder
 runwar.undertow.predicate.PathMatchPredicateNoCase$Builder
 runwar.undertow.predicate.PathPrefixPredicateNoCase$Builder
+runwar.undertow.predicate.EqualsPredicateNoCase$Builder
+runwar.undertow.predicate.ContainsPredicateNoCase$Builder
