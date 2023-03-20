@@ -73,7 +73,7 @@ public class LoggerFactory {
                 .add(
                     builder
                         .newFilter("ThresholdFilter", Filter.Result.ACCEPT, Filter.Result.DENY)
-                        .addAttribute("level", Level.INFO)
+                        .addAttribute("level", level )
                 )
         );
 
