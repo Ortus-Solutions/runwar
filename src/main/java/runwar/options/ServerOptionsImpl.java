@@ -258,7 +258,7 @@ public class ServerOptionsImpl implements ServerOptions {
             } else {
                 if(skipNext) {
                     skipNext = false;
-                } else {
+                } else if( !arg.equals("--background=true") ) {
                     argarray.add(arg);
                 }
             }
