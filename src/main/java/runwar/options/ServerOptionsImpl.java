@@ -253,14 +253,12 @@ public class ServerOptionsImpl implements ServerOptions {
         Boolean skipNext = false;
         for (String arg : cmdlineArgs) {
             arg = arg.trim();
-            if (arg.contains("background") || arg.equalsIgnoreCase("-b") || arg.contains("balance")
-                    || arg.startsWith("--port") || arg.equalsIgnoreCase("-p") || arg.startsWith("--stop-port")
-                    || arg.contains("stopsocket") || arg.contains("--host")) {
+            if (arg.equals("--background") || arg.equals("--port") || arg.equals("--stop-port") || arg.equals("--host") ) {
                 skipNext = true;
             } else {
                 if(skipNext) {
                     skipNext = false;
-                } else {
+                } else if( !arg.equals("--background=true") ) {
                     argarray.add(arg);
                 }
             }
