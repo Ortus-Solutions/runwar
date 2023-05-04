@@ -114,7 +114,7 @@ class RunwarConfigurer {
             }
         }
 
-        serverOptions.mimeTypes().forEach((ext, contentType) -> {
+        serverOptions.getSites().get(0).mimeTypes().forEach((ext, contentType) -> {
             LOG.debugf("Adding Mime type %s = '%s'", ext, contentType);
             servletBuilder.addMimeMapping(new MimeMapping(ext, contentType));
         });
@@ -303,7 +303,7 @@ class RunwarConfigurer {
         configureURLRewrite(servletBuilder, webInfDir);
         configurePathInfoFilter(servletBuilder);
 
-        if (serverOptions.cacheEnable()) {
+        if (serverOptions.getSites().get(0).cacheEnable()) {
             addCacheHandler(servletBuilder);
         } else {
             LOG.debug("File cache is disabled");
@@ -313,9 +313,9 @@ class RunwarConfigurer {
             servletBuilder.setSendCustomReasonPhraseOnError(true);
         }
 
-        if(serverOptions.errorPages() != null){
-            for(Integer errorCode : serverOptions.errorPages().keySet()) {
-                String location = serverOptions.errorPages().get(errorCode);
+        if(serverOptions.getSites().get(0).errorPages() != null){
+            for(Integer errorCode : serverOptions.getSites().get(0).errorPages().keySet()) {
+                String location = serverOptions.getSites().get(0).errorPages().get(errorCode);
                 if(errorCode == 1) {
                     servletBuilder.addErrorPage( new ErrorPage(location));
                     LOG.debug("Adding default error location: " + location);
@@ -343,8 +343,8 @@ class RunwarConfigurer {
 
         // Default list of what the default servlet will serve
         String allowedExt = "3gp,3gpp,7z,ai,aif,aiff,asf,asx,atom,au,avi,bin,bmp,btm,cco,crt,css,csv,deb,der,dmg,doc,docx,eot,eps,flv,font,gif,hqx,htc,htm,html,ico,img,ini,iso,jad,jng,jnlp,jpeg,jpg,js,json,kar,kml,kmz,m3u8,m4a,m4v,map,mid,midi,mml,mng,mov,mp3,mp4,mpeg,mpeg4,mpg,msi,msm,msp,ogg,otf,pdb,pdf,pem,pl,pm,png,ppt,pptx,prc,ps,psd,ra,rar,rpm,rss,rtf,run,sea,shtml,sit,svg,svgz,swf,tar,tcl,tif,tiff,tk,ts,ttf,txt,wav,wbmp,webm,webp,wmf,wml,wmlc,wmv,woff,woff2,xhtml,xls,xlsx,xml,xpi,xspf,zip,aifc,aac,apk,bak,bk,bz2,cdr,cmx,dat,dtd,eml,fla,gz,gzip,ipa,ia,indd,hey,lz,maf,markdown,md,mkv,mp1,mp2,mpe,odt,ott,odg,odf,ots,pps,pot,pmd,pub,raw,sdd,tsv,xcf,yml,yaml,handlebars,hbs";        // Add any custom additions by our users
-        if( serverOptions.defaultServletAllowedExt().length() > 0 ) {
-        	allowedExt += "," + serverOptions.defaultServletAllowedExt();
+        if( serverOptions.getSites().get(0).defaultServletAllowedExt().length() > 0 ) {
+        	allowedExt += "," + serverOptions.getSites().get(0).defaultServletAllowedExt();
         }
 
         LOG.debug("Extensions allowed by the default servlet for static files: " + allowedExt);
@@ -361,7 +361,7 @@ class RunwarConfigurer {
 
         // this prevents us from having to use our own ResourceHandler (directory listing, welcome files, see below) and error handler for now
         servletBuilder.addServlet( new ServletInfo(io.undertow.servlet.handlers.ServletPathMatches.DEFAULT_SERVLET_NAME, DefaultServlet.class)
-                .addInitParam("directory-listing", Boolean.toString(serverOptions.directoryListingEnable()))
+                .addInitParam("directory-listing", Boolean.toString(serverOptions.getSites().get(0).directoryListingEnable()))
                 .addInitParam("default-allowed", "false")
         		.addInitParam("allowed-extensions", allowedExt)
         		.addInitParam("allow-post", "true") );
@@ -369,7 +369,7 @@ class RunwarConfigurer {
         List<?> welcomePages =  servletBuilder.getWelcomePages();
         if(serverOptions.ignoreWebXmlWelcomePages()) {
             LOG.debug("Ignoring web.xml welcome file, so adding server options welcome files to deployment manager.");
-            servletBuilder.addWelcomePages(serverOptions.welcomeFiles());
+            servletBuilder.addWelcomePages(serverOptions.getSites().get(0).welcomeFiles());
         } else if(welcomePages.size() == 0){
             LOG.debug("No welcome pages set yet, so adding defaults to deployment manager.");
             servletBuilder.addWelcomePages(defaultWelcomeFiles);
@@ -441,27 +441,6 @@ class RunwarConfigurer {
             if(!bv.get(currentBit))
                 break;
             currentBit--;
-        }
-    }
-
-    void generateSelfSignedCertificate() throws GeneralSecurityException, IOException {
-        Path defaultCertPath, defaultKeyPath;
-        if(serverOptions.sslSelfSign()){
-            if(serverOptions.webInfDir() != null && serverOptions.webInfDir().exists()) {
-                defaultCertPath = new File(serverOptions.webInfDir(),"selfsign.crt").toPath();
-                defaultKeyPath = new File(serverOptions.webInfDir(),"selfsign.key").toPath();
-            } else {
-                defaultCertPath = Paths.get("./selfsign.crt");
-                defaultKeyPath = Paths.get("./selfsign.key");
-            }
-            Path certPath = serverOptions.sslCertificate() == null ? defaultCertPath : Paths.get(serverOptions.sslCertificate().getAbsolutePath());
-            Path keyPath = serverOptions.sslKey() == null ? defaultKeyPath : Paths.get(serverOptions.sslKey().getAbsolutePath());
-            SelfSignedCertificate.generateCertificate(certPath, keyPath);
-            serverOptions.sslKey(keyPath.toFile());
-            serverOptions.sslCertificate(certPath.toFile());
-            serverOptions.sslEnable(true);
-            if(serverOptions.warFile() == null)
-                System.exit(0);
         }
     }
 

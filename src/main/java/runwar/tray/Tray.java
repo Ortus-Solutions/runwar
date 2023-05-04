@@ -38,12 +38,11 @@ import net.minidev.json.JSONObject;
 import net.minidev.json.JSONValue;
 import runwar.LaunchUtil;
 import runwar.Server;
-import runwar.Service;
 import runwar.Start;
 import runwar.gui.JsonForm;
 import runwar.logging.RunwarLogger;
 import runwar.options.ServerOptions;
-import runwar.options.ServerOptionsImpl;
+import runwar.options.ServerOptions;
 import runwar.util.Utils;
 import javax.swing.JFileChooser;
 import javax.swing.JFrame;
@@ -107,7 +106,7 @@ public class Tray {
         ServerOptions serverOptions = server.getServerOptions();
         String iconImage = serverOptions.iconImage();
         String host = serverOptions.host();
-        int portNumber = serverOptions.httpPort();
+        int portNumber = serverOptions.getSites().get(0).httpPort();
         final int stopSocket = serverOptions.stopPort();
         String processName = serverOptions.processName();
         String PID = server.getPID();
@@ -274,16 +273,16 @@ public class Tray {
     public String checkAndFixUrl(String url, ServerOptions serverOptions){
         if(!url.startsWith("http")){
             if(url.startsWith("/")){
-                if(!serverOptions.sslEnable()){
-                    url = "http://" + serverOptions.host() + ":" +serverOptions.httpPort() + url;
+                if(!serverOptions.getSites().get(0).sslEnable()){
+                    url = "http://" + serverOptions.host() + ":" +serverOptions.getSites().get(0).httpPort() + url;
                 }else{
-                    url = "https://" + serverOptions.host() + ":" + serverOptions.sslPort() + url;
+                    url = "https://" + serverOptions.host() + ":" + serverOptions.getSites().get(0).sslPort() + url;
                 }
             }else{
-                if(!serverOptions.sslEnable()){
-                    url = "http://" + serverOptions.host() + ":" +serverOptions.httpPort() + "/" + url;
+                if(!serverOptions.getSites().get(0).sslEnable()){
+                    url = "http://" + serverOptions.host() + ":" +serverOptions.getSites().get(0).httpPort() + "/" + url;
                 }else{
-                    url = "https://" + serverOptions.host() + ":" + serverOptions.sslPort() + "/" + url;
+                    url = "https://" + serverOptions.host() + ":" + serverOptions.getSites().get(0).sslPort() + "/" + url;
                 }
             }
         }
@@ -737,89 +736,6 @@ public class Tray {
             }
         }
     }
-
-    private static class ServerOptionsJsonAction implements ActionListener {
-
-        ServerOptionsImpl serverOptions;
-
-        ServerOptionsJsonAction(ServerOptions serverOptions) {
-            this.serverOptions = (ServerOptionsImpl) serverOptions;
-        }
-
-        @Override
-        public void actionPerformed(ActionEvent e) {
-            RunwarLogger.LOG.info("ServerOptionsJsonAction ------");
-//            showDialog(serverOptions.toJson());
-        }
-    }
-
-    private static class ToggleOnBootAction implements ActionListener {
-
-        ServerOptionsImpl serverOptions;
-
-        ToggleOnBootAction(ServerOptions serverOptions) {
-            this.serverOptions = (ServerOptionsImpl) serverOptions;
-        }
-
-        @Override
-        public void actionPerformed(ActionEvent e) {
-            RunwarLogger.LOG.info("ToggleOnBootAction ------");
-            Service service = new Service(serverOptions);
-            HashMap<String, String> values = new HashMap<>();
-            service.commands().forEach(command
-                    -> values.put(command.name, command.osCommand(OSType.host()))
-            );
-            SubmitActionlistioner onSubmit = new SubmitActionlistioner() {
-                public void actionPerformed(ActionEvent e) {
-                    RunwarLogger.LOG.info(getForm().getFieldValue("start"));
-                    RunwarLogger.LOG.info(getForm().getFieldValue("startForeground"));
-                    RunwarLogger.LOG.info(getForm().getFieldValue("stop"));
-                    try {
-                        //service.generateServiceScripts();
-                    } catch (Exception e1) {
-                        e1.printStackTrace();
-                    }
-                }
-            };
-            JsonForm.renderFormJson("runwar/form/service.form.json", values, variableMap, onSubmit);
-        }
-    }
-
-    private static class ServerOptionsSaveAction implements ActionListener {
-
-        ServerOptionsImpl serverOptions;
-
-        ServerOptionsSaveAction(ServerOptions serverOptions) {
-            this.serverOptions = (ServerOptionsImpl) serverOptions;
-        }
-
-        @Override
-        public void actionPerformed(ActionEvent e) {
-            RunwarLogger.LOG.info("ServerOptionsSaveAction ------");
-            File path = new File(serverOptions.workingDir(), "server.json");
-            final JFileChooser fc = new JFileChooser(path);
-            JPanel jPanel = new JPanel(new BorderLayout());
-            fc.setDialogTitle("Save current options to server.json");
-            fc.setName("server.json");
-            fc.setSelectedFile(path);
-            fc.setAcceptAllFileFilterUsed(true);
-            fc.setFileFilter(new javax.swing.filechooser.FileFilter() {
-                @Override
-                public boolean accept(File file) {
-                    return file.getName().toLowerCase().endsWith(".json") || file.getName().toLowerCase().endsWith(".txt");
-                }
-
-                @Override
-                public String getDescription() {
-                    return "JSON file";
-                }
-            });
-            fc.showSaveDialog(jPanel);
-
-            //showDialog(serverOptions.toJson());
-        }
-    }
-/////
 
     private static class OpenBrowserAction implements ActionListener {
 

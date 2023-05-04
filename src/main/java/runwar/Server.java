@@ -39,9 +39,8 @@ import runwar.logging.LoggerFactory;
 import runwar.logging.LoggerPrintStream;
 import runwar.logging.RunwarAccessLogReceiver;
 import runwar.mariadb4j.MariaDB4jManager;
-import runwar.options.CommandLineHandler;
 import runwar.options.ServerOptions;
-import runwar.options.ServerOptionsImpl;
+import runwar.options.SiteOptions;
 import runwar.security.SSLUtil;
 import runwar.security.SecurityManager;
 import runwar.tray.Tray;
@@ -86,7 +85,8 @@ public class Server {
     public static String processName = "Starting Server...";
     public static final AttachmentKey<String> DEPLOYMENT_KEY = AttachmentKey.create(String.class);
     private static final ThreadLocal<HttpServerExchange> currentExchange= new ThreadLocal<HttpServerExchange>();
-    private volatile static ServerOptionsImpl serverOptions;
+    private volatile static ServerOptions serverOptions;
+    private volatile static SiteOptions siteOptions;
     private static MariaDB4jManager mariadb4jManager;
     private ConcurrentHashMap<String,ServletDeployment> deployments = new ConcurrentHashMap<String,ServletDeployment>();
 	private HashSet<String> deploymentKeyWarnings = new HashSet<String>();
@@ -112,7 +112,7 @@ public class Server {
     private static final Thread mainThread = Thread.currentThread();
 
     private static XnioWorker worker, logWorker;
-    private volatile static runwar.util.PortRequisitioner ports;
+    //private volatile static runwar.util.PortRequisitioner ports;
     private Tray tray;
     //private FusionReactor fusionReactor;
 
@@ -163,7 +163,8 @@ public class Server {
     }
 
     public synchronized void startServer(final String[] args) throws Exception {
-        startServer(CommandLineHandler.parseArguments(args));
+        throw new RuntimeException( "Is this used?" );
+        //startServer(CommandLineHandler.parseArguments(args));
     }
 
     public synchronized void restartServer() throws Exception {
@@ -184,6 +185,7 @@ public class Server {
     }
 
     private synchronized void requisitionPorts() {
+        /*
         LOG.debug("HOST to be bound:" + serverOptions.host());
         ports = new PortRequisitioner(serverOptions.host());
         ports.add("http", serverOptions.httpPort(), serverOptions.httpEnable());
@@ -196,11 +198,13 @@ public class Server {
         serverOptions.stopPort(ports.get("stop").socket);
         serverOptions.ajpPort(ports.get("ajp").socket);
         serverOptions.sslPort(ports.get("https").socket);
-
+*/
     }
 
     public synchronized void startServer(final ServerOptions options) throws Exception {
-        serverOptions = (ServerOptionsImpl) options;
+        serverOptions = options;
+        // One site for now-- this becomes a loop!
+        siteOptions = serverOptions.getSites().get(0);
         //LoggerFactory.configure(serverOptions);
         // redirect out and err to context logger
         hookSystemStreams();
@@ -228,41 +232,38 @@ public class Server {
 
         // general configuration methods
         RunwarConfigurer configurer = new RunwarConfigurer(this);
-        if (serverOptions.sslSelfSign()) {
-            configurer.generateSelfSignedCertificate();
-        }
 
         LOG.info(bar);
         LOG.info("Starting RunWAR " + getVersion());
-        requisitionPorts();
+        //requisitionPorts();
 
         Builder serverBuilder = Undertow.builder();
         setUndertowOptions(serverBuilder);
 
-        LOG.debug("SERVER BUILDER:" + serverOptions.httpEnable());
-        if (serverOptions.httpEnable()) {
-            LOG.info("Binding HTTP on " + host + ":" + ports.get("http").socket );
-            serverBuilder.addHttpListener(ports.get("http").socket, realHost);
+        LOG.debug("SERVER BUILDER:" + siteOptions.httpEnable());
+        if (siteOptions.httpEnable()) {
+            LOG.info("Binding HTTP on " + host + ":" + siteOptions.httpPort() );
+            serverBuilder.addHttpListener(siteOptions.httpPort(), realHost);
         } else {
-        	LOG.debug("HTTP Enabled:" + serverOptions.httpEnable());
+        	LOG.debug("HTTP Enabled:" + siteOptions.httpEnable());
         }
 
-    	if( serverOptions.clientCertRenegotiation() ) {
+    	if( siteOptions.clientCertRenegotiation() ) {
             LOG.info("SSL Client cert renegotiation is enabled.  Disabling HTTP/2 and TLS1.3");
-            serverOptions.http2Enable(false);
+            siteOptions.http2Enable(false);
             if( !serverOptions.xnioOptions().getMap().contains( Options.SSL_ENABLED_PROTOCOLS ) ) {
                 serverOptions.xnioOptions().setSequence( Options.SSL_ENABLED_PROTOCOLS, "TLSv1.1", "TLSv1.2" );
             }
     	}
-        if (serverOptions.http2Enable()) {
+        if (siteOptions.http2Enable()) {
             LOG.info("Enabling HTTP/2");
             serverBuilder.setServerOption(UndertowOptions.ENABLE_HTTP2, true);
         } else {
-            LOG.debug("HTTP2 Enabled:" + serverOptions.http2Enable());
+            LOG.debug("HTTP2 Enabled:" + siteOptions.http2Enable());
         }
 
-        if (serverOptions.sslEnable()) {
-            int sslPort = ports.get("https").socket;
+        if (siteOptions.sslEnable()) {
+            int sslPort = siteOptions.sslPort();
             serverOptions.directBuffers(true);
             LOG.info("Binding SSL on " + host + ":" + sslPort );
 
@@ -272,14 +273,14 @@ public class Server {
             }
 
             try {
-                String[] sslAddCerts = serverOptions.sslAddCerts();
-                String[] sslAddCACerts = serverOptions.sslAddCACerts();
-                String sslTruststore = serverOptions.sslTruststore();
-                String sslTruststorePass = serverOptions.sslTruststorePass();
-                if (serverOptions.sslCertificate() != null) {
-                    File certFile = serverOptions.sslCertificate();
-                    File keyFile = serverOptions.sslKey();
-                    char[] keypass = serverOptions.sslKeyPass();
+                String[] sslAddCerts = siteOptions.sslAddCerts();
+                String[] sslAddCACerts = siteOptions.sslAddCACerts();
+                String sslTruststore = siteOptions.sslTruststore();
+                String sslTruststorePass = siteOptions.sslTruststorePass();
+                if (siteOptions.sslCertificate() != null) {
+                    File certFile = siteOptions.sslCertificate();
+                    File keyFile = siteOptions.sslKey();
+                    char[] keypass = siteOptions.sslKeyPass();
 
                     sslContext = SSLUtil.createSSLContext(certFile, keyFile, keypass, sslAddCerts, sslTruststore, sslTruststorePass, sslAddCACerts, new String[]{realHost});
                     if (keypass != null) {
@@ -295,18 +296,18 @@ public class Server {
                 System.exit(1);
             }
         } else {
-        	LOG.debug("sslEnable:" + serverOptions.sslEnable());
+        	LOG.debug("sslEnable:" + siteOptions.sslEnable());
         }
 
-        if (serverOptions.ajpEnable()) {
-            LOG.info("Binding AJP on " + host + ":" + serverOptions.ajpPort() );
-            serverBuilder.addAjpListener(serverOptions.ajpPort(), realHost);
+        if (siteOptions.ajpEnable()) {
+            LOG.info("Binding AJP on " + host + ":" + siteOptions.ajpPort() );
+            serverBuilder.addAjpListener(siteOptions.ajpPort(), realHost);
             if (serverOptions.undertowOptions().getMap().size() == 0) {
                 // if no options is set, default to the large packet size
                 serverBuilder.setServerOption(UndertowOptions.MAX_AJP_PACKET_SIZE, 65536);
             }
         } else {
-        	LOG.debug("ajpEnable:" + serverOptions.ajpEnable());
+        	LOG.debug("ajpEnable:" + siteOptions.ajpEnable());
         }
 
         securityManager = new SecurityManager();
@@ -315,7 +316,7 @@ public class Server {
         if (!warFile.exists()) {
             throw new RuntimeException("war does not exist: " + warFile.getAbsolutePath());
         }
-
+/*
         if (serverOptions.background()) {
             setServerState(ServerState.STARTING_BACKGROUND);
             // this will eventually system.exit();
@@ -327,7 +328,7 @@ public class Server {
         } else {
         	LOG.debug("background:" + serverOptions.background());
         }
-
+*/
         File webinf = serverOptions.webInfDir();
         File webXmlFile = serverOptions.webXmlFile();
 
@@ -407,16 +408,16 @@ public class Server {
         LOG.info(bar);
         addShutDownHook();
 
-        LOG.debug("Transfer Min Size: " + serverOptions.transferMinSize());
+        LOG.debug("Transfer Min Size: " + siteOptions.transferMinSize());
 
         // configure NIO options and worker
         Xnio xnio = Xnio.getInstance("nio", Server.class.getClassLoader());
         OptionMap.Builder serverXnioOptions = serverOptions.xnioOptions();
 
 
-        if (serverOptions.clientCertNegotiation() != null) {
-	    	LOG.debug("Client Cert Negotiation: " + serverOptions.clientCertNegotiation() );
-	        serverXnioOptions.set(Options.SSL_CLIENT_AUTH_MODE, SslClientAuthMode.valueOf( serverOptions.clientCertNegotiation() ) );
+        if (siteOptions.clientCertNegotiation() != null) {
+	    	LOG.debug("Client Cert Negotiation: " + siteOptions.clientCertNegotiation() );
+	        serverXnioOptions.set(Options.SSL_CLIENT_AUTH_MODE, SslClientAuthMode.valueOf( siteOptions.clientCertNegotiation() ) );
         }
 
         logXnioOptions(serverXnioOptions,serverBuilder);
@@ -492,7 +493,7 @@ public class Server {
                     @Override
                     public HttpHandler wrap(HttpHandler next) {
                         // Set SSL_CLIENT_ headers if client certs are present
-                        return new SSLClientCertHeaderHandler( next, serverOptions, serverOptions.cfEngineName().toLowerCase().contains( "lucee" ) );
+                        return new SSLClientCertHeaderHandler( next, siteOptions, serverOptions.cfEngineName().toLowerCase().contains( "lucee" ) );
 
                     }
                 });
@@ -509,8 +510,8 @@ public class Server {
                 new WebSocketDeploymentInfo().setBuffers(new DefaultByteBufferPool(true, 1024 * 16)).setWorker(worker));
         LOG.debug("Added websocket context");
 
-        if ( serverOptions.basicAuthEnable() || serverOptions.clientCertEnable() ) {
-            securityManager.configureAuth( serverBuilder, options, servletBuilder);
+        if ( siteOptions.basicAuthEnable() || siteOptions.clientCertEnable() ) {
+            securityManager.configureAuth( serverBuilder, siteOptions, servletBuilder);
         }
 
         // Create default context
@@ -646,7 +647,7 @@ public class Server {
                     exchange.getResponseHeaders().put(Headers.CONTENT_ENCODING, "gzip");
                 }
                 // clear any welcome-file info cached after initial request *NOT THREAD SAFE*
-                if (serverOptions.directoryListingRefreshEnable() && exchange.getRequestPath().endsWith("/")) {
+                if (siteOptions.directoryListingRefreshEnable() && exchange.getRequestPath().endsWith("/")) {
                     CONTEXT_LOG.trace("*** Resetting servlet path info");
                     //manager.getDeployment().getServletPaths().invalidate();
                 }
@@ -679,14 +680,14 @@ public class Server {
         pathHandler.addPrefixPath(contextPath, hostHandler);
         HttpHandler httpHandler = pathHandler;
 
-        if (serverOptions.predicateFile() != null) {
-            LOG.debug("Predicates file: " + serverOptions.predicateFile().getAbsolutePath());
+        if (siteOptions.predicateFile() != null) {
+            LOG.debug("Predicates file: " + siteOptions.predicateFile().getAbsolutePath());
 
-            if (!serverOptions.predicateFile().exists()) {
-                throw new RuntimeException("The predicate file [" + serverOptions.predicateFile().getAbsolutePath() + "] does not exist on disk.");
+            if (!siteOptions.predicateFile().exists()) {
+                throw new RuntimeException("The predicate file [" + siteOptions.predicateFile().getAbsolutePath() + "] does not exist on disk.");
             }
 
-            BufferedReader br = new BufferedReader(new FileReader(serverOptions.predicateFile()));
+            BufferedReader br = new BufferedReader(new FileReader(siteOptions.predicateFile()));
             String predicatesLines = "";
             String st;
             try {
@@ -704,25 +705,25 @@ public class Server {
             httpHandler = Handlers.predicates(ph, httpHandler);
         }
 
-        if (serverOptions.gzipEnable()) {
+        if (siteOptions.gzipEnable()) {
             //the default packet size on the internet is 1500 bytes so
             //any file less than 1.5k can be sent in a single packet
-            if (serverOptions.gzipPredicate() != null) {
-                LOG.debug("Setting GZIP predicate to = " + serverOptions.gzipPredicate());
+            if (siteOptions.gzipPredicate() != null) {
+                LOG.debug("Setting GZIP predicate to = " + siteOptions.gzipPredicate());
             }
             // The max-content-size predicate was replaced with request-larger-than
             httpHandler = new EncodingHandler(new ContentEncodingRepository().addEncodingHandler(
-                    "gzip", new GzipEncodingProvider(), 50, Predicates.parse(serverOptions.gzipPredicate()))).setNext(httpHandler);
+                    "gzip", new GzipEncodingProvider(), 50, Predicates.parse(siteOptions.gzipPredicate()))).setNext(httpHandler);
         }
 
-        if (serverOptions.logAccessEnable()) {
+        if (siteOptions.logAccessEnable()) {
             RunwarAccessLogReceiver accessLogReceiver = RunwarAccessLogReceiver.builder().setLogWriteExecutor(logWorker)
                     .setRotate(true)
-                    .setOutputDirectory(serverOptions.logAccessDir().toPath())
-                    .setLogBaseName(serverOptions.logAccessBaseFileName())
+                    .setOutputDirectory(siteOptions.logAccessDir().toPath())
+                    .setLogBaseName(siteOptions.logAccessBaseFileName())
                     .setLogNameSuffix(serverOptions.logSuffix())
                     .build();
-            LOG.debug("Logging combined access to " + serverOptions.logAccessDir() + " base name of '" + serverOptions.logAccessBaseFileName() + "." + serverOptions.logSuffix() + ", rotated daily'");
+            LOG.debug("Logging combined access to " + siteOptions.logAccessDir() + " base name of '" + siteOptions.logAccessBaseFileName() + "." + serverOptions.logSuffix() + ", rotated daily'");
             httpHandler = new AccessLogHandler(httpHandler, accessLogReceiver, "combined", Server.class.getClassLoader());
         }
 
@@ -737,12 +738,12 @@ public class Server {
             httpHandler = new RequestDebugHandler(httpHandler, requestsLogReceiver);
         }
 
-        if (serverOptions.proxyPeerAddressEnable()) {
+        if (siteOptions.proxyPeerAddressEnable()) {
             LOG.debug("Enabling Proxy Peer Address handling");
             httpHandler = new ProxyPeerAddressHandler(httpHandler);
         }
 
-        if (serverOptions.clientCertTrustHeaders()) {
+        if (siteOptions.clientCertTrustHeaders()) {
             LOG.debug("Checking for upstream client cert HTTP headers");
             httpHandler = new SSLHeaderHandler(httpHandler);
         }
@@ -791,8 +792,8 @@ public class Server {
         }
 
         // if this println changes be sure to update the LaunchUtil so it will know success
-        String sslInfo = serverOptions.sslEnable() ? " https-port:" + ports.get("https") : "";
-        String msg = "Server is up - http-port:" + ports.get("http") + sslInfo + " stop-port:" + ports.get("stop") + " PID:" + PID + " version " + getVersion();
+        String sslInfo = siteOptions.sslEnable() ? " https-port:" + siteOptions.sslPort() : "";
+        String msg = "Server is up - http-port:" + siteOptions.httpPort() + sslInfo + " stop-port:" + serverOptions.stopPort() + " PID:" + PID + " version " + getVersion();
         LOG.info(msg);
         // if the status line output would be suppressed due to logging levels, send it to sysout
         if (serverOptions.logLevel().equalsIgnoreCase("WARN") || serverOptions.logLevel().equalsIgnoreCase("ERROR")) {
@@ -848,10 +849,10 @@ public class Server {
             serverBuilder.setSocketOption(option, serverXnioOptionsMap.get(option));
         }
     }
-
+/*
     PortRequisitioner getPorts() {
         return ports;
-    }
+    }*/
 
     static String fullExchangePath(HttpServerExchange exchange) {
         return exchange.getRequestURL() + (exchange.getQueryString().length() > 0 ? "?" + exchange.getQueryString() : "");
@@ -925,7 +926,7 @@ public class Server {
                 try {
                     setServerState(ServerState.STOPPING);
                     LOG.info(bar);
-                    String port = getPorts() != null ? getPorts().get("stop").toString() : "null";
+                    String port = Integer.toString(serverOptions.stopPort());
                     String serverName = serverOptions.serverName() != null ? serverOptions.serverName() : "null";
                     LOG.infof("*** stopping server '%s' (socket %s)", serverName, port);
                     LOG.info(bar);
@@ -998,17 +999,17 @@ public class Server {
     }
 
     public ResourceManager getResourceManager(File warFile, Long transferMinSize, Map<String, Path> aliases, File internalCFMLServerRoot) {
-    	Boolean cached = !serverOptions.directoryListingRefreshEnable() && serverOptions.cacheServletPaths();
+    	Boolean cached = !siteOptions.directoryListingRefreshEnable() && siteOptions.cacheServletPaths();
 
         LOG.debugf("Initialized " + ( cached ? "CACHED " : "" ) + "MappedResourceManager - base: %s, web-inf: %s, aliases: %s", warFile.getAbsolutePath(), internalCFMLServerRoot.getAbsolutePath(), aliases);
 
-        MappedResourceManager mappedResourceManager = new MappedResourceManager(warFile, transferMinSize, aliases, internalCFMLServerRoot, serverOptions);
+        MappedResourceManager mappedResourceManager = new MappedResourceManager(warFile, transferMinSize, aliases, internalCFMLServerRoot, siteOptions);
         if ( !cached ) {
             return mappedResourceManager;
         }
 
-        LOG.debugf("ResourceManager Cache total size: %s MB", serverOptions.fileCacheTotalSizeMB() );
-        LOG.debugf("ResourceManager Cache max file size: %s KB", serverOptions.fileCacheMaxFileSizeKB() );
+        LOG.debugf("ResourceManager Cache total size: %s MB", siteOptions.fileCacheTotalSizeMB() );
+        LOG.debugf("ResourceManager Cache max file size: %s KB", siteOptions.fileCacheMaxFileSizeKB() );
 
         // 8 hours in in milliseconds-- used for both the path metadata cache AND the file contents cache
         // Setting to -1 will never expire items from the cache, which is tempting-- but having some sort of expiration will keep errant entries from clogging the cache forever
@@ -1021,12 +1022,12 @@ public class Server {
          *  which is maxMemory
          */
         // Max file size to cache directly in memory-- measured in bytes.
-        final long maxFileSize = serverOptions.fileCacheMaxFileSizeKB() * 1024; // Convert KB to B
+        final long maxFileSize = siteOptions.fileCacheMaxFileSizeKB() * 1024; // Convert KB to B
         /* DirectBufferCache.maxMemory: this is the maximum number of bytes that can be allocated by the pool. So, in the example above, supposed that slicesPerPage is 50, and sliceSize is 10,000 bytes,
          * if you have a maxMemory of 1,000,000 bytes, it means that the buffer pool can only allocate two chunks of 500,000 bytes each, because that's the number of 500,000 bytes long
          * regions that fit into 1,000,000. If none of those buffers are reclaimed at some point, and more buffers are needed, the buffer pool will refuse to do more allocations.
          * The cache will remove the oldest entry from usage pov because it is LRU. This cache is used by CachingResourceManager to store contents of files in direct memory. */
-        int maxMemory = serverOptions.fileCacheTotalSizeMB() * 1024 * 1024; // Convert MB to B
+        int maxMemory = siteOptions.fileCacheTotalSizeMB() * 1024 * 1024; // Convert MB to B
         // Number of paths to cache. i.e. /foo.txt maps to C:/webroot/foo.txt
         // I assume the memory overhead of the meta is nearly zero since it's just a single POJO instance per path
         final int metadataCacheSize = 10000;
@@ -1155,7 +1156,7 @@ public class Server {
         String[] version = versionProp.split("=");
         return version[version.length - 1].trim();
     }
-
+/*
     public int getHttpPort() {
         return ports.get("http").socket;
     }
@@ -1167,9 +1168,10 @@ public class Server {
     public int getStopPort() {
         return ports.get("stop").socket;
     }
+    */
 
     public boolean serverWentDown() {
-        return serverWentDown(serverOptions.launchTimeout(), 3000, getInetAddress(serverOptions.host()), ports.get("http").socket);
+        return serverWentDown(serverOptions.launchTimeout(), 3000, getInetAddress(siteOptions.host()), siteOptions.httpPort());
     }
 
     public static boolean serverWentDown(int timeout, long sleepTime, InetAddress server, int port) {
@@ -1248,16 +1250,16 @@ public class Server {
     class OpenBrowserTask extends TimerTask {
 
         public void run() {
-            int portNumber = ports.get("http").socket;
+            int portNumber = siteOptions.httpPort();
             String protocol = "http";
-            String host = serverOptions.host();
+            String host = siteOptions.host();
             String openbrowserURL = serverOptions.openbrowserURL();
             int timeout = serverOptions.launchTimeout();
             if (openbrowserURL == null || openbrowserURL.length() == 0) {
                 openbrowserURL = "http://" + host + ":" + portNumber;
             }
-            if (serverOptions.sslEnable()) {
-                portNumber = serverOptions.sslPort();
+            if (siteOptions.sslEnable()) {
+                portNumber = siteOptions.sslPort();
                 protocol = "https";
                 if (openbrowserURL.startsWith("http:")) {
                     openbrowserURL = openbrowserURL.replaceFirst("http:", "https:");
@@ -1316,9 +1318,9 @@ public class Server {
         LOG.info("Creating deployment [" + deploymentKey + "] in " + webroot.toString() );
 
     	File webInfDir = serverOptions.webInfDir();
-        Long transferMinSize= serverOptions.transferMinSize();
+        Long transferMinSize= siteOptions.transferMinSize();
         Map<String,Path> aliases = new HashMap<>();
-        serverOptions.aliases().forEach((s, s2) -> aliases.put(s,Paths.get(s2)));
+        siteOptions.aliases().forEach((s, s2) -> aliases.put(s,Paths.get(s2)));
 
         // Add any web server VDirs to Undertow. They come in this format:
         // /foo,C:\path\to\foo;/bar,C:\path\to\bar
@@ -1465,10 +1467,10 @@ public class Server {
             int exitCode = 0;
             serverSocket = null;
             try {
-                serverSocket = new ServerSocket(serverOptions.stopPort(), 1, getInetAddress(serverOptions.host()));
+                serverSocket = new ServerSocket(serverOptions.stopPort(), 1, getInetAddress(siteOptions.host()));
                 listening = true;
                 LOG.info(bar);
-                LOG.info("*** starting 'stop' listener thread - Host: " + serverOptions.host()
+                LOG.info("*** starting 'stop' listener thread - Host: " + siteOptions.host()
                         + " - Socket: " + serverOptions.stopPort());
                 LOG.info(bar);
                 while (listening) {
@@ -1547,7 +1549,7 @@ public class Server {
             // send a char to the reader so it will stop waiting
             Socket s;
             try {
-                s = new Socket(getInetAddress(serverOptions.host()), serverOptions.stopPort());
+                s = new Socket(getInetAddress(siteOptions.host()), serverOptions.stopPort());
                 OutputStream out = s.getOutputStream();
                 out.write('s');
                 out.flush();

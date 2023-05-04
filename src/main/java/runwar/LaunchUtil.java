@@ -32,7 +32,6 @@ import java.util.TimerTask;
 import java.util.jar.JarEntry;
 import java.util.jar.JarInputStream;
 import java.util.jar.JarOutputStream;
-import java.util.jar.Pack200;
 import java.util.zip.GZIPInputStream;
 
 import dorkbox.notify.Notify;
@@ -511,11 +510,6 @@ public class LaunchUtil {
                 }
                 FileOutputStream fileOutStream = new FileOutputStream(f);
                 writeStreamTo(jis, fileOutStream, 8 * KB);
-                if (f.getPath().endsWith("pack.gz")) {
-                    unpack(f);
-                    fileOutStream.close();
-                    f.delete();
-                }
                 fileOutStream.close();
             }
 
@@ -545,48 +539,6 @@ public class LaunchUtil {
                     previous.delete();
                 } catch (Exception e) {
                     System.err.println("Could not delete previous lib: " + previous.getAbsolutePath());
-                }
-            }
-        }
-    }
-
-    public static void unpack(File inFile) {
-        JarOutputStream out = null;
-        InputStream in = null;
-        String inName = inFile.getPath();
-        String outName;
-
-        if (inName.endsWith(".pack.gz")) {
-            outName = inName.substring(0, inName.length() - 8);
-        } else if (inName.endsWith(".pack")) {
-            outName = inName.substring(0, inName.length() - 5);
-        } else {
-            outName = inName + ".unpacked";
-        }
-        try {
-            Pack200.Unpacker unpacker = Pack200.newUnpacker();
-            out = new JarOutputStream(new FileOutputStream(outName));
-            in = new FileInputStream(inName);
-            if (inName.endsWith(".gz")) {
-                in = new GZIPInputStream(in);
-            }
-            unpacker.unpack(in, out);
-        } catch (IOException ex) {
-            ex.printStackTrace();
-        } finally {
-            if (in != null) {
-                try {
-                    in.close();
-                } catch (IOException ex) {
-                    System.err.println("Error closing file: " + ex.getMessage());
-                }
-            }
-            if (out != null) {
-                try {
-                    out.flush();
-                    out.close();
-                } catch (IOException ex) {
-                    System.err.println("Error closing file: " + ex.getMessage());
                 }
             }
         }

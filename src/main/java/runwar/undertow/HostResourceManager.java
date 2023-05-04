@@ -39,7 +39,7 @@ import static runwar.logging.RunwarLogger.MAPPER_LOG;
 /**
  * The host resource manager contains 1 or more actual resoruce managers inside, mapped to deploy keys.  When undertow needs to map a real path,
  * this resource manager will find and return the actual resoruce manager who's base path maps to the host/deployment key in the thread's current exchange.
- * 
+ *
  * @author Brad
  *
  */
@@ -53,14 +53,14 @@ public class HostResourceManager implements ResourceManager {
      */
     public HostResourceManager( ResourceManager defaultResourceManager ) {
     	resourceManagers = new HashMap<String, ResourceManager>();
-    	
+
     	addResourceManager( Server.ServletDeployment.DEFAULT, defaultResourceManager );
     }
-    
+
     /**
-     * Add a new resource manager that maps to a host/deploy key 
+     * Add a new resource manager that maps to a host/deploy key
      * @param deploymentKey The key that should map to this resource manager
-     * @param resourceManager The resource manager.  
+     * @param resourceManager The resource manager.
      */
     public void addResourceManager( String deploymentKey, ResourceManager resourceManager ) {
     	resourceManagers.put(deploymentKey, resourceManager);
@@ -76,7 +76,7 @@ public class HostResourceManager implements ResourceManager {
 
     /**
      * Find the resource manager that matches the deploy key in the exchange.
-     * If there is no exchange, no deploy key, or an unrecognized deploy key, the default resource manager is returned. 
+     * If there is no exchange, no deploy key, or an unrecognized deploy key, the default resource manager is returned.
      * @return A resource manager.
      */
     public ResourceManager getResourceManager() {
@@ -84,25 +84,26 @@ public class HostResourceManager implements ResourceManager {
     	ResourceManager resourceManager = null;
     	String deploymentKey = null;
     	exchange = Server.getCurrentExchange();
-    	
+
     	if( exchange != null ) {
             deploymentKey = exchange.getAttachment(Server.DEPLOYMENT_KEY);
-            if( deploymentKey != null ) {
-                MAPPER_LOG.debug("Current exchange's deploymentKey is: " + deploymentKey );
-        	}
     	}
 
         if( deploymentKey == null ) {
         	deploymentKey = Server.ServletDeployment.DEFAULT;
     	}
-        
+
     	resourceManager = resourceManagers.get( deploymentKey );
-    	if( resourceManager != null ) {
-    		return resourceManager;
-    	} else {
-    		return resourceManagers.get( Server.ServletDeployment.DEFAULT );
+
+    	if( resourceManager == null ) {
+    		resourceManager = resourceManagers.get( Server.ServletDeployment.DEFAULT );
     	}
-   
+
+        if(resourceManager instanceof MappedResourceManager && ((MappedResourceManager)resourceManager).getDebugLogging() ) {
+            MAPPER_LOG.debug("Current deploymentKey is: " + deploymentKey );
+        }
+    	return resourceManager;
+
     }
 
     /**

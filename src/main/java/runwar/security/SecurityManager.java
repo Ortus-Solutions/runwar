@@ -29,6 +29,7 @@ import io.undertow.predicate.Predicates;
 import io.undertow.predicate.Predicate;
 import runwar.logging.RunwarLogger;
 import runwar.options.ServerOptions;
+import runwar.options.SiteOptions;
 import io.undertow.server.HandlerWrapper;
 
 
@@ -64,9 +65,9 @@ public class SecurityManager implements IdentityManager {
     private List<Map<String,String>> subjectDNs = new ArrayList<Map<String,String>>();
     private List<Map<String,String>> issuerDNs = new ArrayList<Map<String,String>>();
 
-    public void configureAuth( Builder serverBuilder, ServerOptions serverOptions, DeploymentInfo servletBuilder) {
-    	splitDNs( serverOptions.clientCertSubjectDNs(), subjectDNs );
-    	splitDNs( serverOptions.clientCertIssuerDNs(), issuerDNs );
+    public void configureAuth( Builder serverBuilder, SiteOptions siteOptions, DeploymentInfo servletBuilder) {
+    	splitDNs( siteOptions.clientCertSubjectDNs(), subjectDNs );
+    	splitDNs( siteOptions.clientCertIssuerDNs(), issuerDNs );
 
         final IdentityManager sm = this;
         servletBuilder.setInitialSecurityWrapper( new HandlerWrapper() {
@@ -74,9 +75,9 @@ public class SecurityManager implements IdentityManager {
             public HttpHandler wrap(HttpHandler handler) {
 
             	handler = new ServletAuthenticationCallHandler(handler);
-                Predicate authRequired = ( serverOptions.authPredicate() != null && serverOptions.authPredicate().length() > 0 ) ? Predicates.parse( serverOptions.authPredicate() ) : null;
+                Predicate authRequired = ( siteOptions.authPredicate() != null && siteOptions.authPredicate().length() > 0 ) ? Predicates.parse( siteOptions.authPredicate() ) : null;
                 if( authRequired != null ) {
-                    RunwarLogger.SECURITY_LOGGER.debug( "Authentication will only apply to [ " + serverOptions.authPredicate() + " ]" );
+                    RunwarLogger.SECURITY_LOGGER.debug( "Authentication will only apply to [ " + siteOptions.authPredicate() + " ]" );
                 } else {
                     RunwarLogger.SECURITY_LOGGER.debug( "Authentication will apply to all requests" );
                 }
@@ -96,19 +97,19 @@ public class SecurityManager implements IdentityManager {
 
                 final List<AuthenticationMechanism> mechanisms = new ArrayList<AuthenticationMechanism>();
 
-                if( serverOptions.clientCertEnable() ) {
-                    RunwarLogger.SECURITY_LOGGER.debug( "Client Cert Auth mechanism enabled.  Renegotiation: " + serverOptions.clientCertRenegotiation() );
-                    mechanisms.add( new ClientCertAuthenticationMechanism( serverOptions.clientCertRenegotiation() ) );
+                if( siteOptions.clientCertEnable() ) {
+                    RunwarLogger.SECURITY_LOGGER.debug( "Client Cert Auth mechanism enabled.  Renegotiation: " + siteOptions.clientCertRenegotiation() );
+                    mechanisms.add( new ClientCertAuthenticationMechanism( siteOptions.clientCertRenegotiation() ) );
                 }
 
-                if( serverOptions.basicAuthEnable() ) {
-                    RunwarLogger.SECURITY_LOGGER.debug( "Basic Auth mechanism enabled for realm [" + serverOptions.securityRealm() + "]" );
-                    for(Entry<String,String> userNpass : serverOptions.basicAuth().entrySet()) {
+                if( siteOptions.basicAuthEnable() ) {
+                    RunwarLogger.SECURITY_LOGGER.debug( "Basic Auth mechanism enabled for realm [" + siteOptions.securityRealm() + "]" );
+                    for(Entry<String,String> userNpass : siteOptions.basicAuth().entrySet()) {
                         addUser(userNpass.getKey(), userNpass.getValue(), "role1");
                         RunwarLogger.SECURITY_LOGGER.debug(String.format("User:%s password:****",userNpass.getKey()));
                     }
 
-                    mechanisms.add( new BasicAuthenticationMechanism(serverOptions.securityRealm()) );
+                    mechanisms.add( new BasicAuthenticationMechanism(siteOptions.securityRealm()) );
                 }
 
                 handler = new AuthenticationMechanismsHandler(handler, mechanisms);

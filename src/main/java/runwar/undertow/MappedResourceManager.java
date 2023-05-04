@@ -27,7 +27,7 @@ import io.undertow.server.handlers.resource.PathResourceManager;
 import io.undertow.server.handlers.resource.Resource;
 import io.undertow.server.handlers.resource.ResourceChangeEvent;
 import io.undertow.server.handlers.resource.ResourceChangeListener;
-import runwar.options.ServerOptions;
+import runwar.options.SiteOptions;
 
 
 
@@ -41,15 +41,16 @@ import static runwar.logging.RunwarLogger.MAPPER_LOG;
 
 public class MappedResourceManager extends FileResourceManager {
 
-    private ServerOptions serverOptions;
+    private SiteOptions siteOptions;
     private Boolean forceCaseSensitiveWebServer;
     private Boolean forceCaseInsensitiveWebServer;
     private HashMap<String, Path> aliases;
     private File WEBINF = null, CFIDE = null;
-    private static boolean isCaseSensitiveFS = caseSensitivityCheck();
+    private boolean isCaseSensitiveFS;
     private static final Pattern CFIDE_REGEX_PATTERN;
     private static final Pattern WEBINF_REGEX_PATTERN;
     private final FileResource baseResource;
+    private Boolean debugLogging=false;
 
     // testing
     private final List<ResourceChangeListener> listeners = new ArrayList<>();
@@ -62,17 +63,22 @@ public class MappedResourceManager extends FileResourceManager {
 
     private final boolean allowResourceChangeListeners;
 
-    public MappedResourceManager(File base, long transferMinSize, Map<String,Path> aliases, File webinfDir, ServerOptions serverOptions) {
+    public MappedResourceManager(File base, long transferMinSize, Map<String,Path> aliases, File webinfDir, SiteOptions siteOptions) {
         super(base, transferMinSize);
-        this.allowResourceChangeListeners = serverOptions.resourceManagerFileSystemWatcher();
-        if( !this.allowResourceChangeListeners ) {
+        this.isCaseSensitiveFS = caseSensitivityCheck();
+        this.allowResourceChangeListeners = siteOptions.resourceManagerFileSystemWatcher();
+        if( debugLogging && !this.allowResourceChangeListeners ) {
             MAPPER_LOG.debug("Resource change listener disabled for [" + base.toString() + "]");
         }
         this.aliases = (HashMap<String, Path>) aliases;
-        this.serverOptions = serverOptions;
-        this.forceCaseSensitiveWebServer = serverOptions.caseSensitiveWebServer() != null && serverOptions.caseSensitiveWebServer();
-        this.forceCaseInsensitiveWebServer = serverOptions.caseSensitiveWebServer() != null && !serverOptions.caseSensitiveWebServer();
+        this.siteOptions = siteOptions;
+        this.forceCaseSensitiveWebServer = siteOptions.caseSensitiveWebServer() != null && siteOptions.caseSensitiveWebServer();
+        this.forceCaseInsensitiveWebServer = siteOptions.caseSensitiveWebServer() != null && !siteOptions.caseSensitiveWebServer();
         this.baseResource = new FileResource( getBase(), this, "/");
+
+        if( siteOptions.resourceManagerLogging() ) {
+            this.debugLogging=true;
+        }
 
         if(webinfDir != null){
             WEBINF = webinfDir;
@@ -85,13 +91,13 @@ public class MappedResourceManager extends FileResourceManager {
 
     public Resource getResource(String path) {
         if(path == null) {
-            MAPPER_LOG.error("* getResource got a null path!");
+            if( debugLogging ) MAPPER_LOG.error("* getResource got a null path!");
             return null;
         }
-        MAPPER_LOG.debug("* requested: '" + path + "'");
+        if( debugLogging ) MAPPER_LOG.debug("* requested: '" + path + "'");
 
         if( path.equals( "/" ) ) {
-        	MAPPER_LOG.debugf("** path mapped to: '%s'", getBase());
+        	if( debugLogging ) MAPPER_LOG.debugf("** path mapped to: '%s'", getBase());
             return this.baseResource;
         }
 
@@ -106,7 +112,7 @@ public class MappedResourceManager extends FileResourceManager {
 	            } else {
 	                reqFile = Paths.get(WEBINF.getAbsolutePath(), webInfMatcher.group(1).replace("WEB-INF", ""));
 	            }
-	            MAPPER_LOG.trace("** matched WEB-INF : " + reqFile.toAbsolutePath().toString());
+	            if( debugLogging ) MAPPER_LOG.trace("** matched WEB-INF : " + reqFile.toAbsolutePath().toString());
                 reqFile = pathExists(reqFile);
 	        } else if (cfideMatcher.matches()) {
 	            if(cfideMatcher.group(1) == null) {
@@ -114,11 +120,11 @@ public class MappedResourceManager extends FileResourceManager {
 	            } else {
 	                reqFile = Paths.get(CFIDE.getAbsolutePath(), cfideMatcher.group(1).replace("CFIDE", ""));
 	            }
-	            MAPPER_LOG.trace("** matched /CFIDE : " + reqFile.toAbsolutePath().toString());
+	            if( debugLogging ) MAPPER_LOG.trace("** matched /CFIDE : " + reqFile.toAbsolutePath().toString());
                 reqFile = pathExists(reqFile);
 	        } else if (!webInfMatcher.matches()) {
 	            reqFile = Paths.get(getBase().getAbsolutePath(), path);
-	            MAPPER_LOG.trace("* checking with base path: '" + reqFile.toAbsolutePath().toString() + "'");
+	           if( debugLogging )  MAPPER_LOG.trace("* checking with base path: '" + reqFile.toAbsolutePath().toString() + "'");
                 reqFile = pathExists(reqFile);
 	            if ( reqFile == null ) {
 	                reqFile = getAliasedFile(aliases, path);
@@ -129,7 +135,7 @@ public class MappedResourceManager extends FileResourceManager {
 	        }
 
 	        if (reqFile == null ) {
- 	           MAPPER_LOG.debugf( "** No real resource found on disk for: '%s'", path );
+ 	          if( debugLogging )  MAPPER_LOG.debugf( "** No real resource found on disk for: '%s'", path );
  	           return null;
 	        }
 
@@ -164,27 +170,27 @@ public class MappedResourceManager extends FileResourceManager {
             	throw new InvalidPathException( "Real file path [" + realPath + "] doesn't match [" + originalPath + "]", "" );
             }
 
-            MAPPER_LOG.debugf("** path mapped to real file: '%s'", reqFile);
+            if( debugLogging ) MAPPER_LOG.debugf("** path mapped to real file: '%s'", reqFile);
 	        return new FileResource(reqFile.toFile(), this, path);
 
         } catch( InvalidPathException e ){
-            MAPPER_LOG.debugf("** InvalidPathException for: '%s'",path != null ? path : "null");
-            MAPPER_LOG.debug("** " + e.getMessage());
+           if( debugLogging )  MAPPER_LOG.debugf("** InvalidPathException for: '%s'",path != null ? path : "null");
+            if( debugLogging ) MAPPER_LOG.debug("** " + e.getMessage());
             return null;
         } catch( IOException e ){
-            MAPPER_LOG.debugf("** IOException for: '%s'",path != null ? path : "null");
-            MAPPER_LOG.debug("** " + e.getMessage());
+           if( debugLogging )  MAPPER_LOG.debugf("** IOException for: '%s'",path != null ? path : "null");
+           if( debugLogging )  MAPPER_LOG.debug("** " + e.getMessage());
             return null;
         }
     }
 
-    static Path getAliasedFile(HashMap<String, Path> aliasMap, String path) {
+    Path getAliasedFile(HashMap<String, Path> aliasMap, String path) {
         if(path.startsWith("/file:")){
             // groovy servlet asks for /file:... for some reason, when scripts are in an aliased dir
             path = path.replace("/file:", "");
             for( Path file : aliasMap.values()) {
                 if(path.startsWith(file.toAbsolutePath().toString())) {
-    	            MAPPER_LOG.trace("** Path is exact match for alias: '" + file.toAbsolutePath().toString() + "'");
+    	            if( debugLogging ) MAPPER_LOG.trace("** Path is exact match for alias: '" + file.toAbsolutePath().toString() + "'");
                     return Paths.get(path);
                 }
             }
@@ -202,7 +208,7 @@ public class MappedResourceManager extends FileResourceManager {
                 if(file.toString().indexOf('\\') > 0){
                     file = Paths.get(file.toString().replace('/', '\\'));
                 }
-                MAPPER_LOG.trace("** Path is matched inside alias: '" + pathDir.toLowerCase() + "'");
+                if( debugLogging ) MAPPER_LOG.trace("** Path is matched inside alias: '" + pathDir.toLowerCase() + "'");
                 return file;
             }
         }
@@ -215,7 +221,7 @@ public class MappedResourceManager extends FileResourceManager {
            return path;
        }
        if( isCaseSensitiveFS && forceCaseInsensitiveWebServer ) {
-            MAPPER_LOG.debugf("*** Case insensitive check for %s",path);
+            if( debugLogging ) MAPPER_LOG.debugf("*** Case insensitive check for %s",path);
 
         	String realPath = "";
         	String[] pathSegments = path.toString().replace('\\', '/').split( "/" );
@@ -269,25 +275,25 @@ public class MappedResourceManager extends FileResourceManager {
         return allowResourceChangeListeners;
     }
 
-    private static boolean caseSensitivityCheck() {
+    private boolean caseSensitivityCheck() {
 	    try {
 	        File currentWorkingDir = new File(System.getProperty("user.home"));
 	        File case1 = new File(currentWorkingDir, "case1");
 	        File case2 = new File(currentWorkingDir, "Case1");
-            MAPPER_LOG.debug("Testing case sensitivity of file system by writing to [" + case1.toString() + "]");
+            if( debugLogging ) MAPPER_LOG.debug("Testing case sensitivity of file system by writing to [" + case1.toString() + "]");
 	        case1.createNewFile();
 	        if (case2.createNewFile()) {
-	        	MAPPER_LOG.debug("FileSystem of working directory is case sensitive");
+	        	if( debugLogging ) MAPPER_LOG.debug("FileSystem of working directory is case sensitive");
 	            case1.delete();
 	            case2.delete();
 	            return true;
 	        } else {
-	        	MAPPER_LOG.debug("FileSystem of working directory is NOT case sensitive");
+	        	if( debugLogging ) MAPPER_LOG.debug("FileSystem of working directory is NOT case sensitive");
 	            case1.delete();
 	            return false;
 	        }
 	    } catch (Throwable e) {
-	    	MAPPER_LOG.debug("Error detecting case sensitivity of file system.");
+	    	if( debugLogging ) MAPPER_LOG.debug("Error detecting case sensitivity of file system.");
 	    	e.printStackTrace();
 	    }
         return true;
@@ -299,7 +305,7 @@ public class MappedResourceManager extends FileResourceManager {
             //PathResourceManager supports this. This will be fixed in a later version
             return;
         }
-    	MAPPER_LOG.trace("Adding change listener for mapped resource manager");
+    	if( debugLogging ) MAPPER_LOG.trace("Adding change listener for mapped resource manager");
         if (!fileSystem.equals(FileSystems.getDefault())) {
             throw new IllegalStateException("Resource change listeners not supported when using a non-default file system");
         }
@@ -324,7 +330,7 @@ public class MappedResourceManager extends FileResourceManager {
 
     FileSystemWatcher createFileSystemWatcher( String basePath, String prefix ) {
 
-    	MAPPER_LOG.trace("Creating file system watcher in [ " + basePath + " ] with alias [ " + prefix + " ]");
+    	if( debugLogging ) MAPPER_LOG.trace("Creating file system watcher in [ " + basePath + " ] with alias [ " + prefix + " ]");
 
     	final String thePrefix;
     	if( prefix.startsWith("/") ) {
@@ -387,4 +393,11 @@ public class MappedResourceManager extends FileResourceManager {
         super.close();
     }
 
+    public SiteOptions getSiteOptions() {
+        return siteOptions;
+    }
+
+    public Boolean getDebugLogging() {
+        return this.debugLogging;
+    }
 }

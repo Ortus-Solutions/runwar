@@ -18,7 +18,7 @@ import static runwar.Server.bar;
 class MonitorThreadD extends Thread {
 
     private static final Thread mainThread = Thread.currentThread();
-    private final PortRequisitioner ports;
+    //private final PortRequisitioner ports;
     private final Server server;
     private char[] stopPassword;
     private volatile boolean listening = false;
@@ -29,7 +29,7 @@ class MonitorThreadD extends Thread {
         this.server = server;
         serverOptions = server.getServerOptions();
         this.stopPassword = serverOptions.stopPassword();
-        this.ports = server.getPorts();
+       // this.ports = server.getPorts();
         setDaemon(true);
         setName("StopMonitor");
         // add shutdown hook
@@ -38,11 +38,11 @@ class MonitorThreadD extends Thread {
 
     @Override
     public void run() {
-        try(ServerSocket serverSocket = new ServerSocket(ports.get("stop").socket, 1, Server.getInetAddress(serverOptions.host()))) {
+        try(ServerSocket serverSocket = new ServerSocket(serverOptions.stopPort(), 1, Server.getInetAddress(serverOptions.host()))) {
             listening = true;
             MONITOR_LOG.info(bar);
             MONITOR_LOG.info("*** starting 'stop' listener thread - Host: " + serverOptions.host()
-                    + " - Socket: " + ports.get("stop").socket);
+                    + " - Socket: " + serverOptions.stopPort());
             MONITOR_LOG.info(bar);
             while (listening) {
                 MONITOR_LOG.debug("StopMonitor listening for password");
@@ -111,7 +111,7 @@ class MonitorThreadD extends Thread {
         listening = false;
         MONITOR_LOG.trace("Stopping listening");
         // send a char to the reader so it will stop waiting
-        try (Socket s = new Socket(Server.getInetAddress(serverOptions.host()), ports.get("stop").socket)) {
+        try (Socket s = new Socket(Server.getInetAddress(serverOptions.host()), serverOptions.stopPort())) {
             try (OutputStream out = s.getOutputStream()) {
                 for (char aStopPassword : stopPassword) {
                     out.write(aStopPassword);

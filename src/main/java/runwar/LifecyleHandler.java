@@ -8,14 +8,14 @@ import io.undertow.server.HttpServerExchange;
 import io.undertow.util.Headers;
 import io.undertow.util.StatusCodes;
 import runwar.logging.RunwarLogger;
-import runwar.options.ServerOptionsImpl;
+import runwar.options.ServerOptions;
 
 public class LifecyleHandler implements HttpHandler {
 
     private final HttpHandler next;
-    private final ServerOptionsImpl serverOptions;
+    private final ServerOptions serverOptions;
 
-    LifecyleHandler(final HttpHandler next, ServerOptionsImpl serverOptions) {
+    LifecyleHandler(final HttpHandler next, ServerOptions serverOptions) {
         this.next = next;
         this.serverOptions = serverOptions;
     }
@@ -29,11 +29,11 @@ public class LifecyleHandler implements HttpHandler {
              }
              nextListener.proceed();
          });
-    	
+
     	// This only fires if there is no response returned from the exchange
     	// An example would be using the response-code handler which simply ends the exchange
         inExchange.addDefaultResponseListener(exchange -> {
-        	
+
         	// This usually happens when the client/browser closes the connection before the server has responded.
         	// This may not be worth logging, since it doesn't really indicate any sort of issue
             if (!exchange.isResponseChannelAvailable()) {
@@ -41,7 +41,7 @@ public class LifecyleHandler implements HttpHandler {
                 return false;
             }
 
-            // This is to ensure some sort of error page always makes it back to the browser.  
+            // This is to ensure some sort of error page always makes it back to the browser.
             if (exchange.getStatusCode() != 200) {
                 final String errorPage = "<html><head><title>Error</title></head><body>" + StatusCodes.getReason( exchange.getStatusCode() ) + "<br>(Check logs for more info)</body></html>";
                 exchange.getResponseHeaders().put(Headers.CONTENT_LENGTH, "" + errorPage.length());

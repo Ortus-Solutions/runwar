@@ -20,32 +20,25 @@ import java.net.URLDecoder;
 
 import runwar.logging.LoggerFactory;
 import runwar.logging.RunwarLogger;
-import runwar.options.CommandLineHandler;
 import runwar.options.ConfigParser;
 import runwar.options.ServerOptions;
 
 public class Start {
 
 
-    // for openBrowser 
+    // for openBrowser
 	public Start(int seconds) {
 	    new Server(seconds);
 	}
 
 	public static void main(String[] args) throws Exception {
-        ServerOptions serverOptions = CommandLineHandler.parseLogArguments(args);
-        LoggerFactory.configure(serverOptions);
-        if(args.length == 0) {
-            if(new File("server.json").exists()) {
-                serverOptions = new ConfigParser(new File("server.json")).getServerOptions();
-            } else {
-                serverOptions = CommandLineHandler.parseArguments(args); // print usage
-            }
+        ServerOptions serverOptions;
+        if(args.length == 1 ) {
+            serverOptions = new ConfigParser(new File(args[0])).getServerOptions();
         } else {
-            serverOptions = CommandLineHandler.parseArguments(args);
+            throw new RuntimeException( "Runwar must be called with a valid path to the serverinfo.json file as the only arg" );
         }
-        serverOptions.startedFromCommandLine(true);
-        
+
         Server server = new Server();
         try {
             server.startServer(serverOptions);
@@ -53,9 +46,9 @@ public class Start {
             e.printStackTrace();
             System.exit(1);
         }
-        
+
 	}
-	
+
     public static boolean serverListening(String host, int port) {
         Socket s = null;
         try {

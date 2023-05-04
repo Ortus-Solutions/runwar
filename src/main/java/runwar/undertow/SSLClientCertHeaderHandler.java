@@ -20,7 +20,7 @@ import java.math.BigInteger;
 import java.util.HashMap;
 import javax.servlet.ServletRequest;
 
-import runwar.options.ServerOptions;
+import runwar.options.SiteOptions;
 import static runwar.logging.RunwarLogger.LOG;
 import runwar.security.SecurityManager;
 
@@ -32,7 +32,7 @@ import runwar.security.SecurityManager;
 public class SSLClientCertHeaderHandler implements HttpHandler {
 
 	private final HttpHandler next;
-	final ServerOptions serverOptions;
+	final SiteOptions siteOptions;
 	// Adobe will access CGI elements from request attribtues, but Lucee requires an HTTP request header.
 	final Boolean addHTTPHeaders;
 
@@ -50,9 +50,9 @@ public class SSLClientCertHeaderHandler implements HttpHandler {
 	private static final HttpString SUBJECT_DN_MAP = new HttpString("javax.servlet.request.X509Certificate.subjectDNMap" );
 	private static final HttpString ISSUER_DN_MAP = new HttpString("javax.servlet.request.X509Certificate.issuerDNMap" );
 
-    public SSLClientCertHeaderHandler(HttpHandler next, ServerOptions serverOptions, Boolean addHTTPHeaders ) {
+    public SSLClientCertHeaderHandler(HttpHandler next, SiteOptions siteOptions, Boolean addHTTPHeaders ) {
         this.next = next;
-        this.serverOptions = serverOptions;
+        this.siteOptions = siteOptions;
 		this.addHTTPHeaders = addHTTPHeaders;
     }
 
@@ -64,9 +64,9 @@ public class SSLClientCertHeaderHandler implements HttpHandler {
 		}
 
         // If Undertow is in the business of accepting client certs, discard any incoming HTTP headers so we can ensure they are valid
-        String clientCertNegotiation = serverOptions.clientCertNegotiation();
+        String clientCertNegotiation = siteOptions.clientCertNegotiation();
 		// If cert renegotion is enabled, we'll also assume they want Runwar to take charge of cert-related headers
-        Boolean clientCertRenegotiation = serverOptions.clientCertRenegotiation();
+        Boolean clientCertRenegotiation = siteOptions.clientCertRenegotiation();
         if( clientCertNegotiation != null && ( clientCertNegotiation.equals( "REQUIRED" ) || clientCertNegotiation.equals( "REQUESTED" ) ) || clientCertRenegotiation ) {
 
 			// Runwar has determined it's "in charge" of cert-related headers, so it's going to wipe any incoming data from upstream so you know you can trust it
