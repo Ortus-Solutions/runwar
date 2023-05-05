@@ -6,6 +6,7 @@ import io.undertow.Undertow.Builder;
 import io.undertow.client.ClientConnection;
 import io.undertow.UndertowOptions;
 import io.undertow.predicate.Predicates;
+import io.undertow.predicate.Predicate;
 import io.undertow.server.DefaultByteBufferPool;
 import io.undertow.server.HttpHandler;
 import io.undertow.server.HttpServerExchange;
@@ -22,6 +23,7 @@ import io.undertow.server.handlers.encoding.EncodingHandler;
 import io.undertow.server.handlers.encoding.GzipEncodingProvider;
 import io.undertow.server.handlers.resource.CachingResourceManager;
 import io.undertow.server.handlers.resource.ResourceManager;
+import io.undertow.server.handlers.resource.ResourceHandler;
 import io.undertow.servlet.api.DeploymentInfo;
 import io.undertow.servlet.api.DeploymentManager;
 import io.undertow.servlet.api.ServletSessionConfig;
@@ -31,6 +33,7 @@ import io.undertow.util.AttachmentKey;
 import io.undertow.util.HeaderValues;
 import io.undertow.util.Headers;
 import io.undertow.util.HttpString;
+import io.undertow.util.MimeMappings;
 import io.undertow.websockets.jsr.WebSocketDeploymentInfo;
 import net.minidev.json.JSONArray;
 import net.minidev.json.JSONObject;
@@ -84,11 +87,13 @@ public class Server {
 
     public static String processName = "Starting Server...";
     public static final AttachmentKey<String> DEPLOYMENT_KEY = AttachmentKey.create(String.class);
+    public static final AttachmentKey<SiteDeployment> SITE_DEPLOYMENT_KEY = AttachmentKey.create(SiteDeployment.class);
+
     private static final ThreadLocal<HttpServerExchange> currentExchange= new ThreadLocal<HttpServerExchange>();
     private volatile static ServerOptions serverOptions;
     private volatile static SiteOptions siteOptions;
     private static MariaDB4jManager mariadb4jManager;
-    private ConcurrentHashMap<String,ServletDeployment> deployments = new ConcurrentHashMap<String,ServletDeployment>();
+    private ConcurrentHashMap<String,SiteDeployment> deployments = new ConcurrentHashMap<String,SiteDeployment>();
 	private HashSet<String> deploymentKeyWarnings = new HashSet<String>();
     private Undertow undertow;
     private MonitorThread monitor;
@@ -172,7 +177,7 @@ public class Server {
     }
 
     public synchronized void restartServer(final ServerOptions options) throws Exception {
-        LaunchUtil.displayMessage(options.processName(), "Info", "Restarting server...");
+        LaunchUtil.displayMessage(serverOptions.processName(), "Info", "Restarting server...");
         LOG.info(bar);
         LOG.info("***  Restarting server");
         LOG.info(bar);
@@ -514,19 +519,29 @@ public class Server {
             securityManager.configureAuth( serverBuilder, siteOptions, servletBuilder);
         }
 
-        // Create default context
-        createServletDeployment( servletBuilder, serverOptions.warFile(), configurer, ServletDeployment.DEFAULT, null );
-
+        if( serverOptions.getSites().size() == 1 ) {
+            // Create default context
+            createSiteDeployment( servletBuilder, serverOptions.getSites().get(0).webroot(), configurer, SiteDeployment.DEFAULT, null, serverOptions.getSites().get(0) );
+        } else {
+            for( SiteOptions siteOptions : serverOptions.getSites() ) {
+                createSiteDeployment( servletBuilder, siteOptions.webroot(), configurer, siteOptions.siteName(), null, siteOptions );
+            }
+        }
 
         HttpHandler hostHandler = new HttpHandler() {
 
             @Override
             public void handleRequest(final HttpServerExchange exchange) throws Exception {
-            	ServletDeployment deployment;
+            	SiteDeployment deployment;
+
+
+                if( serverOptions.getSites().size() > 1 ) {
+            		deployment = deployments.get( exchange.getHostName() );
+                }
 
             	// If we're not auto-creating contexts, then just pass to our default servlet deployment
-            	if( !serverOptions.autoCreateContexts() ) {
-            		deployment = deployments.get( ServletDeployment.DEFAULT );
+            	else if( !serverOptions.autoCreateContexts() ) {
+            		deployment = deployments.get( SiteDeployment.DEFAULT );
 
             	// Otherwise, see if a deployment already exists
             	} else {
@@ -586,7 +601,7 @@ public class Server {
                                     }
                             	}
                             	try {
-                            		deployment = createServletDeployment( servletBuilder, docRootFile, configurer, deploymentKey, vDirs );
+                            		deployment = createSiteDeployment( servletBuilder, docRootFile, configurer, deploymentKey, vDirs, serverOptions.getSites().get(0) );
                             	} catch ( MaxContextsException e ) {
 
 									exchange.getResponseHeaders().put(Headers.CONTENT_TYPE, "text/plain");
@@ -598,17 +613,19 @@ public class Server {
                             	}
                     		} else {
                     	        LOG.warn( "X-Tomcat-DocRoot of [" + docRoot + "] does not exist or is not directory.  Using default context." );
-                        		deployment = deployments.get( ServletDeployment.DEFAULT );
+                        		deployment = deployments.get( SiteDeployment.DEFAULT );
                     		}
                     	} else {
                     		logOnce( deploymentKey, "NoDocRootHeader", "warn", "X-Tomcat-DocRoot is null or empty.  Using default context for deploymentKey [" + deploymentKey + "]." );
-                    		deployment = deployments.get( ServletDeployment.DEFAULT );
+                    		deployment = deployments.get( SiteDeployment.DEFAULT );
                     	}
 
             		}
             	}
 
-        		deployment.getServletInitialHandler().handleRequest(exchange);
+                // Save into the exchange for later in the thread
+                exchange.putAttachment(SITE_DEPLOYMENT_KEY, deployment);
+                deployment.processRequest( exchange );
 
             }
 
@@ -627,130 +644,7 @@ public class Server {
         LOG.debug("Direct Buffers: " + serverOptions.directBuffers());
         serverBuilder.setDirectBuffers(serverOptions.directBuffers());
 
-        final PathHandler pathHandler = new PathHandler(Handlers.redirect(contextPath)) {
-            private final HttpString HTTPONLY = new HttpString("HttpOnly");
-            private final HttpString SECURE = new HttpString("Secure");
-            private final boolean addHttpOnlyHeader = serverOptions.cookieHttpOnly();
-            private final boolean addSecureHeader = serverOptions.cookieHttpOnly();
-
-            @Override
-            public void handleRequest(final HttpServerExchange exchange) throws Exception {
-
-                if (!exchange.getResponseHeaders().contains(HTTPONLY) && addHttpOnlyHeader) {
-                    exchange.getResponseHeaders().add(HTTPONLY, "true");
-                }
-                if (!exchange.getResponseHeaders().contains("Secure") && addSecureHeader) {
-                    exchange.getResponseHeaders().add(SECURE, "true");
-                }
-
-                if (exchange.getRequestPath().endsWith(".svgz")) {
-                    exchange.getResponseHeaders().put(Headers.CONTENT_ENCODING, "gzip");
-                }
-                // clear any welcome-file info cached after initial request *NOT THREAD SAFE*
-                if (siteOptions.directoryListingRefreshEnable() && exchange.getRequestPath().endsWith("/")) {
-                    CONTEXT_LOG.trace("*** Resetting servlet path info");
-                    //manager.getDeployment().getServletPaths().invalidate();
-                }
-
-                if (serverOptions.debug() && serverOptions.testing() && exchange.getRequestPath().endsWith("/dumprunwarrequest")) {
-                    new RequestDumper().handleRequest(exchange);
-                } else {
-                	 String requestPath = exchange.getRequestPath();
-                	 while( !requestPath.isEmpty() && ( requestPath.startsWith( "/" ) || requestPath.startsWith( "\\" ) ) ) {
-                		 requestPath = requestPath.substring( 1 );
-                	 }
-                	 requestPath = requestPath.toUpperCase();
-                	 // Undertow has checks for this, but a more careful check is required with a case insensitive resource manager
-                	if( !requestPath.isEmpty() && ( requestPath.startsWith( "WEB-INF/" ) || requestPath.startsWith( "WEB-INF\\" ) ) ) {
-                       	CONTEXT_LOG.trace("Blocking suspicious access to : " + exchange.getRequestPath() );
-                       	// Not ending the exchange here so the servlet can still send any custom error page.
-               			exchange.setStatusCode( 404 );
-                	}
-
-                    super.handleRequest(exchange);
-                }
-            }
-
-            @Override
-            public String toString() {
-                return "Runwar PathHandler";
-            }
-        };
-
-        pathHandler.addPrefixPath(contextPath, hostHandler);
-        HttpHandler httpHandler = pathHandler;
-
-        if (siteOptions.predicateFile() != null) {
-            LOG.debug("Predicates file: " + siteOptions.predicateFile().getAbsolutePath());
-
-            if (!siteOptions.predicateFile().exists()) {
-                throw new RuntimeException("The predicate file [" + siteOptions.predicateFile().getAbsolutePath() + "] does not exist on disk.");
-            }
-
-            BufferedReader br = new BufferedReader(new FileReader(siteOptions.predicateFile()));
-            String predicatesLines = "";
-            String st;
-            try {
-                while ((st = br.readLine()) != null) {
-                    LOG.trace(st);
-                    predicatesLines = predicatesLines + st + "\n";
-                }
-            } finally {
-                br.close();
-            }
-
-            List<PredicatedHandler> ph = PredicatedHandlersParser.parse(predicatesLines, _classLoader);
-            LOG.debug(ph.size() + " predicate(s) loaded");
-
-            httpHandler = Handlers.predicates(ph, httpHandler);
-        }
-
-        if (siteOptions.gzipEnable()) {
-            //the default packet size on the internet is 1500 bytes so
-            //any file less than 1.5k can be sent in a single packet
-            if (siteOptions.gzipPredicate() != null) {
-                LOG.debug("Setting GZIP predicate to = " + siteOptions.gzipPredicate());
-            }
-            // The max-content-size predicate was replaced with request-larger-than
-            httpHandler = new EncodingHandler(new ContentEncodingRepository().addEncodingHandler(
-                    "gzip", new GzipEncodingProvider(), 50, Predicates.parse(siteOptions.gzipPredicate()))).setNext(httpHandler);
-        }
-
-        if (siteOptions.logAccessEnable()) {
-            RunwarAccessLogReceiver accessLogReceiver = RunwarAccessLogReceiver.builder().setLogWriteExecutor(logWorker)
-                    .setRotate(true)
-                    .setOutputDirectory(siteOptions.logAccessDir().toPath())
-                    .setLogBaseName(siteOptions.logAccessBaseFileName())
-                    .setLogNameSuffix(serverOptions.logSuffix())
-                    .build();
-            LOG.debug("Logging combined access to " + siteOptions.logAccessDir() + " base name of '" + siteOptions.logAccessBaseFileName() + "." + serverOptions.logSuffix() + ", rotated daily'");
-            httpHandler = new AccessLogHandler(httpHandler, accessLogReceiver, "combined", Server.class.getClassLoader());
-        }
-
-        if (serverOptions.logRequestsEnable()) {
-            LOG.debug("Enabling request dumper");
-            DefaultAccessLogReceiver requestsLogReceiver = DefaultAccessLogReceiver.builder().setLogWriteExecutor(logWorker)
-                    .setRotate(true)
-                    .setOutputDirectory(options.logRequestsDir().toPath())
-                    .setLogBaseName(options.logRequestsBaseFileName())
-                    .setLogNameSuffix(options.logSuffix())
-                    .build();
-            httpHandler = new RequestDebugHandler(httpHandler, requestsLogReceiver);
-        }
-
-        if (siteOptions.proxyPeerAddressEnable()) {
-            LOG.debug("Enabling Proxy Peer Address handling");
-            httpHandler = new ProxyPeerAddressHandler(httpHandler);
-        }
-
-        if (siteOptions.clientCertTrustHeaders()) {
-            LOG.debug("Checking for upstream client cert HTTP headers");
-            httpHandler = new SSLHeaderHandler(httpHandler);
-        }
-
-        httpHandler = new LifecyleHandler(httpHandler, serverOptions);
-
-        serverBuilder.setHandler(httpHandler);
+        serverBuilder.setHandler(hostHandler);
         try {
             PID = ManagementFactory.getRuntimeMXBean().getName().split("@")[0];
             String pidFile = serverOptions.pidFile();
@@ -935,7 +829,7 @@ public class Server {
                     }
                     if (deployments != null) {
                         try {
-                        	 for ( Map.Entry<String,ServletDeployment> deployment : deployments.entrySet() ) {
+                        	 for ( Map.Entry<String,SiteDeployment> deployment : deployments.entrySet() ) {
                         		 DeploymentManager manager = deployment.getValue().getDeploymentManager();
                                  switch (manager.getState()) {
                                      case UNDEPLOYED:
@@ -1303,8 +1197,8 @@ public class Server {
         return serverState;
     }
 
-    public synchronized ServletDeployment createServletDeployment( DeploymentInfo servletBuilder, File webroot, RunwarConfigurer configurer, String deploymentKey, String vDirs ) throws Exception {
-    	ServletDeployment deployment;
+    public synchronized SiteDeployment createSiteDeployment( DeploymentInfo servletBuilder, File webroot, RunwarConfigurer configurer, String deploymentKey, String vDirs, SiteOptions siteOptions ) throws Exception {
+    	SiteDeployment deployment;
 
     	// If another thread already created this deployment
     	if( ( deployment = deployments.get( deploymentKey ) ) != null ) {
@@ -1349,24 +1243,24 @@ public class Server {
         	DeploymentManager manager = defaultContainer().addDeployment(servletBuilder);
         	manager.deploy();
 
-        	deployment = new ServletDeployment( manager.start(), manager );
+        	deployment = new SiteDeployment( manager.start(), manager, siteOptions );
             LOG.debug("New servlet context created for [" + deploymentKey + "]" );
         // For Adobe
         } else {
         	// For default deployment, create initial resource manager and deploy
-        	if( deploymentKey.equals(ServletDeployment.DEFAULT) ) {
+        	if( deploymentKey.equals(SiteDeployment.DEFAULT) ) {
 
                 servletBuilder.setResourceManager( new HostResourceManager( resourceManager ) );
             	DeploymentManager manager = defaultContainer().addDeployment(servletBuilder);
             	manager.deploy();
-            	deployment = new ServletDeployment( manager.start(), manager );
+            	deployment = new SiteDeployment( manager.start(), manager, siteOptions );
                 LOG.debug("Initial servlet context created for [" + deploymentKey + "]" );
 
            	// For all subsequent deploys, reuse default deployment and simply add new resource manager
         	} else {
 
         		((HostResourceManager)servletBuilder.getResourceManager()).addResourceManager( deploymentKey, resourceManager );
-            	deployment = deployments.get(ServletDeployment.DEFAULT);
+            	deployment = deployments.get(SiteDeployment.DEFAULT);
                 LOG.debug("New resource manager added to deployment [" + deploymentKey + "]" );
 
         	}
@@ -1563,23 +1457,169 @@ public class Server {
 
     }
 
-	public class ServletDeployment {
+	public class SiteDeployment {
 
-	    private final HttpHandler servletInitialHandler;
+	    private final HttpHandler siteInitialHandler;
 	    private final DeploymentManager deploymentManager;
 	    public final static String DEFAULT = "default";
 
-	    public ServletDeployment(HttpHandler servletInitialHandler, DeploymentManager deploymentManager) {
-	        this.servletInitialHandler = servletInitialHandler;
+	    public SiteDeployment(HttpHandler servletInitialHandler, DeploymentManager deploymentManager, SiteOptions siteOptions ) throws Exception {
 	        this.deploymentManager = deploymentManager;
+	        this.siteInitialHandler = buildSiteHandlerChain( servletInitialHandler, siteOptions );
 	    }
 
-	    public HttpHandler getServletInitialHandler() {
-	        return servletInitialHandler;
+        private HttpHandler buildSiteHandlerChain( HttpHandler servletInitialHandler, SiteOptions siteOptions ) throws Exception {
+
+            final PathHandler pathHandler = new PathHandler(Handlers.redirect(serverOptions.contextPath())) {
+                private final HttpString HTTPONLY = new HttpString("HttpOnly");
+                private final HttpString SECURE = new HttpString("Secure");
+                private final boolean addHttpOnlyHeader = serverOptions.cookieHttpOnly();
+                private final boolean addSecureHeader = serverOptions.cookieHttpOnly();
+
+                @Override
+                public void handleRequest(final HttpServerExchange exchange) throws Exception {
+
+                    if (!exchange.getResponseHeaders().contains(HTTPONLY) && addHttpOnlyHeader) {
+                        exchange.getResponseHeaders().add(HTTPONLY, "true");
+                    }
+                    if (!exchange.getResponseHeaders().contains("Secure") && addSecureHeader) {
+                        exchange.getResponseHeaders().add(SECURE, "true");
+                    }
+
+                    if (exchange.getRequestPath().endsWith(".svgz")) {
+                        exchange.getResponseHeaders().put(Headers.CONTENT_ENCODING, "gzip");
+                    }
+                    // clear any welcome-file info cached after initial request *NOT THREAD SAFE*
+                    if (siteOptions.directoryListingRefreshEnable() && exchange.getRequestPath().endsWith("/")) {
+                        CONTEXT_LOG.trace("*** Resetting servlet path info");
+                        //manager.getDeployment().getServletPaths().invalidate();
+                    }
+
+                    if (serverOptions.debug() && serverOptions.testing() && exchange.getRequestPath().endsWith("/dumprunwarrequest")) {
+                        new RequestDumper().handleRequest(exchange);
+                    } else {
+                        String requestPath = exchange.getRequestPath();
+                        while( !requestPath.isEmpty() && ( requestPath.startsWith( "/" ) || requestPath.startsWith( "\\" ) ) ) {
+                            requestPath = requestPath.substring( 1 );
+                        }
+                        requestPath = requestPath.toUpperCase();
+                        // Undertow has checks for this, but a more careful check is required with a case insensitive resource manager
+                        if( !requestPath.isEmpty() && ( requestPath.startsWith( "WEB-INF/" ) || requestPath.startsWith( "WEB-INF\\" ) ) ) {
+                            CONTEXT_LOG.trace("Blocking suspicious access to : " + exchange.getRequestPath() );
+                            // Not ending the exchange here so the servlet can still send any custom error page.
+                            exchange.setStatusCode( 404 );
+                        }
+
+                        // TODO: Add custom error pages
+                        if( exchange.getStatusCode() > 399 ) {
+                             //&& !exchange.isResponseStarted()
+                             exchange.endExchange();
+                             return;
+                        }
+                        super.handleRequest(exchange);
+                    }
+                }
+
+                @Override
+                public String toString() {
+                    return "Runwar PathHandler";
+                }
+            };
+
+            MimeMappings.Builder mimeMappings = MimeMappings.builder();
+            siteOptions.mimeTypes().forEach((ext, contentType) -> {
+                LOG.debugf("Adding Mime type %s = '%s'", ext, contentType);
+                mimeMappings.addMapping(ext, contentType);
+            });
+            // Only needed until this is complete: https://issues.redhat.com/browse/UNDERTOW-2218
+            mimeMappings.addMapping("webp", "image/webp");
+
+            ResourceManager resourceManage = this.deploymentManager.getDeployment().getDeploymentInfo().getResourceManager();
+
+            // TODO: Enforce allowed extensions
+            HttpHandler resourceHandler = new ResourceHandler( resourceManage )
+                    .setDirectoryListingEnabled( siteOptions.directoryListingEnable() )
+                    // TODO: default to welcome files from web.xml
+                    .setWelcomeFiles( siteOptions.welcomeFiles() )
+                    .setMimeMappings( mimeMappings.build() );
+
+            HttpHandler CFOrStaticHandler = Handlers.predicate(
+                Predicates.parse( "regex( '^/(.+\\.cf[cm])(/.*)?$' )" ),
+                servletInitialHandler,
+                resourceHandler
+            );
+
+            HttpHandler welcomeFileHandler = new WelcomeFileHandler(CFOrStaticHandler, resourceManage, Arrays.asList(siteOptions.welcomeFiles()) );
+
+            pathHandler.addPrefixPath(serverOptions.contextPath(), welcomeFileHandler);
+            HttpHandler httpHandler = pathHandler;
+
+            if (siteOptions.predicateText() != null && siteOptions.predicateText().length() > 0 ) {
+                LOG.debug("Adding predicates");
+
+                List<PredicatedHandler> ph = PredicatedHandlersParser.parse(siteOptions.predicateText(), _classLoader);
+                LOG.debug("Predicate(s) loaded");
+
+                httpHandler = Handlers.predicates(ph, httpHandler);
+            }
+
+            if (siteOptions.gzipEnable()) {
+                //the default packet size on the internet is 1500 bytes so
+                //any file less than 1.5k can be sent in a single packet
+                if (siteOptions.gzipPredicate() != null) {
+                    LOG.debug("Setting GZIP predicate to = " + siteOptions.gzipPredicate());
+                }
+                // The max-content-size predicate was replaced with request-larger-than
+                httpHandler = new EncodingHandler(new ContentEncodingRepository().addEncodingHandler(
+                        "gzip", new GzipEncodingProvider(), 50, Predicates.parse(siteOptions.gzipPredicate()))).setNext(httpHandler);
+            }
+
+            if (siteOptions.logAccessEnable()) {
+                RunwarAccessLogReceiver accessLogReceiver = RunwarAccessLogReceiver.builder().setLogWriteExecutor(logWorker)
+                        .setRotate(true)
+                        .setOutputDirectory(siteOptions.logAccessDir().toPath())
+                        .setLogBaseName(siteOptions.logAccessBaseFileName())
+                        .setLogNameSuffix(serverOptions.logSuffix())
+                        .build();
+                LOG.debug("Logging combined access to " + siteOptions.logAccessDir() + " base name of '" + siteOptions.logAccessBaseFileName() + "." + serverOptions.logSuffix() + ", rotated daily'");
+                httpHandler = new AccessLogHandler(httpHandler, accessLogReceiver, "combined", Server.class.getClassLoader());
+            }
+
+            if (serverOptions.logRequestsEnable()) {
+                LOG.debug("Enabling request dumper");
+                DefaultAccessLogReceiver requestsLogReceiver = DefaultAccessLogReceiver.builder().setLogWriteExecutor(logWorker)
+                        .setRotate(true)
+                        .setOutputDirectory(serverOptions.logRequestsDir().toPath())
+                        .setLogBaseName(serverOptions.logRequestsBaseFileName())
+                        .setLogNameSuffix(serverOptions.logSuffix())
+                        .build();
+                httpHandler = new RequestDebugHandler(httpHandler, requestsLogReceiver);
+            }
+
+            if (siteOptions.proxyPeerAddressEnable()) {
+                LOG.debug("Enabling Proxy Peer Address handling");
+                httpHandler = new ProxyPeerAddressHandler(httpHandler);
+            }
+
+            if (siteOptions.clientCertTrustHeaders()) {
+                LOG.debug("Checking for upstream client cert HTTP headers");
+                httpHandler = new SSLHeaderHandler(httpHandler);
+            }
+
+            return new LifecyleHandler(httpHandler, serverOptions);
+
+        }
+
+	    public HttpHandler getSiteInitialHandler() {
+	        return siteInitialHandler;
 	    }
 
 	    public DeploymentManager getDeploymentManager() {
 	        return deploymentManager;
+	    }
+
+	    public void processRequest( HttpServerExchange exchange ) throws Exception {
+	        siteInitialHandler.handleRequest(exchange);
 	    }
 	}
 

@@ -328,6 +328,8 @@ public class ConfigParser {
 
             CONF_LOG.info("Loading config for site [" + siteName + "].");
 
+            site.webroot(getFile( siteConfig.getOptionValue("webroot")));
+
             if (siteConfig.hasOption("directoryBrowsing")) {
                 site.directoryListingEnable(Boolean.valueOf(siteConfig.getOptionValue("directoryBrowsing")));
             }
@@ -424,6 +426,10 @@ public class ConfigParser {
             }
             if (siteConfig.hasOption("basicAuthEnable")) {
                 site.basicAuthEnable(Boolean.valueOf(siteConfig.getOptionValue("basicAuthEnable")));
+            }
+
+            if (siteConfig.hasOption("webRulesText")) {
+                site.predicateText(siteConfig.getOptionValue("webRulesText"));
             }
 
             if (siteConfig.hasOption("authPredicate")) {

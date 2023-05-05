@@ -131,12 +131,11 @@ class RunwarConfigurer {
         }
         servletBuilder.setClassLoader(getClassLoader());
 
-        WebXMLParser.parseWebXml(serverOptions.webXmlFile(), servletBuilder, serverOptions.ignoreWebXmlWelcomePages(), serverOptions.ignoreWebXmlRestMappings(), false, serverOptions.servletRestEnable());
+        WebXMLParser.parseWebXml(serverOptions.webXmlFile(), servletBuilder, serverOptions.ignoreWebXmlRestMappings(), false, serverOptions.servletRestEnable(), serverOptions);
         File webXMLOverrideFile = serverOptions.webXmlOverrideFile();
         if(webXMLOverrideFile!=null){
             LOG.debug("Using webxml override: '" + webXMLOverrideFile.getAbsolutePath() + "'");
-            WebXMLParser.parseWebXml(webXMLOverrideFile, servletBuilder, serverOptions.ignoreWebXmlWelcomePages(),
-                                        serverOptions.ignoreWebXmlRestMappings(), serverOptions.webXmlOverrideForce(), serverOptions.servletRestEnable());
+            WebXMLParser.parseWebXml(webXMLOverrideFile, servletBuilder, serverOptions.ignoreWebXmlRestMappings(), serverOptions.webXmlOverrideForce(), serverOptions.servletRestEnable(), serverOptions);
         }
     }
 

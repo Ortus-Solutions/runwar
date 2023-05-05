@@ -2,11 +2,13 @@ package runwar.undertow;
 
 import static org.joox.JOOX.$;
 import static runwar.logging.RunwarLogger.CONF_LOG;
+import runwar.options.ServerOptions;
 
 import java.io.File;
 import java.util.EventListener;
 import java.util.HashMap;
 import java.util.Map;
+import java.util.Arrays;
 import java.util.regex.Pattern;
 
 import javax.servlet.DispatcherType;
@@ -29,10 +31,9 @@ public class WebXMLParser {
      * @param webxml web.xml file
      * @param info DeploymentInfo
      * @param ignoreRestMappings rest mappings
-     * @param ignoreWelcomePages ignore welcome pages or not
      */
     @SuppressWarnings("unchecked")
-    public static void parseWebXml(File webxml, DeploymentInfo info, boolean ignoreWelcomePages, boolean ignoreRestMappings, boolean overrideEnabled, boolean servletRestEnable) {
+    public static void parseWebXml(File webxml, DeploymentInfo info, boolean ignoreRestMappings, boolean overrideEnabled, boolean servletRestEnable, ServerOptions serverOptions) {
         CONF_LOG.infof("Parsing '%s'", webxml.getPath());
         CONF_LOG.debugf("Overriding previous web.xml '%s'", overrideEnabled?"True":"False");
 
@@ -224,22 +225,21 @@ public class WebXMLParser {
             });
 
             // do welcome files
-            if (ignoreWelcomePages) {
-                CONF_LOG.info("Ignoring any welcome pages in web.xml");
-            } else {
-                Match welcomeFileList = $(doc).find("welcome-file-list");
-                int sizeWelcomeFiles = welcomeFileList.find("welcome-file").size();
-                trace("Total No. of welcome files: %s", sizeWelcomeFiles);
-                if ( overrideEnabled && sizeWelcomeFiles > 0 ) {
-                    trace("Removing %s welcome page(s) from deployment due to web.xml override", info.getWelcomePages().size());
-                    info.getWelcomePages().clear();
-                }
-                welcomeFileList.find("welcome-file").each(welcomeFileElement -> {
-                    String welcomeFile = $(welcomeFileElement).text();
-                    CONF_LOG.debugf("welcome-file: %s", welcomeFile);
-                    info.addWelcomePage(welcomeFile);
-                });
+            Match welcomeFileList = $(doc).find("welcome-file-list");
+            int sizeWelcomeFiles = welcomeFileList.find("welcome-file").size();
+            trace("Total No. of welcome files: %s", sizeWelcomeFiles);
+            if ( overrideEnabled && sizeWelcomeFiles > 0 ) {
+                trace("Removing %s welcome page(s) from deployment due to web.xml override", info.getWelcomePages().size());
+                info.getWelcomePages().clear();
             }
+            welcomeFileList.find("welcome-file").each(welcomeFileElement -> {
+                String welcomeFile = $(welcomeFileElement).text();
+                CONF_LOG.debugf("welcome-file: %s", welcomeFile);
+                info.addWelcomePage(welcomeFile);
+            });
+            serverOptions.servletWelcomeFiles( info.getWelcomePages().toArray(new String[info.getWelcomePages().size()]) );
+
+
 
             // do mime mappings
             Match mimeMappings = $(doc).find("mime-mapping");

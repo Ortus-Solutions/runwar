@@ -22,6 +22,8 @@ import static runwar.util.Reflection.setOptionMapValue;
 
 public class ServerOptions {
 
+    private String[] servletWelcomeFiles;
+
     private String serverName = null, processName = "RunWAR", logLevel = "INFO", contextPath = "/";
 
     private boolean debug = false, isBackground = true, logRequestsEnable = false, openbrowser = false, startedFromCommandline = false, enableURLRewrite = false;
@@ -262,6 +264,15 @@ public class ServerOptions {
      */
     public ServerOptions contextPath(String contextPath) {
         this.contextPath = contextPath;
+        return this;
+    }
+
+    public String[] servletWelcomeFiles() {
+        return servletWelcomeFiles;
+    }
+
+    public ServerOptions servletWelcomeFiles(String[] servletWelcomeFiles) {
+        this.servletWelcomeFiles = servletWelcomeFiles;
         return this;
     }
 

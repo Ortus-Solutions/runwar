@@ -29,7 +29,7 @@ import io.undertow.server.handlers.resource.ResourceChangeEvent;
 import io.undertow.server.handlers.resource.ResourceChangeListener;
 import io.undertow.server.handlers.resource.ResourceManager;
 import runwar.Server;
-import runwar.Server.ServletDeployment;
+import runwar.Server.SiteDeployment;
 import runwar.options.ServerOptions;
 import io.undertow.servlet.handlers.ServletRequestContext;
 
@@ -54,7 +54,7 @@ public class HostResourceManager implements ResourceManager {
     public HostResourceManager( ResourceManager defaultResourceManager ) {
     	resourceManagers = new HashMap<String, ResourceManager>();
 
-    	addResourceManager( Server.ServletDeployment.DEFAULT, defaultResourceManager );
+    	addResourceManager( Server.SiteDeployment.DEFAULT, defaultResourceManager );
     }
 
     /**
@@ -90,13 +90,13 @@ public class HostResourceManager implements ResourceManager {
     	}
 
         if( deploymentKey == null ) {
-        	deploymentKey = Server.ServletDeployment.DEFAULT;
+        	deploymentKey = Server.SiteDeployment.DEFAULT;
     	}
 
     	resourceManager = resourceManagers.get( deploymentKey );
 
     	if( resourceManager == null ) {
-    		resourceManager = resourceManagers.get( Server.ServletDeployment.DEFAULT );
+    		resourceManager = resourceManagers.get( Server.SiteDeployment.DEFAULT );
     	}
 
         if(resourceManager instanceof MappedResourceManager && ((MappedResourceManager)resourceManager).getDebugLogging() ) {

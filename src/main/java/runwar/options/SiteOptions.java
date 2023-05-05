@@ -40,13 +40,13 @@ public class SiteOptions {
 
     private boolean cacheEnable = false;
 
-    private File sslCertificate, sslKey, predicateFile, logAccessDir;
+    private File sslCertificate, sslKey, logAccessDir, webroot;
 
     private String clientCertNegotiation;
 
     private char[] sslKeyPass = null;
 
-    private String securityRealm = "";
+    private String predicateText, securityRealm = "";
 
     private Boolean clientCertEnable = false;
 
@@ -103,7 +103,7 @@ public class SiteOptions {
     private final Map<String, String> mimeTypes = new HashMap<String, String>();
 
 
-    public ServerOptions getServerOptions() {
+    public ServerOptions  erverOptions() {
         return serverOptions;
     }
 
@@ -118,6 +118,15 @@ public class SiteOptions {
 
     public SiteOptions siteName(String siteName) {
         this.siteName = siteName;
+        return this;
+    }
+
+    public File webroot() {
+        return webroot;
+    }
+
+    public SiteOptions webroot(File webroot) {
+        this.webroot = webroot;
         return this;
     }
 
@@ -307,12 +316,12 @@ public class SiteOptions {
         return this;
     }
 
-    public File predicateFile() {
-        return predicateFile;
+    public String predicateText() {
+        return predicateText;
     }
 
-    public SiteOptions predicateFile(File predicateFile) {
-        this.predicateFile = predicateFile;
+    public SiteOptions predicateText(String predicateText) {
+        this.predicateText = predicateText;
         return this;
     }
 
@@ -344,6 +353,10 @@ public class SiteOptions {
     }
 
     public String[] welcomeFiles() {
+        // Default to the server-wide welcome files found in the web.xml
+        if( welcomeFiles == null || welcomeFiles.length == 0 ) {
+            return serverOptions.servletWelcomeFiles();
+        }
         return welcomeFiles;
     }
 
