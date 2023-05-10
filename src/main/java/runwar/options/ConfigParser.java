@@ -55,14 +55,14 @@ public class ConfigParser {
 
 
         if (serverConfig.hasOption("debug")) {
-            boolean debug = Boolean.valueOf(serverConfig.getOptionValue("debug"));
+            boolean debug = serverConfig.getOptionBoolean("debug");
             serverOptions.debug(debug);
             if (debug) {
                 serverOptions.logLevel("debug");
             }
         }
 
-        if (serverConfig.hasOption("trace") && Boolean.valueOf(serverConfig.getOptionValue("trace")) ) {
+        if (serverConfig.hasOption("trace") && serverConfig.getOptionBoolean("trace") ) {
             serverOptions.logLevel("trace");
         }
 
@@ -89,7 +89,7 @@ public class ConfigParser {
 /*
         if (serverConfig.hasOption(line, Keys.RESOURCEMANAGERLOGGING)) {
             No CommandBox setting for this
-            serverOptions.resourceManagerLogging(Boolean.valueOf(serverConfig.getOptionValue(Keys.RESOURCEMANAGERLOGGING)));
+            serverOptions.resourceManagerLogging(serverConfig.getOptionBoolean(Keys.RESOURCEMANAGERLOGGING));
         }
 */
         if (serverConfig.hasOption("rewritesLogPath")) {
@@ -97,6 +97,14 @@ public class ConfigParser {
         }
 
         LoggerFactory.configure(serverOptions);
+
+        if (serverConfig.hasOption("listeners") ) {
+            serverOptions.listeners(serverConfig.g("listeners"));
+        }
+
+        if (serverConfig.hasOption("bindings") ) {
+            serverOptions.bindings(serverConfig.getOptionObject("bindings"));
+        }
 
         if (serverConfig.hasOption("appFileSystemPath")) {
             serverOptions.warFile(getFile(serverConfig.getOptionValue("appFileSystemPath")));
@@ -139,7 +147,7 @@ public class ConfigParser {
             }
         }
         if (serverConfig.hasOption("webXMLOverrideForce")) {
-            serverOptions.webXmlOverrideForce(Boolean.valueOf(serverConfig.getOptionValue("webXMLOverrideForce")));
+            serverOptions.webXmlOverrideForce(serverConfig.getOptionBoolean("webXMLOverrideForce"));
         }
         /*
         CommandBox has no setting for this
@@ -150,7 +158,7 @@ public class ConfigParser {
 
 
         if (!serverConfig.hasOption("rewritesEnable")) {
-            serverOptions.urlRewriteEnable(Boolean.valueOf(serverConfig.getOptionValue("rewritesEnable")));
+            serverOptions.urlRewriteEnable(serverConfig.getOptionBoolean("rewritesEnable"));
         }
         if (serverConfig.hasOption("rewritesConfig")) {
             serverOptions.urlRewriteFile(getFile(serverConfig.getOptionValue("rewritesConfig")));
@@ -178,16 +186,16 @@ public class ConfigParser {
             serverOptions.logRequestsDir(getFile(serverConfig.getOptionValue("LOGREQUESTSDIR")));
         }
         if (serverConfig.hasOption("LOGREQUESTS")) {
-            serverOptions.logRequestsEnable(Boolean.valueOf(serverConfig.getOptionValue("LOGREQUESTS")));
+            serverOptions.logRequestsEnable(serverConfig.getOptionBoolean("LOGREQUESTS"));
         }
         */
 
         if (serverConfig.hasOption("openBrowser")) {
-            serverOptions.openbrowser(Boolean.valueOf(serverConfig.getOptionValue("openBrowser")));
+            serverOptions.openbrowser(serverConfig.getOptionBoolean("openBrowser"));
         }
 
         if (serverConfig.hasOption("ModCFMLenable")) {
-            serverOptions.autoCreateContexts(Boolean.valueOf(serverConfig.getOptionValue("ModCFMLenable")));
+            serverOptions.autoCreateContexts(serverConfig.getOptionBoolean("ModCFMLenable"));
         }
 
         if (serverConfig.hasOption("ModCFMLSharedKey")) {
@@ -199,7 +207,7 @@ public class ConfigParser {
         }
 
         if (serverConfig.hasOption("ModCFMLcreateVDirs")) {
-            serverOptions.autoCreateContextsVDirs(Boolean.valueOf(serverConfig.getOptionValue("ModCFMLcreateVDirs")));
+            serverOptions.autoCreateContextsVDirs(serverConfig.getOptionBoolean("ModCFMLcreateVDirs"));
         }
 
         if (serverConfig.hasOption("openbrowserURL")) {
@@ -215,11 +223,11 @@ public class ConfigParser {
         }
 
         if (serverConfig.hasOption("trayEnable")) {
-            serverOptions.trayEnable(Boolean.valueOf(serverConfig.getOptionValue("trayEnable")));
+            serverOptions.trayEnable(serverConfig.getOptionBoolean("trayEnable"));
         }
 
         if (serverConfig.hasOption("dockEnable")) {
-            serverOptions.dockEnable(Boolean.valueOf(serverConfig.getOptionValue("dockEnable")));
+            serverOptions.dockEnable(serverConfig.getOptionBoolean("dockEnable"));
         }
 
         if (serverConfig.hasOption("trayicon")) {
@@ -235,12 +243,12 @@ public class ConfigParser {
         }
 
         if (serverConfig.hasOption("customHTTPStatusEnable")) {
-            serverOptions.customHTTPStatusEnable(Boolean.valueOf(serverConfig.getOptionValue("customHTTPStatusEnable")));
+            serverOptions.customHTTPStatusEnable(serverConfig.getOptionBoolean("customHTTPStatusEnable"));
         }
 
         // TODO: Is anyone using this???
         if (serverConfig.hasOption("MARIADB4J")) {
-            serverOptions.mariaDB4jEnable(Boolean.valueOf(serverConfig.getOptionValue("MARIADB4J")));
+            serverOptions.mariaDB4jEnable(serverConfig.getOptionBoolean("MARIADB4J"));
         }
         if (serverConfig.hasOption("MARIADB4JPORT")) {
             serverOptions.mariaDB4jPort(Integer.valueOf(serverConfig.getOptionValue("MARIADB4JPORT")));
@@ -267,7 +275,7 @@ public class ConfigParser {
 
         // TODO: No setting exists for this
         if (serverConfig.hasOption("FILTERPATHINFO")) {
-            serverOptions.filterPathInfoEnable(Boolean.valueOf(serverConfig.getOptionValue("FILTERPATHINFO")));
+            serverOptions.filterPathInfoEnable(serverConfig.getOptionBoolean("FILTERPATHINFO"));
         }
         // TODO: No setting for this
         if (serverConfig.hasOption("BUFFERSIZE")) {
@@ -282,20 +290,20 @@ public class ConfigParser {
         }
         // TODO: No setting for this
         if (serverConfig.hasOption("DIRECTBUFFERS")) {
-            serverOptions.directBuffers(Boolean.valueOf(serverConfig.getOptionValue("DIRECTBUFFERS")));
+            serverOptions.directBuffers(serverConfig.getOptionBoolean("DIRECTBUFFERS"));
         }
 
         if (serverConfig.hasOption("sessionCookieHTTPOnly")) {
-            serverOptions.cookieHttpOnly(Boolean.valueOf(serverConfig.getOptionValue("sessionCookieHTTPOnly")));
+            serverOptions.cookieHttpOnly(serverConfig.getOptionBoolean("sessionCookieHTTPOnly"));
         }
 
         if (serverConfig.hasOption("sessionCookieSecure")) {
-            serverOptions.cookieSecure(Boolean.valueOf(serverConfig.getOptionValue("sessionCookieSecure")));
+            serverOptions.cookieSecure(serverConfig.getOptionBoolean("sessionCookieSecure"));
         }
 
         // TODO: No setting for this
         if (serverConfig.hasOption("SSLECCDISABLE")) {
-            serverOptions.sslEccDisable(Boolean.valueOf(serverConfig.getOptionValue("SSLECCDISABLE")));
+            serverOptions.sslEccDisable(serverConfig.getOptionBoolean("SSLECCDISABLE"));
         }
 
         if (serverConfig.hasOption("preferredBrowser")) {
@@ -331,7 +339,7 @@ public class ConfigParser {
             site.webroot(getFile( siteConfig.getOptionValue("webroot")));
 
             if (siteConfig.hasOption("directoryBrowsing")) {
-                site.directoryListingEnable(Boolean.valueOf(siteConfig.getOptionValue("directoryBrowsing")));
+                site.directoryListingEnable(siteConfig.getOptionBoolean("directoryBrowsing"));
             }
 
             if (siteConfig.hasOption("welcomeFiles")) {
@@ -342,22 +350,22 @@ public class ConfigParser {
             }
 
             if (siteConfig.hasOption("HTTPEnable")) {
-                site.httpEnable(Boolean.valueOf(siteConfig.getOptionValue("HTTPEnable")));
+                site.httpEnable(siteConfig.getOptionBoolean("HTTPEnable"));
             }
             if (siteConfig.hasOption("port")) {
                 site.httpPort(((Number) siteConfig.getParsedOptionValue("port")).intValue());
             }
             if (siteConfig.hasOption("HTTP2Enable")) {
-                site.http2Enable(Boolean.valueOf(siteConfig.getOptionValue("HTTP2Enable")));
+                site.http2Enable(siteConfig.getOptionBoolean("HTTP2Enable"));
             }
             if (siteConfig.hasOption("AJPEnable")) {
-                site.ajpEnable(Boolean.valueOf(siteConfig.getOptionValue("AJPEnable")));
+                site.ajpEnable(siteConfig.getOptionBoolean("AJPEnable"));
             }
             if (siteConfig.hasOption("AJPPort")) {
                 site.ajpPort(((Number) siteConfig.getParsedOptionValue("AJPPort")).intValue());
             }
             if (siteConfig.hasOption("SSLEnable")) {
-                site.sslEnable(Boolean.valueOf(siteConfig.getOptionValue("SSLEnable")));
+                site.sslEnable(siteConfig.getOptionBoolean("SSLEnable"));
                 if (!siteConfig.hasOption("sessionCookieSecure")) {
                     // TODO: This isn't being used!
                     CONF_LOG.trace("SSL enabled and secure cookies not explicitly disabled; enabling secure cookies");
@@ -385,13 +393,13 @@ public class ConfigParser {
                 site.clientCertNegotiation(siteConfig.getOptionValue("clientCertMode"));
             }
             if (siteConfig.hasOption("clientCertSSLRenegotiationEnable")) {
-                site.clientCertRenegotiation(Boolean.valueOf(siteConfig.getOptionValue("clientCertSSLRenegotiationEnable")));
+                site.clientCertRenegotiation(siteConfig.getOptionBoolean("clientCertSSLRenegotiationEnable"));
             }
             if (siteConfig.hasOption("securityRealm")) {
                 site.securityRealm(siteConfig.getOptionValue("securityRealm"));
             }
             if (siteConfig.hasOption("clientCertEnable")) {
-                site.clientCertEnable(Boolean.valueOf(siteConfig.getOptionValue("clientCertEnable")));
+                site.clientCertEnable(siteConfig.getOptionBoolean("clientCertEnable"));
 
                 if( site.clientCertEnable() ) {
                     if (siteConfig.hasOption("clientCertSubjectDNs")) {
@@ -406,7 +414,7 @@ public class ConfigParser {
             }
 
             if (siteConfig.hasOption("clientCertTrustUpstreamHeaders")) {
-                site.clientCertTrustHeaders(Boolean.valueOf(siteConfig.getOptionValue("clientCertTrustUpstreamHeaders")));
+                site.clientCertTrustHeaders(siteConfig.getOptionBoolean("clientCertTrustUpstreamHeaders"));
             }
 
 
@@ -425,7 +433,7 @@ public class ConfigParser {
                 site.sslTruststorePass(siteConfig.getOptionValue("clientCertCATrustStorePass"));
             }
             if (siteConfig.hasOption("basicAuthEnable")) {
-                site.basicAuthEnable(Boolean.valueOf(siteConfig.getOptionValue("basicAuthEnable")));
+                site.basicAuthEnable(siteConfig.getOptionBoolean("basicAuthEnable"));
             }
 
             if (siteConfig.hasOption("webRulesText")) {
@@ -452,15 +460,15 @@ public class ConfigParser {
             }
 
             if (siteConfig.hasOption("caseSensitivePaths")) {
-                site.caseSensitiveWebServer(Boolean.valueOf(siteConfig.getOptionValue("caseSensitivePaths")));
+                site.caseSensitiveWebServer(siteConfig.getOptionBoolean("caseSensitivePaths"));
             }
 
             if (siteConfig.hasOption("fileCacheEnable")) {
-                site.cacheServletPaths(Boolean.valueOf(siteConfig.getOptionValue("fileCacheEnable")));
+                site.cacheServletPaths(siteConfig.getOptionBoolean("fileCacheEnable"));
             }
             /* Commmand has no setting for this
             if (siteConfig.hasOption("RESOURCEMANAGERFILESYSTEMWATCHER")) {
-                site.resourceManagerFileSystemWatcher(Boolean.valueOf(siteConfig.getOptionValue("RESOURCEMANAGERFILESYSTEMWATCHER")));
+                site.resourceManagerFileSystemWatcher(siteConfig.getOptionBoolean("RESOURCEMANAGERFILESYSTEMWATCHER"));
             }
             */
             if (siteConfig.hasOption("fileCacheTotalSizeMB")) {
@@ -478,7 +486,7 @@ public class ConfigParser {
                 site.logAccessDir(getFile(siteConfig.getOptionValue("accessLogBaseDir")));
             }
             if (siteConfig.hasOption("accessLogEnable")) {
-                site.logAccessEnable(Boolean.valueOf(siteConfig.getOptionValue("accessLogEnable")));
+                site.logAccessEnable(siteConfig.getOptionBoolean("accessLogEnable"));
             }
             /* TODO: No CommandBox setting for these
             if (siteConfig.hasOption("TRANSFERMINSIZE")) {
@@ -486,12 +494,12 @@ public class ConfigParser {
             }
 
             if (siteConfig.hasOption("SENDFILE")) {
-                site.sendfileEnable(Boolean.valueOf(siteConfig.getOptionValue("SENDFILE")));
+                site.sendfileEnable(siteConfig.getOptionBoolean("SENDFILE"));
             }
             */
 
             if (siteConfig.hasOption("GZipEnable")) {
-                site.gzipEnable(Boolean.valueOf(siteConfig.getOptionValue("GZipEnable")));
+                site.gzipEnable(siteConfig.getOptionBoolean("GZipEnable"));
             }
             if (siteConfig.hasOption("GZipPredicate")) {
                 site.gzipPredicate(siteConfig.getOptionValue("GZipPredicate"));
@@ -504,10 +512,10 @@ public class ConfigParser {
 
             // TODO: No CommandBox setting for these
             if (siteConfig.hasOption("DIRECTORYREFRESH")) {
-                site.directoryListingRefreshEnable(Boolean.valueOf(siteConfig.getOptionValue("DIRECTORYREFRESH")));
+                site.directoryListingRefreshEnable(siteConfig.getOptionBoolean("DIRECTORYREFRESH"));
             }
             if (siteConfig.hasOption("useProxyForwardedIP")) {
-                site.proxyPeerAddressEnable(Boolean.valueOf(siteConfig.getOptionValue("useProxyForwardedIP")));
+                site.proxyPeerAddressEnable(siteConfig.getOptionBoolean("useProxyForwardedIP"));
             }
 
             serverOptions.addSite( site );
@@ -526,7 +534,7 @@ public class ConfigParser {
         return file;
     }
 
-    private class JSONOption {
+    public static class JSONOption {
         private JSONObject jsonConfig;
 
         public JSONOption(JSONObject jsonConfig) {
@@ -547,10 +555,38 @@ public class ConfigParser {
             return options;
         }
 
+        public Set<String> getKeys() {
+            return jsonConfig.keySet();
+        }
+
         public String getOptionValue(String key) {
             key = getKeyNoCase(key);
             if(hasOption(key)){
               return jsonConfig.get(key).toString();
+            }
+            return null;
+        }
+
+        public Boolean getOptionBoolean(String key) {
+            key = getKeyNoCase(key);
+            if(hasOption(key)){
+              return Boolean.valueOf( jsonConfig.get(key).toString() );
+            }
+            return null;
+        }
+
+        public Integer getOptionInt(String key) {
+            key = getKeyNoCase(key);
+            if(hasOption(key)){
+              return Integer.valueOf( jsonConfig.get(key).toString() );
+            }
+            return null;
+        }
+
+        public File getOptionFile(String key) {
+            key = getKeyNoCase(key);
+            if(hasOption(key)){
+              return getFile( jsonConfig.get(key).toString() );
             }
             return null;
         }

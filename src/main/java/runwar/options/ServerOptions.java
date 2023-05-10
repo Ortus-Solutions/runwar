@@ -9,6 +9,7 @@ import org.xnio.Options;
 import runwar.Server;
 import runwar.Server.Mode;
 import runwar.options.SiteOptions;
+import runwar.options.ConfigParser.JSONOption;
 
 import java.io.File;
 import java.net.MalformedURLException;
@@ -110,6 +111,10 @@ public class ServerOptions {
     private Map<String, Object> consoleLayoutOptions = new HashMap<String, Object>();
 
     private List<SiteOptions> sites = new ArrayList<SiteOptions>();
+
+    private JSONOption listeners;
+
+    private JSONObject bindings;
 
     public String getLogPattern() {
         return logPattern;
@@ -227,6 +232,24 @@ public class ServerOptions {
      */
     public String logLevel() {
         return logLevel;
+    }
+
+    public ServerOptions listeners(JSONOption listeners) {
+        this.listeners = listeners;
+        return this;
+    }
+
+    public JSONOption listeners() {
+        return listeners;
+    }
+
+    public ServerOptions bindings(JSONObject bindings) {
+        this.bindings = bindings;
+        return this;
+    }
+
+    public JSONObject bindings() {
+        return bindings;
     }
 
     /**

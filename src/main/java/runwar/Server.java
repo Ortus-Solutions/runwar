@@ -34,6 +34,7 @@ import io.undertow.util.HeaderValues;
 import io.undertow.util.Headers;
 import io.undertow.util.HttpString;
 import io.undertow.util.MimeMappings;
+import io.undertow.io.Sender;
 import io.undertow.websockets.jsr.WebSocketDeploymentInfo;
 import net.minidev.json.JSONArray;
 import net.minidev.json.JSONObject;
@@ -44,6 +45,7 @@ import runwar.logging.RunwarAccessLogReceiver;
 import runwar.mariadb4j.MariaDB4jManager;
 import runwar.options.ServerOptions;
 import runwar.options.SiteOptions;
+import runwar.options.ConfigParser.JSONOption;
 import runwar.security.SSLUtil;
 import runwar.security.SecurityManager;
 import runwar.tray.Tray;
@@ -244,15 +246,25 @@ public class Server {
 
         Builder serverBuilder = Undertow.builder();
         setUndertowOptions(serverBuilder);
+        JSONOption listeners = serverOptions.listeners();
 
-        LOG.debug("SERVER BUILDER:" + siteOptions.httpEnable());
-        if (siteOptions.httpEnable()) {
-            LOG.info("Binding HTTP on " + host + ":" + siteOptions.httpPort() );
-            serverBuilder.addHttpListener(siteOptions.httpPort(), realHost);
-        } else {
-        	LOG.debug("HTTP Enabled:" + siteOptions.httpEnable());
+        if( listeners.hasOption( "http" ) ) {
+            JSONOption HTTPListeners = listeners.g( "http" );
+            for( String key : HTTPListeners.getKeys() ) {
+                JSONOption listener = HTTPListeners.g( key );
+                LOG.info("Binding HTTP on " + listener.getOptionValue("IP") + ":" + listener.getOptionValue("port") );
+                serverBuilder.addHttpListener(listener.getOptionInt("port"), listener.getOptionValue("IP"));
+
+                // TODO: set socket-specific XNIO Options so each binding can have a different setting
+                if (listener.hasOption("HTTP2Enable" ) ) {
+                    LOG.info("Setting HTTP/2 enabled: " + listener.getOptionBoolean("HTTP2Enable" ) );
+                    serverBuilder.setServerOption(UndertowOptions.ENABLE_HTTP2, listener.getOptionBoolean("HTTP2Enable" ));
+                }
+
+            }
         }
 
+        // TODO: This needs to be done on a per listener basis
     	if( siteOptions.clientCertRenegotiation() ) {
             LOG.info("SSL Client cert renegotiation is enabled.  Disabling HTTP/2 and TLS1.3");
             siteOptions.http2Enable(false);
@@ -260,59 +272,70 @@ public class Server {
                 serverOptions.xnioOptions().setSequence( Options.SSL_ENABLED_PROTOCOLS, "TLSv1.1", "TLSv1.2" );
             }
     	}
-        if (siteOptions.http2Enable()) {
-            LOG.info("Enabling HTTP/2");
-            serverBuilder.setServerOption(UndertowOptions.ENABLE_HTTP2, true);
-        } else {
-            LOG.debug("HTTP2 Enabled:" + siteOptions.http2Enable());
-        }
 
-        if (siteOptions.sslEnable()) {
-            int sslPort = siteOptions.sslPort();
-            serverOptions.directBuffers(true);
-            LOG.info("Binding SSL on " + host + ":" + sslPort );
 
-            if (serverOptions.sslEccDisable() && cfengine.toLowerCase().equals("adobe")) {
-                LOG.debug("disabling com.sun.net.ssl.enableECC");
-                System.setProperty("com.sun.net.ssl.enableECC", "false");
-            }
+        if( listeners.hasOption( "ssl" ) ) {
+            JSONOption HTTPSListeners = listeners.g( "ssl" );
+            for( String key : HTTPSListeners.getKeys() ) {
 
-            try {
-                String[] sslAddCerts = siteOptions.sslAddCerts();
-                String[] sslAddCACerts = siteOptions.sslAddCACerts();
-                String sslTruststore = siteOptions.sslTruststore();
-                String sslTruststorePass = siteOptions.sslTruststorePass();
-                if (siteOptions.sslCertificate() != null) {
-                    File certFile = siteOptions.sslCertificate();
-                    File keyFile = siteOptions.sslKey();
-                    char[] keypass = siteOptions.sslKeyPass();
+                // TODO: Why is this set by default for SSL?
+                serverOptions.directBuffers(true);
 
-                    sslContext = SSLUtil.createSSLContext(certFile, keyFile, keypass, sslAddCerts, sslTruststore, sslTruststorePass, sslAddCACerts, new String[]{realHost});
-                    if (keypass != null) {
-                        Arrays.fill(keypass, '*');
-                    }
-                } else {
-                    sslContext = SSLUtil.createSSLContext( sslAddCerts, sslTruststore, sslTruststorePass, sslAddCACerts );
+                JSONOption listener = HTTPSListeners.g( key );
+                LOG.info("Binding SSL on " + listener.getOptionValue("IP") + ":" + listener.getOptionValue("port") );
+
+
+                if (serverOptions.sslEccDisable() && cfengine.toLowerCase().equals("adobe")) {
+                    LOG.debug("disabling com.sun.net.ssl.enableECC");
+                    System.setProperty("com.sun.net.ssl.enableECC", "false");
                 }
-                serverBuilder.addHttpsListener(sslPort, realHost, sslContext);
-            } catch (Exception e) {
-                LOG.error("Unable to start SSL:" + e.getMessage());
-                e.printStackTrace();
-                System.exit(1);
+
+                try {
+                    String[] sslAddCerts=null;
+                    String[] sslAddCACerts=null;
+                    String sslTruststore=null;
+                    String sslTruststorePass=null;
+                    JSONArray certs = listener.getOptionArray( "certs" );
+
+                    if( certs.size() > 0 ) {
+                        // TODO: Loop over all certs and build SNI matcing SSL context
+                        JSONOption cert = new JSONOption( (JSONObject)certs.get(0) );
+
+                        File certFile = cert.getOptionFile( "certFile" );
+                        File keyFile = cert.getOptionFile( "keyFile" );
+                        char[] keypass;
+                        if( cert.hasOption( "keyPass" ) && cert.getOptionValue( "keyPass" ) != null ) {
+                            keypass = cert.getOptionValue( "keyPass" ).toCharArray();
+                        } else {
+                            keypass = "".toCharArray();
+                        }
+
+                        sslContext = SSLUtil.createSSLContext(certFile, keyFile, keypass, sslAddCerts, sslTruststore, sslTruststorePass, sslAddCACerts, new String[]{listener.getOptionValue("IP")});
+                        if (keypass != null) {
+                            Arrays.fill(keypass, '*');
+                        }
+                    } else {
+                        sslContext = SSLUtil.createSSLContext( sslAddCerts, sslTruststore, sslTruststorePass, sslAddCACerts );
+                    }
+                    serverBuilder.addHttpsListener(listener.getOptionInt("port"), listener.getOptionValue("IP"), sslContext);
+                } catch (Exception e) {
+                    throw new RuntimeException( "Unable to start SSL", e );
+                }
             }
-        } else {
-        	LOG.debug("sslEnable:" + siteOptions.sslEnable());
         }
 
-        if (siteOptions.ajpEnable()) {
-            LOG.info("Binding AJP on " + host + ":" + siteOptions.ajpPort() );
-            serverBuilder.addAjpListener(siteOptions.ajpPort(), realHost);
-            if (serverOptions.undertowOptions().getMap().size() == 0) {
-                // if no options is set, default to the large packet size
-                serverBuilder.setServerOption(UndertowOptions.MAX_AJP_PACKET_SIZE, 65536);
+
+        if( listeners.hasOption( "ajp" ) ) {
+            JSONOption AJPListeners = listeners.g( "ajp" );
+            for( String key : AJPListeners.getKeys() ) {
+                JSONOption listener = AJPListeners.g( key );
+                LOG.info("Binding AJP on " + listener.getOptionValue("IP") + ":" + listener.getOptionValue("port") );
+                serverBuilder.addAjpListener(listener.getOptionInt("port"), listener.getOptionValue("IP"));
+                if (serverOptions.undertowOptions().getMap().size() == 0) {
+                    // if no options is set, default to the large packet size
+                    serverBuilder.setServerOption(UndertowOptions.MAX_AJP_PACKET_SIZE, 65536);
+                }
             }
-        } else {
-        	LOG.debug("ajpEnable:" + siteOptions.ajpEnable());
         }
 
         securityManager = new SecurityManager();
@@ -413,13 +436,13 @@ public class Server {
         LOG.info(bar);
         addShutDownHook();
 
-        LOG.debug("Transfer Min Size: " + siteOptions.transferMinSize());
+        //LOG.debug("Transfer Min Size: " + siteOptions.transferMinSize());
 
         // configure NIO options and worker
         Xnio xnio = Xnio.getInstance("nio", Server.class.getClassLoader());
         OptionMap.Builder serverXnioOptions = serverOptions.xnioOptions();
 
-
+        // TODO: Set this on listener level
         if (siteOptions.clientCertNegotiation() != null) {
 	    	LOG.debug("Client Cert Negotiation: " + siteOptions.clientCertNegotiation() );
 	        serverXnioOptions.set(Options.SSL_CLIENT_AUTH_MODE, SslClientAuthMode.valueOf( siteOptions.clientCertNegotiation() ) );
@@ -533,10 +556,59 @@ public class Server {
             @Override
             public void handleRequest(final HttpServerExchange exchange) throws Exception {
             	SiteDeployment deployment;
+                String deploymentKey;
 
-
+                // TODO: Actual binding logic to determine what site we're hitting
                 if( serverOptions.getSites().size() > 1 ) {
-            		deployment = deployments.get( exchange.getHostName() );
+                    JSONObject bindings = serverOptions.bindings();
+                    String IP = exchange.getConnection().getLocalAddress( InetSocketAddress.class ).getAddress().getHostAddress().toLowerCase();
+                    String port = String.valueOf( exchange.getConnection().getLocalAddress( InetSocketAddress.class ).getPort() );
+                    String hostName = exchange.getHostName().toLowerCase();
+                    JSONObject match;
+
+                    // Try exact IP and hostname match
+                    String bindingKey = IP + ":" + port + ":" + hostName;
+                    LOG.trace( "Trying binding key: " + bindingKey );
+                    match = (JSONObject)bindings.get( bindingKey );
+
+                    if( match == null ) {
+                        // Try exact hostmame on any IP
+                        bindingKey = "0.0.0.0:" + port + ":" + hostName;
+                        LOG.trace( "Trying binding key: " + bindingKey );
+                        match = (JSONObject)bindings.get( bindingKey );
+
+                        if( match == null ) {
+                            // Try wildcard hostmame on exact IP
+                            bindingKey = IP + ":" + port + ":*" ;
+                            LOG.trace( "Trying binding key: " + bindingKey );
+                            match = (JSONObject)bindings.get( bindingKey );
+                        }
+
+                        if( match == null ) {
+                            // Try wildcard hostmame on any IP
+                            bindingKey = "0.0.0.0:" + port + ":*" ;
+                            LOG.trace( "Trying binding key: " + bindingKey );
+                            match = (JSONObject)bindings.get( bindingKey );
+                        }
+
+                        if( match == null ) {
+                            String message = "Can't find a matching binding for IP [" + IP + "], port [" + port + "], and hostname [" + hostName + "]";
+                            LOG.debug( message );
+
+                            // TODO: How to customize this
+                            // Should we have a "default site" that kicks in?
+                            final String errorPage = "<html><head><title>Site Not Found</title></head><body><h1>Site Not Found</h1>" + message.replace("<", "&lt;").replace(">", "&gt;").replace("&", "&amp;") + "</body></html>";
+                            exchange.setStatusCode(404);
+                            exchange.getResponseHeaders().put(Headers.CONTENT_LENGTH, "" + errorPage.length());
+                            exchange.getResponseHeaders().put(Headers.CONTENT_TYPE, "text/html");
+                            Sender sender = exchange.getResponseSender();
+                            sender.send(errorPage);
+                            return;
+                        }
+                    }
+
+                    LOG.trace( "Binding is for site: " + match.get( "site" ) );
+            		deployment = deployments.get( match.get( "site" ) );
                 }
 
             	// If we're not auto-creating contexts, then just pass to our default servlet deployment
@@ -548,7 +620,7 @@ public class Server {
 
             		if( !isHeaderSafe( exchange, "", "X-Webserver-Context" ) ) return;
 
-                	String deploymentKey = exchange.getRequestHeaders().getFirst( "X-Webserver-Context" );
+                	deploymentKey = exchange.getRequestHeaders().getFirst( "X-Webserver-Context" );
                 	if( deploymentKey == null ){
                 		deploymentKey = exchange.getHostName().toLowerCase();
                 	}
@@ -1540,7 +1612,8 @@ public class Server {
             HttpHandler resourceHandler = new ResourceHandler( resourceManage )
                     .setDirectoryListingEnabled( siteOptions.directoryListingEnable() )
                     // TODO: default to welcome files from web.xml
-                    .setWelcomeFiles( siteOptions.welcomeFiles() )
+                    // Can't enforce welcome files in resourcehandler since we need the index.cfm added PRIOR to our predicate below
+                    //.setWelcomeFiles( siteOptions.welcomeFiles() )
                     .setMimeMappings( mimeMappings.build() );
 
             HttpHandler CFOrStaticHandler = Handlers.predicate(
