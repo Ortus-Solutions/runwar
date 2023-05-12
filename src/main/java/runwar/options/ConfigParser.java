@@ -439,7 +439,8 @@ public class ConfigParser {
             }
 
             if (siteConfig.hasOption("fileCacheEnable")) {
-                site.cacheServletPaths(siteConfig.getOptionBoolean("fileCacheEnable"));
+                // causing issues...
+                //site.cacheServletPaths(siteConfig.getOptionBoolean("fileCacheEnable"));
             }
             /* Commmand has no setting for this
             if (siteConfig.hasOption("RESOURCEMANAGERFILESYSTEMWATCHER")) {

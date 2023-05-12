@@ -759,9 +759,7 @@ public class Server {
             new Server(3);
         }
 
-        // if this println changes be sure to update the LaunchUtil so it will know success
-        String sslInfo = siteOptions.sslEnable() ? " https-port:" + siteOptions.sslPort() : "";
-        String msg = "Server is up - http-port:" + siteOptions.httpPort() + sslInfo + " stop-port:" + serverOptions.stopPort() + " PID:" + PID + " version " + getVersion();
+        String msg = "Server is up - stop-port:" + serverOptions.stopPort() + " PID:" + PID + " version " + getVersion();
         LOG.info(msg);
         // if the status line output would be suppressed due to logging levels, send it to sysout
         if (serverOptions.logLevel().equalsIgnoreCase("WARN") || serverOptions.logLevel().equalsIgnoreCase("ERROR")) {
@@ -1584,7 +1582,8 @@ public class Server {
                             exchange.setStatusCode( 404 );
                         }
 
-                        // TODO: Add custom error pages
+                        // Then ensures any error status codes set in our predicate/server rules don't go any further
+                        // The default response listener on the exchange will render the appropriate error page for us.
                         if( exchange.getStatusCode() > 399 ) {
                              //&& !exchange.isResponseStarted()
                              exchange.endExchange();
@@ -1611,17 +1610,35 @@ public class Server {
             ResourceManager resourceManage = this.deploymentManager.getDeployment().getDeploymentInfo().getResourceManager();
 
             // TODO: Enforce allowed extensions
-            HttpHandler resourceHandler = new ResourceHandler( resourceManage )
+            final HttpHandler resourceHandler = new ResourceHandler( resourceManage )
                     .setDirectoryListingEnabled( siteOptions.directoryListingEnable() )
                     // TODO: default to welcome files from web.xml
                     // Can't enforce welcome files in resourcehandler since we need the index.cfm added PRIOR to our predicate below
                     //.setWelcomeFiles( siteOptions.welcomeFiles() )
                     .setMimeMappings( mimeMappings.build() );
 
+            // In the event we are rendering a custom error page and the servlet is NOT processing it, then put the original
+            // status code back before the resource handler closes the reponse channel
+            HttpHandler defaultStatusCodeHandler = new HttpHandler() {
+                @Override
+                public void handleRequest(final HttpServerExchange exchange) throws Exception {
+                    Map<String, String> requestAttrs = exchange.getAttachment( exchange.REQUEST_ATTRIBUTES );
+                    if( requestAttrs != null && requestAttrs.containsKey( "default-response-handler" ) ) {
+                        exchange.setStatusCode( Integer.parseInt( requestAttrs.get( "default-response-handler" ) ) );
+                    }
+                    resourceHandler.handleRequest( exchange );
+                }
+
+                @Override
+                public String toString() {
+                    return "Default status code Handler";
+                }
+            };
+
             HttpHandler CFOrStaticHandler = Handlers.predicate(
                 Predicates.parse( "regex( '^/(.+\\.cf[cm])(/.*)?$' )" ),
                 servletInitialHandler,
-                resourceHandler
+                defaultStatusCodeHandler
             );
 
             HttpHandler welcomeFileHandler = new WelcomeFileHandler(CFOrStaticHandler, resourceManage, Arrays.asList(siteOptions.welcomeFiles()) );
@@ -1670,7 +1687,7 @@ public class Server {
                 httpHandler = new SSLHeaderHandler(httpHandler);
             }
 
-            return new LifecyleHandler(httpHandler, serverOptions);
+            return new LifecyleHandler(httpHandler, serverOptions, siteOptions);
 
         }
 

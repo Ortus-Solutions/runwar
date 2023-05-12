@@ -42,7 +42,7 @@ public class SSLClientCertHeaderHandler implements HttpHandler {
 	private static final HttpString CERT_SUBJECT = new HttpString("CERT_SUBJECT" );
 	private static final HttpString CERT_KEYSIZE = new HttpString("CERT_KEYSIZE" );
 	private static final HttpString CERT_SERIALNUMBER = new HttpString("CERT_SERIALNUMBER" );
-	private static final HttpString SSL_CLIENT_M_SERIAL	 = new HttpString("SSL_CLIENT_M_SERIAL	" );
+	private static final HttpString SSL_CLIENT_M_SERIAL	 = new HttpString("SSL_CLIENT_M_SERIAL" );
 	private static final HttpString SSL_CLIENT_I_DN = new HttpString("SSL_CLIENT_I_DN" );
 	private static final HttpString CERT_ISSUER = new HttpString("CERT_ISSUER" );
 	private static final HttpString SSL_CLIENT_VERIFY = new HttpString("SSL_CLIENT_VERIFY" );
