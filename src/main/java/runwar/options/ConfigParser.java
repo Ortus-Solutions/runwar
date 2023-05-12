@@ -70,10 +70,10 @@ public class ConfigParser {
             serverOptions.consoleLayout(serverConfig.getOptionValue("RunwarAppenderLayout"));
         }
 
-        /* if (serverConfig.hasOption(line, Keys.CONSOLELAYOUTOPTIONS)) {
-            serverOptions.consoleLayoutOptions(line.getOptionValue(Keys.CONSOLELAYOUTOPTIONS));
+        if (serverConfig.hasOption("RunwarAppenderLayoutOptions")) {
+            serverOptions.consoleLayoutOptions(serverConfig.getOptionObject("RunwarAppenderLayoutOptions"));
         }
-        */
+
         /*
         CommandBox never passes this, always defaults
         if (serverConfig.hasOption(line, Keys.LOGBASENAME)) {
@@ -169,26 +169,6 @@ public class ConfigParser {
         if (serverConfig.hasOption("rewritesStatusPath")) {
             serverOptions.urlRewriteStatusPath(serverConfig.getOptionValue("rewritesStatusPath"));
         }
-        /*
-        TODO: DO we use these??
-        if (serverConfig.hasOption("DIRS")) {
-            serverOptions.contentDirs(serverConfig.getOptionValue("DIRS"));
-        }
-        */
-       /*
-        Not using
-        if (serverConfig.hasOption("LOGREQUESTSBASENAME")) {
-            serverOptions.logRequestsEnable(true);
-            serverOptions.logRequestsBaseFileName(serverConfig.getOptionValue("LOGREQUESTSBASENAME"));
-        }
-        if (serverConfig.hasOption("LOGREQUESTSDIR")) {
-            serverOptions.logRequestsEnable(true);
-            serverOptions.logRequestsDir(getFile(serverConfig.getOptionValue("LOGREQUESTSDIR")));
-        }
-        if (serverConfig.hasOption("LOGREQUESTS")) {
-            serverOptions.logRequestsEnable(serverConfig.getOptionBoolean("LOGREQUESTS"));
-        }
-        */
 
         if (serverConfig.hasOption("openBrowser")) {
             serverOptions.openbrowser(serverConfig.getOptionBoolean("openBrowser"));
@@ -311,13 +291,11 @@ public class ConfigParser {
         }
 
         if (serverConfig.hasOption("runwarXNIOOptions")) {
-            // TODO: Transform
-            //serverOptions.xnioOptions(serverConfig.getOptionObject("runwarXNIOOptions"));
+            serverOptions.xnioOptions(serverConfig.getOptionObject("runwarXNIOOptions"));
         }
 
         if (serverConfig.hasOption("runwarUndertowOptions")) {
-            // TODO: Transform
-           // serverOptions.undertowOptions(serverConfig.getOptionObject("runwarUndertowOptions"));
+           serverOptions.undertowOptions(serverConfig.getOptionObject("runwarUndertowOptions"));
         }
 
 
@@ -376,7 +354,6 @@ public class ConfigParser {
                 site.sslPort(((Number) siteConfig.getParsedOptionValue("SSLPort")).intValue());
             }
 
-
             if (siteConfig.hasOption("SSLCertFile")) {
                 File certFile = getFile(siteConfig.getOptionValue("SSLCertFile"));
                 site.sslCertificate(certFile);
@@ -403,12 +380,10 @@ public class ConfigParser {
 
                 if( site.clientCertEnable() ) {
                     if (siteConfig.hasOption("clientCertSubjectDNs")) {
-                        // TODO: test this
-                //       site.clientCertSubjectDNs(siteConfig.getOptionObject("clientCertSubjectDNs"));
+                       site.clientCertSubjectDNs(siteConfig.getOptionArray("clientCertSubjectDNs"));
                     }
                     if (siteConfig.hasOption("clientCertIssuerDNs")) {
-                        // TODO: test this
-                //     site.clientCertIssuerDNs(siteConfig.getOptionObject("clientCertIssuerDNs"));
+                     site.clientCertIssuerDNs(siteConfig.getOptionArray("clientCertIssuerDNs"));
                     }
                 }
             }
@@ -423,8 +398,7 @@ public class ConfigParser {
                 site.sslAddCerts(siteConfig.getOptionValue("SSLADDCERTS"));
             }
             if (siteConfig.hasOption("clientCertCACertFiles")) {
-                // TODO: convert list/array
-                //site.sslAddCACerts(siteConfig.getOptions("clientCertCACertFiles"));
+                site.sslAddCACerts(siteConfig.getOptionArray("clientCertCACertFiles"));
             }
             if (siteConfig.hasOption("clientCertCATrustStoreFile")) {
                 site.sslTruststore(siteConfig.getOptionValue("clientCertCATrustStoreFile"));
@@ -445,14 +419,15 @@ public class ConfigParser {
             }
 
             if (siteConfig.hasOption("basicAuthUsers")) {
-                // TODO: Convert object type
-                //site.basicAuth(siteConfig.getOptionObject("basicAuthUsers"));
+                site.basicAuth(siteConfig.getOptionObject("basicAuthUsers"));
             }
 
-
             if (siteConfig.hasOption("mimeTypes")) {
-                // TODO massage type
-            // site.mimeTypes(siteConfig.getOptionValue("mimeTypes"));
+             site.mimeTypes(siteConfig.getOptionObject("mimeTypes"));
+            }
+
+            if (siteConfig.hasOption("aliases")) {
+             site.aliases(siteConfig.getOptionObject("aliases"));
             }
 
             if (siteConfig.hasOption("allowedExt")) {
@@ -506,14 +481,14 @@ public class ConfigParser {
             }
 
             if (siteConfig.hasOption("errorPages")) {
-                // TODO: transform this
-                //site.errorPages(siteConfig.getOptionValue("errorPages"));
+                site.errorPages(siteConfig.getOptionObject("errorPages"));
             }
 
-            // TODO: No CommandBox setting for these
+            // TODO: No CommandBox setting for this
             if (siteConfig.hasOption("DIRECTORYREFRESH")) {
                 site.directoryListingRefreshEnable(siteConfig.getOptionBoolean("DIRECTORYREFRESH"));
             }
+
             if (siteConfig.hasOption("useProxyForwardedIP")) {
                 site.proxyPeerAddressEnable(siteConfig.getOptionBoolean("useProxyForwardedIP"));
             }

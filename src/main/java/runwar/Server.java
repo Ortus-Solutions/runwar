@@ -566,6 +566,8 @@ public class Server {
                     String hostName = exchange.getHostName().toLowerCase();
                     JSONObject match;
 
+                    // TODO: See about caching these lookups.
+
                     // Try exact IP and hostname match
                     String bindingKey = IP + ":" + port + ":" + hostName;
                     LOG.trace( "Trying binding key: " + bindingKey );
@@ -1656,17 +1658,6 @@ public class Server {
                         .build();
                 LOG.debug("Logging combined access to " + siteOptions.logAccessDir() + " base name of '" + siteOptions.logAccessBaseFileName() + "." + serverOptions.logSuffix() + ", rotated daily'");
                 httpHandler = new AccessLogHandler(httpHandler, accessLogReceiver, "combined", Server.class.getClassLoader());
-            }
-
-            if (serverOptions.logRequestsEnable()) {
-                LOG.debug("Enabling request dumper");
-                DefaultAccessLogReceiver requestsLogReceiver = DefaultAccessLogReceiver.builder().setLogWriteExecutor(logWorker)
-                        .setRotate(true)
-                        .setOutputDirectory(serverOptions.logRequestsDir().toPath())
-                        .setLogBaseName(serverOptions.logRequestsBaseFileName())
-                        .setLogNameSuffix(serverOptions.logSuffix())
-                        .build();
-                httpHandler = new RequestDebugHandler(httpHandler, requestsLogReceiver);
             }
 
             if (siteOptions.proxyPeerAddressEnable()) {

@@ -26,8 +26,6 @@ public class SiteOptions {
 
     private String host = "127.0.0.1", logAccessBaseFileName="access", cfmlDirs, siteName="default";
 
-    private Set<String> contentDirectories = new HashSet<>();
-
     private int portNumber = 8088, ajpPort = 8009, sslPort = 1443;
 
     private boolean enableAJP = false, enableSSL = false, enableHTTP = true;
@@ -184,88 +182,33 @@ public class SiteOptions {
         return this;
     }
 
-    public String contentDirs() {
-        if (cfmlDirs == null && serverOptions.warFile() != null) {
-            contentDirs(serverOptions.warFile().getAbsolutePath());
-        }
-        return cfmlDirs;
-    }
-
-    public Set<String> contentDirectories() {
-        if(contentDirs() != null){
-            Stream.of(contentDirs().split(",")).forEach(aDirList -> {
-                String dir;
-                String[] directoryAndAliasList = aDirList.trim().split("=");
-                if (directoryAndAliasList.length == 1) {
-                    dir = directoryAndAliasList[0].trim();
-                    if(dir.length() > 0)
-                        contentDirectories.add(dir);
-                }
-            });
-        }
-        return contentDirectories;
-    }
-
-    public SiteOptions contentDirectories(List<String> dirs) {
-        contentDirectories.addAll(dirs);  // a set so we can always safely add
-        return this;
-    }
-
-    public SiteOptions contentDirectories(Set<String> dirs) {
-        contentDirectories = dirs;
-        return this;
-    }
-
-    public SiteOptions contentDirs(String dirs) {
-        this.cfmlDirs = dirs;
-        return this;
-    }
-
     public Map<String,String> aliases() {
-        if(contentDirs() == null && aliases.size() == 0){
-            return new HashMap<>();
-        }
-        Stream.of(contentDirs().split(",")).forEach(aDirList -> {
-            Path path;
-            String dir = "";
-            String virtual = "";
-            String[] directoryAndAliasList = aDirList.trim().split("=");
-            if (directoryAndAliasList.length == 1) {
-                dir = directoryAndAliasList[0].trim();
-              //  if(dir.length() > 0)
-                //    contentDirectories.add(dir); // a set so we can always safely add
-            } else {
-                dir = directoryAndAliasList[1].trim();
-                virtual = directoryAndAliasList[0].trim();
-            }
-            dir = dir.endsWith("/") ? dir : dir + '/';
-            path = Paths.get(dir).normalize().toAbsolutePath();
-            if(virtual.length() != 0){
-                virtual = virtual.startsWith("/") ? virtual : "/" + virtual;
-                virtual = virtual.endsWith("/") ? virtual.substring(0, virtual.length() - 1) : virtual;
-                aliases.put(virtual.toLowerCase(), path.toString());
-            }
-        });
         return aliases;
     }
 
-    public SiteOptions aliases(Map<String,String> aliases) {
-        this.aliases.putAll(aliases);
+    public SiteOptions aliases(JSONObject aliases) {
+        for( String virtual : aliases.keySet() ) {
+            String path = aliases.get( virtual ).toString();
+            path = Paths.get( path.endsWith("/") ? path : path + '/' ).normalize().toAbsolutePath().toString();
+            virtual = virtual.startsWith("/") ? virtual : "/" + virtual;
+            virtual = virtual.endsWith("/") ? virtual.substring(0, virtual.length() - 1) : virtual;
+            this.aliases.put( virtual.toLowerCase(), path );
+        }
         return this;
     }
 
-    public SiteOptions mimeTypes(String mimeTypes) {
-        Stream.of(mimeTypes.split(",")).forEach(mimeType -> {
-            String[] mimePair = mimeType.trim().split(";");
-            if (mimePair.length == 2) {
-                this.mimeTypes.put( mimePair[0], mimePair[1] );
-            }
-        });
-        return this;
+    public SiteOptions mimeTypes(JSONObject mimeTypes) {
+        HashMap<String, String> mimes = new HashMap<String, String>();
+
+        for( String key : mimeTypes.keySet() ) {
+            mimes.put( key, mimeTypes.get( key ).toString() );
+        }
+
+        return mimeTypes(mimes);
     }
 
     public SiteOptions mimeTypes(Map<String,String> mimeTypes) {
-        this.mimeTypes.putAll(aliases);
+        this.mimeTypes.putAll(mimeTypes);
         return this;
     }
 
@@ -413,13 +356,8 @@ public class SiteOptions {
         return this.clientCertTrustHeaders;
     }
 
-    public SiteOptions clientCertSubjectDNs(String clientCertSubjectDNs){
-    	try {
-    		System.out.println( "clientCertSubjectDNs: " + clientCertSubjectDNs );
-    		this.clientCertSubjectDNs = (JSONArray)(new JSONParser().parse( clientCertSubjectDNs ));
-		} catch( Exception e ) {
-			throw new RuntimeException( e );
-		}
+    public SiteOptions clientCertSubjectDNs(JSONArray clientCertSubjectDNs){
+        this.clientCertSubjectDNs = clientCertSubjectDNs;
         return this;
     }
 
@@ -427,12 +365,8 @@ public class SiteOptions {
         return this.clientCertSubjectDNs;
     }
 
-    public SiteOptions clientCertIssuerDNs(String clientCertIssuerDNs){
-    	try {
-    		this.clientCertIssuerDNs = (JSONArray)(new JSONParser().parse( clientCertIssuerDNs ));
-    	} catch( Exception e ) {
-    		throw new RuntimeException( e );
-    	}
+    public SiteOptions clientCertIssuerDNs(JSONArray clientCertIssuerDNs){
+    	this.clientCertIssuerDNs = clientCertIssuerDNs;
         return this;
     }
 
@@ -485,23 +419,15 @@ public class SiteOptions {
         return this.gzipPredicate;
     }
 
-    public SiteOptions errorPages(String errorpages) {
+    public SiteOptions errorPages(JSONObject errorpages) {
         this.errorPages = new HashMap<Integer, String>();
-        String[] pageList = errorpages.split(",");
-        for (int x = 0; x < pageList.length; x++) {
-            String[] splitted = pageList[x].split("=");
-            String location = "";
-            int errorCode = 1;
-            if (splitted.length == 1) {
-                location = pageList[x].trim();
-            } else {
-                errorCode = Integer.parseInt(splitted[0].trim());
-                location = splitted[1].trim();
-            }
-            // TODO: verify we don't need to do anything different if the WAR
-            // context is something other than "/".
+
+        for( String key : errorpages.keySet() ) {
+            String strCode = key.toString().trim();
+            Integer code = strCode.toLowerCase() == "default" ? 1 : Integer.parseInt( strCode );
+            String location = errorpages.get( key ).toString();
             location = location.startsWith("/") ? location : "/" + location;
-            errorPages.put(errorCode, location);
+            this.errorPages.put( code, location );
         }
         return this;
     }
@@ -533,18 +459,13 @@ public class SiteOptions {
         return this.authPredicate;
     }
 
-    public SiteOptions basicAuth(String userPasswordList) {
+    public SiteOptions basicAuth(JSONObject userPasswordList) {
         HashMap<String, String> ups = new HashMap<String, String>();
-        try {
-            for (String up : userPasswordList.split("(?<!\\\\),")) {
-                up = up.replace("\\,", ",");
-                String u = up.split("(?<!\\\\)=")[0].replace("\\=", "=");
-                String p = up.split("(?<!\\\\)=")[1].replace("\\=", "=");
-                ups.put(u, p);
-            }
-        } catch (Exception e) {
-            throw new RuntimeException("Incorrect 'users' format (user=pass,user2=pass2) : " + userPasswordList);
+
+        for( String key : userPasswordList.keySet() ) {
+            ups.put( key, userPasswordList.get( key ).toString() );
         }
+
         return basicAuth(ups);
     }
 
@@ -570,12 +491,12 @@ public class SiteOptions {
         return this.sslAddCerts;
     }
 
-    public SiteOptions sslAddCACerts(String sslCerts) {
-        return sslAddCACerts(sslCerts.split("(?<!\\\\),"));
+    public SiteOptions sslAddCACerts(JSONArray sslAddCACerts) {
+        return sslAddCACerts(sslAddCACerts.toArray(new String[0]));
     }
 
-    public SiteOptions sslAddCACerts(String[] sslCerts) {
-        this.sslAddCACerts = sslCerts;
+    public SiteOptions sslAddCACerts(String[] sslAddCACerts) {
+        this.sslAddCACerts = sslAddCACerts;
         return this;
     }
 

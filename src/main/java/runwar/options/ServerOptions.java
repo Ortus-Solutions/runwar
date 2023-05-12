@@ -27,16 +27,16 @@ public class ServerOptions {
 
     private String serverName = null, processName = "RunWAR", logLevel = "INFO", contextPath = "/";
 
-    private boolean debug = false, isBackground = true, logRequestsEnable = false, openbrowser = false, startedFromCommandline = false, enableURLRewrite = false;
+    private boolean debug = false, isBackground = true, openbrowser = false, startedFromCommandline = false, enableURLRewrite = false;
 
-    private String pidFile, openbrowserURL,  logFileBaseName="server", logRequestBaseFileName="requests", logSuffix="txt", libDirs = null;
+    private String pidFile, openbrowserURL,  logFileBaseName="server", logSuffix="txt", libDirs = null;
 
                                 // 50 secs
     private int launchTimeout = 50 * 1000, socketNumber = 8779;
 
     private URL jarURL = null;
 
-    private File workingDir, warFile, webInfDir, webXmlFile, webXmlOverrideFile, logDir, logRequestsDir, urlRewriteFile, urlRewriteLog, trayConfig, statusFile = null;
+    private File workingDir, warFile, webInfDir, webXmlFile, webXmlOverrideFile, logDir, urlRewriteFile, urlRewriteLog, trayConfig, statusFile = null;
 
     private String iconImage = null;
 
@@ -1178,14 +1178,9 @@ public class ServerOptions {
     /**
      * @see runwar.options.ServerOptions#xnioOptions(java.lang.String)
      */
-    public ServerOptions xnioOptions(String options) {
-        String[] optionList = options.split(";");
-        for (int x = 0; x < optionList.length; x++) {
-            String[] splitted = optionList[x].split("=");
-            if( splitted.length != 2 ) {
-            	throw new IllegalArgumentException("XNIO Option is malformed. Expected [" + optionList[x] + "] to be in the form of [OPTION_NAME=value].");
-            }
-            setOptionMapValue(serverXnioOptions, Options.class, splitted[0].trim(), splitted[1].trim());
+    public ServerOptions xnioOptions(JSONObject options) {
+        for( String key : options.keySet() ) {
+            setOptionMapValue(serverXnioOptions, Options.class, key.trim(), (String)options.get( key ) );
         }
         return this;
     }
@@ -1209,13 +1204,9 @@ public class ServerOptions {
     /**
      * @see runwar.options.ServerOptions#xnioOptions(java.lang.String)
      */
-    public ServerOptions undertowOptions(String options) {
-        String[] optionList = options.split(",");
-        for (int x = 0; x < optionList.length; x++) {
-            String[] splitted = optionList[x].split("=");
-            String optionName = splitted[0].trim().toUpperCase();
-            String optionValue = splitted[1].trim();
-            setOptionMapValue(undertowOptions, UndertowOptions.class, optionName, optionValue);
+    public ServerOptions undertowOptions(JSONObject options) {
+        for( String key : options.keySet() ) {
+            setOptionMapValue(undertowOptions, UndertowOptions.class, key.trim(), (String)options.get( key ) );
         }
         return this;
     }
@@ -1244,12 +1235,8 @@ public class ServerOptions {
         return this.consoleLayoutOptions;
     }
 
-    public ServerOptions consoleLayoutOptions(String consoleLayoutOptions) {
-    	try {
-          this.consoleLayoutOptions = (JSONObject)(new JSONParser().parse( consoleLayoutOptions ));
-    	} catch( Exception e ) {
-    		throw new RuntimeException( e );
-    	}
+    public ServerOptions consoleLayoutOptions(JSONObject consoleLayoutOptions) {
+        this.consoleLayoutOptions = consoleLayoutOptions;
         return this;
     }
 
@@ -1418,39 +1405,6 @@ public class ServerOptions {
         return this;
     }
 
-    public boolean logRequestsEnable() {
-        return logRequestsEnable;
-    }
-
-    public ServerOptions logRequestsEnable(boolean enable) {
-        this.logRequestsEnable = enable;
-        return this;
-    }
-
-    public ServerOptions logRequestsDir(File logDir) {
-        this.logRequestsDir = logDir;
-        return this;
-    }
-
-    public ServerOptions logRequestsDir(String logDir) {
-        this.logRequestsDir = new File(logDir);
-        return this;
-    }
-
-    public File logRequestsDir() {
-        if(this.logRequestsDir == null)
-            return logDir();
-        return this.logRequestsDir;
-    }
-
-    public ServerOptions logRequestsBaseFileName(String name) {
-        this.logRequestBaseFileName= name;
-        return this;
-    }
-
-    public String logRequestsBaseFileName() {
-        return this.logRequestBaseFileName;
-    }
 
 
 }
