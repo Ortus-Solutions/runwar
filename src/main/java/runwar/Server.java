@@ -594,6 +594,13 @@ public class Server {
                         }
 
                         if( match == null ) {
+                            // Look for a default site
+                            bindingKey = "default" ;
+                            LOG.trace( "Trying binding key: " + bindingKey );
+                            match = (JSONObject)bindings.get( bindingKey );
+                        }
+
+                        if( match == null ) {
                             String message = "Can't find a matching binding for IP [" + IP + "], port [" + port + "], and hostname [" + hostName + "]";
                             LOG.debug( message );
 
