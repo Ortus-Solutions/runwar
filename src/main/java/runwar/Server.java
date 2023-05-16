@@ -96,6 +96,7 @@ public class Server {
     private volatile static SiteOptions siteOptions;
     private static MariaDB4jManager mariadb4jManager;
     private ConcurrentHashMap<String,SiteDeployment> deployments = new ConcurrentHashMap<String,SiteDeployment>();
+    private SiteDeployment adobeDefaultDeployment=null;
 	private HashSet<String> deploymentKeyWarnings = new HashSet<String>();
     private Undertow undertow;
     private MonitorThread monitor;
@@ -558,7 +559,6 @@ public class Server {
             	SiteDeployment deployment;
                 String deploymentKey;
 
-                // TODO: Actual binding logic to determine what site we're hitting
                 if( serverOptions.getSites().size() > 1 ) {
                     JSONObject bindings = serverOptions.bindings();
                     String IP = exchange.getConnection().getLocalAddress( InetSocketAddress.class ).getAddress().getHostAddress().toLowerCase();
@@ -616,8 +616,10 @@ public class Server {
                         }
                     }
 
-                    LOG.trace( "Binding is for site: " + match.get( "site" ) );
-            		deployment = deployments.get( match.get( "site" ) );
+                    deploymentKey = (String)match.get( "site" );
+                    LOG.trace( "Binding is for site: " + deploymentKey );
+                	exchange.putAttachment(DEPLOYMENT_KEY, deploymentKey);
+            		deployment = deployments.get( deploymentKey );
                 }
 
             	// If we're not auto-creating contexts, then just pass to our default servlet deployment
@@ -1326,21 +1328,23 @@ public class Server {
             LOG.debug("New servlet context created for [" + deploymentKey + "]" );
         // For Adobe
         } else {
-        	// For default deployment, create initial resource manager and deploy
-        	if( deploymentKey.equals(SiteDeployment.DEFAULT) ) {
+        	// For first deployment, create initial resource manager and deploy
+        	if( deployments.size() == 0 ) {
 
                 servletBuilder.setResourceManager( new HostResourceManager( resourceManager ) );
             	DeploymentManager manager = defaultContainer().addDeployment(servletBuilder);
             	manager.deploy();
             	deployment = new SiteDeployment( manager.start(), manager, siteOptions );
+                this.adobeDefaultDeployment = deployment;
                 LOG.debug("Initial servlet context created for [" + deploymentKey + "]" );
 
            	// For all subsequent deploys, reuse default deployment and simply add new resource manager
         	} else {
 
         		((HostResourceManager)servletBuilder.getResourceManager()).addResourceManager( deploymentKey, resourceManager );
-            	deployment = deployments.get(SiteDeployment.DEFAULT);
-                LOG.debug("New resource manager added to deployment [" + deploymentKey + "]" );
+                // Create a new deployment and site handler chain that calls the same servlet initial handler
+            	deployment = new SiteDeployment( this.adobeDefaultDeployment.getServletInitialHandler(), this.adobeDefaultDeployment.getDeploymentManager(), siteOptions );
+                LOG.debug("Cloned servlet context added for deployment [" + deploymentKey + "]" );
 
         	}
 
@@ -1539,11 +1543,13 @@ public class Server {
 	public class SiteDeployment {
 
 	    private final HttpHandler siteInitialHandler;
+	    private final HttpHandler servletInitialHandler;
 	    private final DeploymentManager deploymentManager;
 	    public final static String DEFAULT = "default";
 
 	    public SiteDeployment(HttpHandler servletInitialHandler, DeploymentManager deploymentManager, SiteOptions siteOptions ) throws Exception {
 	        this.deploymentManager = deploymentManager;
+            this.servletInitialHandler = servletInitialHandler;
 	        this.siteInitialHandler = buildSiteHandlerChain( servletInitialHandler, siteOptions );
 	    }
 
@@ -1657,7 +1663,7 @@ public class Server {
                 LOG.debug("Adding predicates");
 
                 List<PredicatedHandler> ph = PredicatedHandlersParser.parse(siteOptions.predicateText(), _classLoader);
-                LOG.debug("Predicate(s) loaded");
+                LOG.trace(siteOptions.predicateText());
 
                 httpHandler = Handlers.predicates(ph, httpHandler);
             }
@@ -1697,6 +1703,10 @@ public class Server {
             return new LifecyleHandler(httpHandler, serverOptions, siteOptions);
 
         }
+
+	    public HttpHandler getServletInitialHandler() {
+	        return servletInitialHandler;
+	    }
 
 	    public HttpHandler getSiteInitialHandler() {
 	        return siteInitialHandler;
