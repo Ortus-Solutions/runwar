@@ -57,9 +57,9 @@ public class LifecyleHandler implements HttpHandler {
                 return false;
             }
 
-            final String customErrorPage = errorPages.containsKey( exchange.getStatusCode() ) ? errorPages.get( exchange.getStatusCode() ) : errorPages.get( 1 );
+            if (exchange.getStatusCode() > 399 ) {
+                final String customErrorPage = errorPages.containsKey( exchange.getStatusCode() ) ? errorPages.get( exchange.getStatusCode() ) : errorPages.get( 1 );
 
-            if (exchange.getStatusCode() != 200 ) {
                 // If the custom error page errors, then prevent endless looping by rendering a fail-safe error page
                 // Also do this if there is no custom error page
                 if( attrs.containsKey( "default-response-handler" ) || customErrorPage == null ) {
@@ -67,7 +67,7 @@ public class LifecyleHandler implements HttpHandler {
                         exchange.setStatusCode( Integer.parseInt( attrs.get( "default-response-handler" ) ) );
                     }
                     CONTEXT_LOG.debug("Dispatching default error page " + exchange.getStatusCode());
-                    final String errorPage = "<html><head><title>Error" + exchange.getStatusCode() + "</title></head><body bgcolor=\"lightGray\"><h1 style=\"text-align: center;\">" + StatusCodes.getReason( exchange.getStatusCode() ) + "</h1><p style=\"text-align: center;\">Powered By CommandBox</p></body></html>";
+                    final String errorPage = "<html><head><title>Error " + exchange.getStatusCode() + "</title></head><body bgcolor=\"lightGray\"><h1 style=\"text-align: center;\">" + StatusCodes.getReason( exchange.getStatusCode() ) + "</h1><p style=\"text-align: center;\">Powered By CommandBox</p></body></html>";
                     exchange.getResponseHeaders().put(Headers.CONTENT_LENGTH, "" + errorPage.length());
                     exchange.getResponseHeaders().put(Headers.CONTENT_TYPE, "text/html");
                     Sender sender = exchange.getResponseSender();
