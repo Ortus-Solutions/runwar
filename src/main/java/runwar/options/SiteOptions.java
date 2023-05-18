@@ -100,8 +100,10 @@ public class SiteOptions {
 
     private final Map<String, String> mimeTypes = new HashMap<String, String>();
 
+    private String servletPassPredicate = "regex( '^/(.+\\.cf[cm])(/.*)?$' )";
 
-    public ServerOptions  erverOptions() {
+
+    public ServerOptions getServerOptions() {
         return serverOptions;
     }
 
@@ -410,15 +412,24 @@ public class SiteOptions {
         return this.gzipEnable;
     }
 
-    public SiteOptions gzipPredicate(String predicate) {
-        this.gzipPredicate = predicate;
-        return this;
-    }
-
     public String gzipPredicate() {
         return this.gzipPredicate;
     }
 
+
+    public SiteOptions gzipPredicate(String gzipPredicate) {
+        this.gzipPredicate = gzipPredicate;
+        return this;
+    }
+
+    public String servletPassPredicate() {
+        return this.servletPassPredicate;
+    }
+
+    public SiteOptions servletPassPredicate(String servletPassPredicate) {
+        this.servletPassPredicate = servletPassPredicate;
+        return this;
+    }
     public SiteOptions errorPages(JSONObject errorpages) {
         this.errorPages = new HashMap<Integer, String>();
 

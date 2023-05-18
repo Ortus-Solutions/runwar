@@ -86,12 +86,7 @@ public class ConfigParser {
         } else {
             serverOptions.logDir();
         }
-/*
-        if (serverConfig.hasOption(line, Keys.RESOURCEMANAGERLOGGING)) {
-            No CommandBox setting for this
-            serverOptions.resourceManagerLogging(serverConfig.getOptionBoolean(Keys.RESOURCEMANAGERLOGGING));
-        }
-*/
+
         if (serverConfig.hasOption("rewritesLogPath")) {
             serverOptions.urlRewriteLog(new File(serverConfig.getOptionValue("rewritesLogPath")));
         }
@@ -316,12 +311,22 @@ public class ConfigParser {
 
             site.webroot(getFile( siteConfig.getOptionValue("webroot")));
 
+
+
+            if (siteConfig.hasOption("servletPassPredicate")) {
+                site.servletPassPredicate(siteConfig.getOptionValue("servletPassPredicate"));
+            }
+
             if (siteConfig.hasOption("directoryBrowsing")) {
                 site.directoryListingEnable(siteConfig.getOptionBoolean("directoryBrowsing"));
             }
 
             if (siteConfig.hasOption("welcomeFiles")) {
                 site.welcomeFiles(siteConfig.getOptionValue("welcomeFiles").split(","));
+            }
+
+            if (siteConfig.hasOption("resourceManagerLogging")) {
+                site.resourceManagerLogging(siteConfig.getOptionBoolean("resourceManagerLogging"));
             }
             if (siteConfig.hasOption("host")) {
                 site.host(siteConfig.getOptionValue("host"));

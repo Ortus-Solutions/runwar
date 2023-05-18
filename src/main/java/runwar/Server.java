@@ -29,8 +29,10 @@ import io.undertow.servlet.api.DeploymentManager;
 import io.undertow.servlet.api.ServletSessionConfig;
 import io.undertow.servlet.api.ThreadSetupAction;
 import io.undertow.servlet.api.ThreadSetupAction.Handle;
+import io.undertow.util.CanonicalPathUtils;
 import io.undertow.util.AttachmentKey;
 import io.undertow.util.HeaderValues;
+import io.undertow.server.handlers.resource.Resource;
 import io.undertow.util.Headers;
 import io.undertow.util.HttpString;
 import io.undertow.util.MimeMappings;
@@ -605,7 +607,6 @@ public class Server {
                             LOG.debug( message );
 
                             // TODO: How to customize this
-                            // Should we have a "default site" that kicks in?
                             final String errorPage = "<html><head><title>Site Not Found</title></head><body><h1>Site Not Found</h1>" + message.replace("<", "&lt;").replace(">", "&gt;").replace("&", "&amp;") + "</body></html>";
                             exchange.setStatusCode(404);
                             exchange.getResponseHeaders().put(Headers.CONTENT_LENGTH, "" + errorPage.length());
@@ -1620,24 +1621,50 @@ public class Server {
             // Only needed until this is complete: https://issues.redhat.com/browse/UNDERTOW-2218
             mimeMappings.addMapping("webp", "image/webp");
 
-            ResourceManager resourceManage = this.deploymentManager.getDeployment().getDeploymentInfo().getResourceManager();
+            ResourceManager resourceManager = this.deploymentManager.getDeployment().getDeploymentInfo().getResourceManager();
 
             // TODO: Enforce allowed extensions
-            final HttpHandler resourceHandler = new ResourceHandler( resourceManage )
+            final HttpHandler resourceHandler = new ResourceHandler( resourceManager )
                     .setDirectoryListingEnabled( siteOptions.directoryListingEnable() )
                     // TODO: default to welcome files from web.xml
                     // Can't enforce welcome files in resourcehandler since we need the index.cfm added PRIOR to our predicate below
                     //.setWelcomeFiles( siteOptions.welcomeFiles() )
                     .setMimeMappings( mimeMappings.build() );
 
-            // In the event we are rendering a custom error page and the servlet is NOT processing it, then put the original
-            // status code back before the resource handler closes the reponse channel
-            HttpHandler defaultStatusCodeHandler = new HttpHandler() {
+
+        // Default list of what the default servlet will serve
+        String allowedExt = "3gp,3gpp,7z,ai,aif,aiff,asf,asx,atom,au,avi,bin,bmp,btm,cco,crt,css,csv,deb,der,dmg,doc,docx,eot,eps,flv,font,gif,hqx,htc,htm,html,ico,img,ini,iso,jad,jng,jnlp,jpeg,jpg,js,json,kar,kml,kmz,m3u8,m4a,m4v,map,mid,midi,mml,mng,mov,mp3,mp4,mpeg,mpeg4,mpg,msi,msm,msp,ogg,otf,pdb,pdf,pem,pl,pm,png,ppt,pptx,prc,ps,psd,ra,rar,rpm,rss,rtf,run,sea,shtml,sit,svg,svgz,swf,tar,tcl,tif,tiff,tk,ts,ttf,txt,wav,wbmp,webm,webp,wmf,wml,wmlc,wmv,woff,woff2,xhtml,xls,xlsx,xml,xpi,xspf,zip,aifc,aac,apk,bak,bk,bz2,cdr,cmx,dat,dtd,eml,fla,gz,gzip,ipa,ia,indd,hey,lz,maf,markdown,md,mkv,mp1,mp2,mpe,odt,ott,odg,odf,ots,pps,pot,pmd,pub,raw,sdd,tsv,xcf,yml,yaml,handlebars,hbs";        // Add any custom additions by our users
+        if( siteOptions.defaultServletAllowedExt().length() > 0 ) {
+        	allowedExt += "," + siteOptions.defaultServletAllowedExt();
+        }
+
+        LOG.debug("Extensions allowed by the resource handler for static files: " + allowedExt);
+
+        final String[] extArray = allowedExt.toLowerCase().split(",");
+
+            HttpHandler allowedExtensions = new HttpHandler() {
+
                 @Override
                 public void handleRequest(final HttpServerExchange exchange) throws Exception {
-                    Map<String, String> requestAttrs = exchange.getAttachment( exchange.REQUEST_ATTRIBUTES );
-                    if( requestAttrs != null && requestAttrs.containsKey( "default-response-handler" ) ) {
-                        exchange.setStatusCode( Integer.parseInt( requestAttrs.get( "default-response-handler" ) ) );
+
+                    Resource resource = resourceManager.getResource(CanonicalPathUtils.canonicalize(exchange.getRelativePath()));
+                    if( resource != null && !resource.isDirectory() ) {
+                        String ext = resource.getFile().getName().toLowerCase();
+                        if( ext.contains(".") ) {
+                            ext = ext.substring(ext.lastIndexOf(".") + 1);
+                        }
+                        Boolean found = false;
+                        for( String allowedExt : extArray ) {
+                            if( ext.equals( allowedExt ) ) {
+                                found = true;
+                                break;
+                            }
+                        }
+                        if( !found ) {
+                            LOG.debug( "Blocking access to [" + exchange.getRelativePath() + "] based on allowed extensions." );
+                            exchange.setStatusCode( 403 );
+                            return;
+                        }
                     }
                     resourceHandler.handleRequest( exchange );
                 }
@@ -1648,13 +1675,31 @@ public class Server {
                 }
             };
 
+            // In the event we are rendering a custom error page and the servlet is NOT processing it, then put the original
+            // status code back before the resource handler closes the reponse channel
+            HttpHandler defaultStatusCodeHandler = new HttpHandler() {
+                @Override
+                public void handleRequest(final HttpServerExchange exchange) throws Exception {
+                    Map<String, String> requestAttrs = exchange.getAttachment( exchange.REQUEST_ATTRIBUTES );
+                    if( requestAttrs != null && requestAttrs.containsKey( "default-response-handler" ) ) {
+                        exchange.setStatusCode( Integer.parseInt( requestAttrs.get( "default-response-handler" ) ) );
+                    }
+                    allowedExtensions.handleRequest( exchange );
+                }
+
+                @Override
+                public String toString() {
+                    return "Default status code Handler";
+                }
+            };
+
             HttpHandler CFOrStaticHandler = Handlers.predicate(
-                Predicates.parse( "regex( '^/(.+\\.cf[cm])(/.*)?$' )" ),
+                Predicates.parse( siteOptions.servletPassPredicate() ),
                 servletInitialHandler,
                 defaultStatusCodeHandler
             );
 
-            HttpHandler welcomeFileHandler = new WelcomeFileHandler(CFOrStaticHandler, resourceManage, Arrays.asList(siteOptions.welcomeFiles()) );
+            HttpHandler welcomeFileHandler = new WelcomeFileHandler(CFOrStaticHandler, resourceManager, Arrays.asList(siteOptions.welcomeFiles()) );
 
             pathHandler.addPrefixPath(serverOptions.contextPath(), welcomeFileHandler);
             HttpHandler httpHandler = pathHandler;
