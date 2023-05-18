@@ -1640,7 +1640,9 @@ public class Server {
 
         LOG.debug("Extensions allowed by the resource handler for static files: " + allowedExt);
 
-        final String[] extArray = allowedExt.toLowerCase().split(",");
+        // Put allowed extensions for faster lookup
+        Set<String> extSet = new HashSet<String>();
+        Collections.addAll(extSet, allowedExt.toLowerCase().split(","));
 
             HttpHandler allowedExtensions = new HttpHandler() {
 
@@ -1653,14 +1655,8 @@ public class Server {
                         if( ext.contains(".") ) {
                             ext = ext.substring(ext.lastIndexOf(".") + 1);
                         }
-                        Boolean found = false;
-                        for( String allowedExt : extArray ) {
-                            if( ext.equals( allowedExt ) ) {
-                                found = true;
-                                break;
-                            }
-                        }
-                        if( !found ) {
+
+                        if( !extSet.contains(ext) ) {
                             LOG.debug( "Blocking access to [" + exchange.getRelativePath() + "] based on allowed extensions." );
                             exchange.setStatusCode( 403 );
                             return;
