@@ -74,6 +74,8 @@ import javax.servlet.Servlet;
 import javax.servlet.http.HttpServletResponse;
 import javax.servlet.http.HttpServletRequest;
 import javax.servlet.ServletRequest;
+import java.util.regex.Matcher;
+import java.util.regex.Pattern;
 
 import static io.undertow.servlet.Servlets.defaultContainer;
 import static io.undertow.servlet.Servlets.deployment;
@@ -341,6 +343,20 @@ public class Server {
             }
         }
 
+        // Compile and regex hostname patterns
+        if( serverOptions.getSites().size() > 1 ) {
+            JSONObject bindings = serverOptions.bindings();
+            for( String key : bindings.keySet() ) {
+                if( key.endsWith( ":regex:" ) ) {
+                    for( Object binding : (JSONArray)bindings.get( key ) ) {
+                        JSONObject bindingInfo = (JSONObject)binding;
+                        bindingInfo.put( "pattern", Pattern.compile( ((String)bindingInfo.get( "regexMatch" )).toLowerCase() ) );
+                    }
+                }
+            }
+        }
+
+        // TODO: per site and move out of servlet
         securityManager = new SecurityManager();
 
     	LOG.debug("WAR root:" + warFile.getAbsolutePath());
@@ -576,45 +592,135 @@ public class Server {
                     match = (JSONObject)bindings.get( bindingKey );
 
                     if( match == null ) {
-                        // Try exact hostmame on any IP
+                        // Try exact IP and hostname ends with match
+                        bindingKey = IP + ":" + port + "::endswith:";
+                        JSONArray endsWithOptions = (JSONArray)bindings.get( bindingKey );
+                        if( endsWithOptions != null ) {
+                            for( Object option : endsWithOptions ) {
+                                LOG.trace( "Does [" + hostName + "] end with [" + ((JSONObject)option).get( "endsWithMatch" ) + "]? " + bindingKey );
+                                if( hostName.endsWith( (String)(((JSONObject)option).get( "endsWithMatch" )) ) ) {
+                                    match = (JSONObject)option;
+                                    break;
+                                }
+                            }
+                        }
+                    }
+
+                    if( match == null ) {
+                        // Try exact IP and hostname starts with match
+                        bindingKey = IP + ":" + port + "::startswith:";
+                        JSONArray startsWithOptions = (JSONArray)bindings.get( bindingKey );
+                        if( startsWithOptions != null ) {
+                            for( Object option : startsWithOptions ) {
+                                LOG.trace( "Does [" + hostName + "] start with [" + ((JSONObject)option).get( "startsWithMatch" ) + "]? " + bindingKey );
+                                if( hostName.startsWith( (String)(((JSONObject)option).get( "startsWithMatch" )) ) ) {
+                                    match = (JSONObject)option;
+                                    break;
+                                }
+                            }
+                        }
+                    }
+
+                    if( match == null ) {
+                        // Try exact IP and hostname regex match
+                        bindingKey = IP + ":" + port + "::regex:";
+                        JSONArray regexWithOptions = (JSONArray)bindings.get( bindingKey );
+                        if( regexWithOptions != null ) {
+                            for( Object option : regexWithOptions ) {
+                                LOG.trace( "Does [" + hostName + "] match the regex [" + ((JSONObject)option).get( "regexMatch" ) + "]? " + bindingKey );
+                                if( ((Pattern)((JSONObject)option).get( "pattern" )).matcher(hostName).matches() ) {
+                                    match = (JSONObject)option;
+                                    break;
+                                }
+                            }
+                        }
+                    }
+
+                    if( match == null ) {
+                        // Try exact hostname on any IP
                         bindingKey = "0.0.0.0:" + port + ":" + hostName;
                         LOG.trace( "Trying binding key: " + bindingKey );
                         match = (JSONObject)bindings.get( bindingKey );
+                    }
 
-                        if( match == null ) {
-                            // Try wildcard hostmame on exact IP
-                            bindingKey = IP + ":" + port + ":*" ;
-                            LOG.trace( "Trying binding key: " + bindingKey );
-                            match = (JSONObject)bindings.get( bindingKey );
+                    if( match == null ) {
+                        // Try any IP and hostname ends with match
+                        bindingKey = "0.0.0.0:" + port + "::endswith:";
+                        JSONArray endsWithOptions = (JSONArray)bindings.get( bindingKey );
+                        if( endsWithOptions != null ) {
+                            for( Object option : endsWithOptions ) {
+                                LOG.trace( "Does [" + hostName + "] end with [" + ((JSONObject)option).get( "endsWithMatch" ) + "]? " + bindingKey );
+                                if( hostName.endsWith( (String)(((JSONObject)option).get( "endsWithMatch" )) ) ) {
+                                    match = (JSONObject)option;
+                                    break;
+                                }
+                            }
                         }
+                    }
 
-                        if( match == null ) {
-                            // Try wildcard hostmame on any IP
-                            bindingKey = "0.0.0.0:" + port + ":*" ;
-                            LOG.trace( "Trying binding key: " + bindingKey );
-                            match = (JSONObject)bindings.get( bindingKey );
+                    if( match == null ) {
+                        // Try any IP and hostname starts with match
+                        bindingKey = "0.0.0.0:" + port + "::startswith:";
+                        JSONArray startsWithOptions = (JSONArray)bindings.get( bindingKey );
+                        if( startsWithOptions != null ) {
+                            for( Object option : startsWithOptions ) {
+                                LOG.trace( "Does [" + hostName + "] start with [" + ((JSONObject)option).get( "startsWithMatch" ) + "]? " + bindingKey );
+                                if( hostName.startsWith( (String)(((JSONObject)option).get( "startsWithMatch" )) ) ) {
+                                    match = (JSONObject)option;
+                                    break;
+                                }
+                            }
                         }
+                    }
 
-                        if( match == null ) {
-                            // Look for a default site
-                            bindingKey = "default" ;
-                            LOG.trace( "Trying binding key: " + bindingKey );
-                            match = (JSONObject)bindings.get( bindingKey );
+                    if( match == null ) {
+                        // Try exact IP and hostname regex match
+                        bindingKey = "0.0.0.0:" + port + "::regex:";
+                        JSONArray regexWithOptions = (JSONArray)bindings.get( bindingKey );
+                        if( regexWithOptions != null ) {
+                            for( Object option : regexWithOptions ) {
+                                LOG.trace( "Does [" + hostName + "] match the regex [" + ((JSONObject)option).get( "regexMatch" ) + "]? " + bindingKey );
+                                if( ((Pattern)((JSONObject)option).get( "pattern" )).matcher(hostName).matches() ) {
+                                    match = (JSONObject)option;
+                                    break;
+                                }
+                            }
                         }
+                    }
 
-                        if( match == null ) {
-                            String message = "Can't find a matching binding for IP [" + IP + "], port [" + port + "], and hostname [" + hostName + "]";
-                            LOG.debug( message );
+                    if( match == null ) {
+                        // Try wildcard hostname on exact IP
+                        bindingKey = IP + ":" + port + ":*" ;
+                        LOG.trace( "Trying binding key: " + bindingKey );
+                        match = (JSONObject)bindings.get( bindingKey );
+                    }
 
-                            // TODO: How to customize this
-                            final String errorPage = "<html><head><title>Site Not Found</title></head><body><h1>Site Not Found</h1>" + message.replace("<", "&lt;").replace(">", "&gt;").replace("&", "&amp;") + "</body></html>";
-                            exchange.setStatusCode(404);
-                            exchange.getResponseHeaders().put(Headers.CONTENT_LENGTH, "" + errorPage.length());
-                            exchange.getResponseHeaders().put(Headers.CONTENT_TYPE, "text/html");
-                            Sender sender = exchange.getResponseSender();
-                            sender.send(errorPage);
-                            return;
-                        }
+                    if( match == null ) {
+                        // Try wildcard hostname on any IP
+                        bindingKey = "0.0.0.0:" + port + ":*" ;
+                        LOG.trace( "Trying binding key: " + bindingKey );
+                        match = (JSONObject)bindings.get( bindingKey );
+                    }
+
+                    if( match == null ) {
+                        // Look for a default site
+                        bindingKey = "default" ;
+                        LOG.trace( "Trying binding key: " + bindingKey );
+                        match = (JSONObject)bindings.get( bindingKey );
+                    }
+
+                    if( match == null ) {
+                        String message = "Can't find a matching binding for IP [" + IP + "], port [" + port + "], and hostname [" + hostName + "]";
+                        LOG.debug( message );
+
+                        // TODO: How to customize this
+                        final String errorPage = "<html><head><title>Site Not Found</title></head><body><h1>Site Not Found</h1>" + message.replace("<", "&lt;").replace(">", "&gt;").replace("&", "&amp;") + "</body></html>";
+                        exchange.setStatusCode(404);
+                        exchange.getResponseHeaders().put(Headers.CONTENT_LENGTH, "" + errorPage.length());
+                        exchange.getResponseHeaders().put(Headers.CONTENT_TYPE, "text/html");
+                        Sender sender = exchange.getResponseSender();
+                        sender.send(errorPage);
+                        return;
                     }
 
                     deploymentKey = (String)match.get( "site" );
@@ -1623,12 +1729,8 @@ public class Server {
 
             ResourceManager resourceManager = this.deploymentManager.getDeployment().getDeploymentInfo().getResourceManager();
 
-            // TODO: Enforce allowed extensions
             final HttpHandler resourceHandler = new ResourceHandler( resourceManager )
                     .setDirectoryListingEnabled( siteOptions.directoryListingEnable() )
-                    // TODO: default to welcome files from web.xml
-                    // Can't enforce welcome files in resourcehandler since we need the index.cfm added PRIOR to our predicate below
-                    //.setWelcomeFiles( siteOptions.welcomeFiles() )
                     .setMimeMappings( mimeMappings.build() );
 
 
