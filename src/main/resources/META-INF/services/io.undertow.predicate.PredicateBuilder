@@ -5,3 +5,5 @@ runwar.undertow.predicate.PathMatchPredicateNoCase$Builder
 runwar.undertow.predicate.PathPrefixPredicateNoCase$Builder
 runwar.undertow.predicate.EqualsPredicateNoCase$Builder
 runwar.undertow.predicate.ContainsPredicateNoCase$Builder
+runwar.undertow.predicate.IsFilePredicate$Builder
+runwar.undertow.predicate.IsDirectoryPredicate$Builder

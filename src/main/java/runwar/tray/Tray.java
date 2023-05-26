@@ -105,14 +105,14 @@ public class Tray {
 
         ServerOptions serverOptions = server.getServerOptions();
         String iconImage = serverOptions.iconImage();
-        String host = serverOptions.host();
-        int portNumber = serverOptions.getSites().get(0).httpPort();
+       // String host = serverOptions.host();
+      //  int portNumber = serverOptions.getSites().get(0).httpPort();
         final int stopSocket = serverOptions.stopPort();
         String processName = serverOptions.processName();
         String PID = server.getPID();
         String warpath = serverOptions.warUriString();
 
-        final String statusText = processName + " server on " + host + ":" + portNumber + " PID:" + PID;
+        final String statusText = processName + " PID:" + PID;
 
         variableMap = new HashMap<String, String>();
         variableMap.put("defaultTitle", statusText);
@@ -120,14 +120,14 @@ public class Tray {
         variableMap.put("logDir", warpath);
         variableMap.put("app.logDir", warpath);
         variableMap.put("web.webroot", warpath);
-        variableMap.put("runwar.port", Integer.toString(portNumber));
-        variableMap.put("web.http.port", Integer.toString(portNumber));
-        variableMap.put("web.ajp.port", Integer.toString(portNumber));
+      //  variableMap.put("runwar.port", Integer.toString(portNumber));
+       // variableMap.put("web.http.port", Integer.toString(portNumber));
+       // variableMap.put("web.ajp.port", Integer.toString(portNumber));
         variableMap.put("runwar.processName", processName);
         variableMap.put("processName", processName);
         variableMap.put("runwar.PID", PID);
-        variableMap.put("runwar.host", host);
-        variableMap.put("web.host", host);
+       // variableMap.put("runwar.host", host);
+       // variableMap.put("web.host", host);
         variableMap.put("runwar.stopsocket", Integer.toString(stopSocket));
 
         String trayConfigJSON;
@@ -223,7 +223,6 @@ public class Tray {
                     menuItem.setShortcut('v');
                 } else if (action.equalsIgnoreCase("openbrowser")) {
                     String url = Utils.getIgnoreCase(itemInfo, "url").toString();
-                    url = checkAndFixUrl(url, server.getServerOptions());
                     menuItem = new MenuItem(label, is, new OpenBrowserAction(url, server.getServerOptions().browser()));
                     menuItem.setShortcut('o');
                 } else if (action.equalsIgnoreCase("openfilesystem")) {
@@ -268,25 +267,6 @@ public class Tray {
                 e.printStackTrace();
             }
         }
-    }
-
-    public String checkAndFixUrl(String url, ServerOptions serverOptions){
-        if(!url.startsWith("http")){
-            if(url.startsWith("/")){
-                if(!serverOptions.getSites().get(0).sslEnable()){
-                    url = "http://" + serverOptions.host() + ":" +serverOptions.getSites().get(0).httpPort() + url;
-                }else{
-                    url = "https://" + serverOptions.host() + ":" + serverOptions.getSites().get(0).sslPort() + url;
-                }
-            }else{
-                if(!serverOptions.getSites().get(0).sslEnable()){
-                    url = "http://" + serverOptions.host() + ":" +serverOptions.getSites().get(0).httpPort() + "/" + url;
-                }else{
-                    url = "https://" + serverOptions.host() + ":" + serverOptions.getSites().get(0).sslPort() + "/" + url;
-                }
-            }
-        }
-        return url;
     }
 
     public static JSONObject getTrayConfig(String jsonText, String defaultTitle, HashMap<String, String> variableMap) {

@@ -1,4 +1,4 @@
-package runwar;
+package runwar.undertow;
 
 import static runwar.logging.RunwarLogger.CONTEXT_LOG;
 
@@ -12,6 +12,7 @@ import io.undertow.server.DefaultResponseListener;
 import runwar.logging.RunwarLogger;
 import runwar.options.ServerOptions;
 import runwar.options.SiteOptions;
+import runwar.Server;
 import java.util.Map;
 import java.util.HashMap;
 import javax.servlet.RequestDispatcher;
@@ -77,12 +78,9 @@ public class LifecyleHandler implements HttpHandler {
 
                 CONTEXT_LOG.debug("Dispatching custom " + exchange.getStatusCode() + " error page: [" + customErrorPage + "]");
                 attrs.put( "default-response-handler", String.valueOf( exchange.getStatusCode() ) );
-                exchange.dispatch(new Runnable() {
-                    @Override
-                    public void run() {
-                        try {
-                            int originalStatusCode = exchange.getStatusCode();
 
+                      try {
+                            int originalStatusCode = exchange.getStatusCode();
 
                             // Mimic servlet request attribute behavior
                             if (attrs.get(RequestDispatcher.FORWARD_REQUEST_URI) == null) {
@@ -112,20 +110,15 @@ public class LifecyleHandler implements HttpHandler {
 
 
                             // If we keep the error status and our error handler is a .cfm, the servlet will reject request
-                            exchange.setStatusCode(250);
+                            // It's up to any CFML custom error handlers to set their own status code
+                            exchange.setStatusCode(200);
                             ExchangeAttributes.relativePath().writeAttribute( exchange, customErrorPage );
-                            exchange.getAttachment(Server.SITE_DEPLOYMENT_KEY).getSiteInitialHandler().handleRequest( exchange );
+                            exchange.getAttachment(SiteDeploymentManager.SITE_DEPLOYMENT_KEY).processRequest( exchange );
 
-                            // The custom error page didn't set a specific status code, so put the original one back
-                            if( exchange.getStatusCode() == 250 && exchange.isResponseChannelAvailable() ) {
-                                exchange.setStatusCode(originalStatusCode);
-                            }
                             exchange.endExchange();
                         } catch( Exception e ) {
                             throw new RuntimeException(e);
                         }
-                    }
-                });
                 return true;
             }
 
@@ -133,14 +126,6 @@ public class LifecyleHandler implements HttpHandler {
         });
 
         CONTEXT_LOG.debug("requested: '" + Server.fullExchangePath(inExchange) + "'");
-
-        // This allows the exchange to be available to the IO thread.
-    	Server.setCurrentExchange(inExchange);
-
         next.handleRequest(inExchange);
-
-        // Clean up after
-    	Server.setCurrentExchange(null);
-
     }
 }

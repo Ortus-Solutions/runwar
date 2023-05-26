@@ -27,8 +27,6 @@ import io.undertow.server.handlers.resource.ResourceHandler;
 import io.undertow.servlet.api.DeploymentInfo;
 import io.undertow.servlet.api.DeploymentManager;
 import io.undertow.servlet.api.ServletSessionConfig;
-import io.undertow.servlet.api.ThreadSetupAction;
-import io.undertow.servlet.api.ThreadSetupAction.Handle;
 import io.undertow.util.CanonicalPathUtils;
 import io.undertow.util.AttachmentKey;
 import io.undertow.util.HeaderValues;
@@ -40,6 +38,7 @@ import io.undertow.io.Sender;
 import io.undertow.websockets.jsr.WebSocketDeploymentInfo;
 import net.minidev.json.JSONArray;
 import net.minidev.json.JSONObject;
+import runwar.options.ConfigParser.JSONOption;
 import org.xnio.*;
 import runwar.logging.LoggerFactory;
 import runwar.logging.LoggerPrintStream;
@@ -47,29 +46,30 @@ import runwar.logging.RunwarAccessLogReceiver;
 import runwar.mariadb4j.MariaDB4jManager;
 import runwar.options.ServerOptions;
 import runwar.options.SiteOptions;
-import runwar.options.ConfigParser.JSONOption;
 import runwar.security.SSLUtil;
-import runwar.security.SecurityManager;
 import runwar.tray.Tray;
 import runwar.undertow.MappedResourceManager;
 import runwar.undertow.HostResourceManager;
 import runwar.undertow.RequestDebugHandler;
 import runwar.undertow.SSLClientCertHeaderHandler;
+import runwar.undertow.LifecyleHandler;
+import runwar.undertow.WelcomeFileHandler;
+import runwar.undertow.SiteDeployment;
+import runwar.undertow.SiteDeploymentManager;
 import runwar.util.ClassLoaderUtils;
-import runwar.util.PortRequisitioner;
 import runwar.util.RequestDumper;
 
 import javax.net.ssl.SSLContext;
 import java.awt.*;
 import java.io.*;
+import java.util.*;
+import java.util.List;
 import java.lang.management.ManagementFactory;
 import java.lang.reflect.Method;
 import java.net.*;
 import java.nio.file.Path;
 import java.nio.file.Paths;
-import java.util.List;
 import java.util.concurrent.ConcurrentHashMap;
-import java.util.*;
 import javax.servlet.Servlet;
 import javax.servlet.http.HttpServletResponse;
 import javax.servlet.http.HttpServletRequest;
@@ -92,18 +92,15 @@ import runwar.util.Utils;
 public class Server {
 
     public static String processName = "Starting Server...";
-    public static final AttachmentKey<String> DEPLOYMENT_KEY = AttachmentKey.create(String.class);
-    public static final AttachmentKey<SiteDeployment> SITE_DEPLOYMENT_KEY = AttachmentKey.create(SiteDeployment.class);
 
     private static final ThreadLocal<HttpServerExchange> currentExchange= new ThreadLocal<HttpServerExchange>();
+    private static final ThreadLocal<String> currentDeploymentKey= new ThreadLocal<String>();
     private volatile static ServerOptions serverOptions;
     private volatile static SiteOptions siteOptions;
+    private volatile static SiteDeploymentManager siteDeploymentManager;
     private static MariaDB4jManager mariadb4jManager;
-    private ConcurrentHashMap<String,SiteDeployment> deployments = new ConcurrentHashMap<String,SiteDeployment>();
-    private SiteDeployment adobeDefaultDeployment=null;
-	private HashSet<String> deploymentKeyWarnings = new HashSet<String>();
     private Undertow undertow;
-    private MonitorThread monitor;
+    private StopMonitor monitor;
 
     private String PID;
     private static volatile String serverState = ServerState.STOPPED;
@@ -114,9 +111,7 @@ public class Server {
     private String serverName = "default";
     private File statusFile = null;
     public static final String bar = "******************************************************************************";
-    private SSLContext sslContext;
     private Thread shutDownThread;
-    private SecurityManager securityManager;
     private String serverMode;
     private PrintStream originalSystemOut;
     private PrintStream originalSystemErr;
@@ -124,7 +119,6 @@ public class Server {
     private static final Thread mainThread = Thread.currentThread();
 
     private static XnioWorker worker, logWorker;
-    //private volatile static runwar.util.PortRequisitioner ports;
     private Tray tray;
     //private FusionReactor fusionReactor;
 
@@ -196,23 +190,6 @@ public class Server {
         });
     }
 
-    private synchronized void requisitionPorts() {
-        /*
-        LOG.debug("HOST to be bound:" + serverOptions.host());
-        ports = new PortRequisitioner(serverOptions.host());
-        ports.add("http", serverOptions.httpPort(), serverOptions.httpEnable());
-        ports.add("stop", serverOptions.stopPort());
-        ports.add("ajp", serverOptions.ajpPort(), serverOptions.ajpEnable());
-        ports.add("https", serverOptions.sslPort(), serverOptions.sslEnable());
-
-        ports.requisition();
-        serverOptions.httpPort(ports.get("http").socket);
-        serverOptions.stopPort(ports.get("stop").socket);
-        serverOptions.ajpPort(ports.get("ajp").socket);
-        serverOptions.sslPort(ports.get("https").socket);
-*/
-    }
-
     public synchronized void startServer(final ServerOptions options) throws Exception {
         serverOptions = options;
         // One site for now-- this becomes a loop!
@@ -226,8 +203,7 @@ public class Server {
             Stop.stopServer(serverOptions, true);
         }
         serverName = serverOptions.serverName();
-        String host = serverOptions.host(), cfengine = serverOptions.cfEngineName(), processName = serverOptions.processName();
-        String realHost = getRealHost( host );
+        String cfengine = serverOptions.cfEngineName(), processName = serverOptions.processName();
         String contextPath = serverOptions.contextPath();
         File warFile = serverOptions.warFile();
         if (warFile == null) {
@@ -247,101 +223,13 @@ public class Server {
 
         LOG.info(bar);
         LOG.info("Starting RunWAR " + getVersion());
-        //requisitionPorts();
 
         Builder serverBuilder = Undertow.builder();
+
         setUndertowOptions(serverBuilder);
-        JSONOption listeners = serverOptions.listeners();
 
-        if( listeners.hasOption( "http" ) ) {
-            JSONOption HTTPListeners = listeners.g( "http" );
-            for( String key : HTTPListeners.getKeys() ) {
-                JSONOption listener = HTTPListeners.g( key );
-                LOG.info("Binding HTTP on " + listener.getOptionValue("IP") + ":" + listener.getOptionValue("port") );
-                serverBuilder.addHttpListener(listener.getOptionInt("port"), listener.getOptionValue("IP"));
-
-                // TODO: set socket-specific XNIO Options so each binding can have a different setting
-                if (listener.hasOption("HTTP2Enable" ) ) {
-                    LOG.info("Setting HTTP/2 enabled: " + listener.getOptionBoolean("HTTP2Enable" ) );
-                    serverBuilder.setServerOption(UndertowOptions.ENABLE_HTTP2, listener.getOptionBoolean("HTTP2Enable" ));
-                }
-
-            }
-        }
-
-        // TODO: This needs to be done on a per listener basis
-    	if( siteOptions.clientCertRenegotiation() ) {
-            LOG.info("SSL Client cert renegotiation is enabled.  Disabling HTTP/2 and TLS1.3");
-            siteOptions.http2Enable(false);
-            if( !serverOptions.xnioOptions().getMap().contains( Options.SSL_ENABLED_PROTOCOLS ) ) {
-                serverOptions.xnioOptions().setSequence( Options.SSL_ENABLED_PROTOCOLS, "TLSv1.1", "TLSv1.2" );
-            }
-    	}
-
-
-        if( listeners.hasOption( "ssl" ) ) {
-            JSONOption HTTPSListeners = listeners.g( "ssl" );
-            for( String key : HTTPSListeners.getKeys() ) {
-
-                // TODO: Why is this set by default for SSL?
-                serverOptions.directBuffers(true);
-
-                JSONOption listener = HTTPSListeners.g( key );
-                LOG.info("Binding SSL on " + listener.getOptionValue("IP") + ":" + listener.getOptionValue("port") );
-
-
-                if (serverOptions.sslEccDisable() && cfengine.toLowerCase().equals("adobe")) {
-                    LOG.debug("disabling com.sun.net.ssl.enableECC");
-                    System.setProperty("com.sun.net.ssl.enableECC", "false");
-                }
-
-                try {
-                    String[] sslAddCerts=null;
-                    String[] sslAddCACerts=null;
-                    String sslTruststore=null;
-                    String sslTruststorePass=null;
-                    JSONArray certs = listener.getOptionArray( "certs" );
-
-                    if( certs.size() > 0 ) {
-                        // TODO: Loop over all certs and build SNI matcing SSL context
-                        JSONOption cert = new JSONOption( (JSONObject)certs.get(0) );
-
-                        File certFile = cert.getOptionFile( "certFile" );
-                        File keyFile = cert.getOptionFile( "keyFile" );
-                        char[] keypass;
-                        if( cert.hasOption( "keyPass" ) && cert.getOptionValue( "keyPass" ) != null ) {
-                            keypass = cert.getOptionValue( "keyPass" ).toCharArray();
-                        } else {
-                            keypass = "".toCharArray();
-                        }
-
-                        sslContext = SSLUtil.createSSLContext(certFile, keyFile, keypass, sslAddCerts, sslTruststore, sslTruststorePass, sslAddCACerts, new String[]{listener.getOptionValue("IP")});
-                        if (keypass != null) {
-                            Arrays.fill(keypass, '*');
-                        }
-                    } else {
-                        sslContext = SSLUtil.createSSLContext( sslAddCerts, sslTruststore, sslTruststorePass, sslAddCACerts );
-                    }
-                    serverBuilder.addHttpsListener(listener.getOptionInt("port"), listener.getOptionValue("IP"), sslContext);
-                } catch (Exception e) {
-                    throw new RuntimeException( "Unable to start SSL", e );
-                }
-            }
-        }
-
-
-        if( listeners.hasOption( "ajp" ) ) {
-            JSONOption AJPListeners = listeners.g( "ajp" );
-            for( String key : AJPListeners.getKeys() ) {
-                JSONOption listener = AJPListeners.g( key );
-                LOG.info("Binding AJP on " + listener.getOptionValue("IP") + ":" + listener.getOptionValue("port") );
-                serverBuilder.addAjpListener(listener.getOptionInt("port"), listener.getOptionValue("IP"));
-                if (serverOptions.undertowOptions().getMap().size() == 0) {
-                    // if no options is set, default to the large packet size
-                    serverBuilder.setServerOption(UndertowOptions.MAX_AJP_PACKET_SIZE, 65536);
-                }
-            }
-        }
+        // Add all HTTP/SSL/AJP listeners
+        ListenerManager.configureListeners( serverBuilder, serverOptions, siteOptions);
 
         // Compile and regex hostname patterns
         if( serverOptions.getSites().size() > 1 ) {
@@ -355,9 +243,6 @@ public class Server {
                 }
             }
         }
-
-        // TODO: per site and move out of servlet
-        securityManager = new SecurityManager();
 
     	LOG.debug("WAR root:" + warFile.getAbsolutePath());
         if (!warFile.exists()) {
@@ -515,25 +400,10 @@ public class Server {
         final DeploymentInfo servletBuilder = deployment()
                 .setContextPath(contextPath.equals("/") ? "" : contextPath)
                 .setTempDir(new File(System.getProperty("java.io.tmpdir")))
-                .setDeploymentName("site1")
+                .setDeploymentName("CommandBox-Servlet-Deployment")
                 .setServletSessionConfig(servletSessionConfig)
                 .setDisplayName(serverName)
                 .setServerName("WildFly / Undertow")
-                .addThreadSetupAction( new ThreadSetupAction() {
-
-                        public Handle setup(final HttpServerExchange exchange) {
-
-                            // This allows the exchange to be available to the task thread.
-                        	currentExchange.set(exchange);
-                            return new Handle() {
-
-                                @Override
-                                public void tearDown() {
-                                	currentExchange.remove();
-                                }
-                            };
-                        }
-                })
                 // This handler is run after the security handlers, just before the request is dispatched to deployment code.
                 // I need this "inside" the servlet so it can access the HttpServletRequest
                 .addInnerHandlerChainWrapper(new HandlerWrapper() {
@@ -551,279 +421,19 @@ public class Server {
 
         configurer.configureRestMappings(servletBuilder);
 
-        // TODO: probably best to create a new worker for websockets, if we want fastness, but for now we share
-        // TODO: add buffer pool size (maybe-- direct is best at 16k), enable/disable be good I reckon tho
         servletBuilder.addServletContextAttribute(WebSocketDeploymentInfo.ATTRIBUTE_NAME,
                 new WebSocketDeploymentInfo().setBuffers(new DefaultByteBufferPool(true, 1024 * 16)).setWorker(worker));
         LOG.debug("Added websocket context");
 
-        if ( siteOptions.basicAuthEnable() || siteOptions.clientCertEnable() ) {
-            securityManager.configureAuth( serverBuilder, siteOptions, servletBuilder);
-        }
-
+        siteDeploymentManager = new SiteDeploymentManager( serverOptions );
         if( serverOptions.getSites().size() == 1 ) {
             // Create default context
-            createSiteDeployment( servletBuilder, serverOptions.getSites().get(0).webroot(), configurer, SiteDeployment.DEFAULT, null, serverOptions.getSites().get(0) );
+            siteDeploymentManager.createSiteDeployment( servletBuilder, serverOptions.getSites().get(0).webroot(), configurer, SiteDeployment.DEFAULT, null, serverOptions.getSites().get(0) );
         } else {
             for( SiteOptions siteOptions : serverOptions.getSites() ) {
-                createSiteDeployment( servletBuilder, siteOptions.webroot(), configurer, siteOptions.siteName(), null, siteOptions );
+                siteDeploymentManager.createSiteDeployment( servletBuilder, siteOptions.webroot(), configurer, siteOptions.siteName(), null, siteOptions );
             }
         }
-
-        HttpHandler hostHandler = new HttpHandler() {
-
-            @Override
-            public void handleRequest(final HttpServerExchange exchange) throws Exception {
-            	SiteDeployment deployment;
-                String deploymentKey;
-
-                if( serverOptions.getSites().size() > 1 ) {
-                    JSONObject bindings = serverOptions.bindings();
-                    String IP = exchange.getConnection().getLocalAddress( InetSocketAddress.class ).getAddress().getHostAddress().toLowerCase();
-                    String port = String.valueOf( exchange.getConnection().getLocalAddress( InetSocketAddress.class ).getPort() );
-                    String hostName = exchange.getHostName().toLowerCase();
-                    JSONObject match;
-
-                    // TODO: See about caching these lookups.
-
-                    // Try exact IP and hostname match
-                    String bindingKey = IP + ":" + port + ":" + hostName;
-                    LOG.trace( "Trying binding key: " + bindingKey );
-                    match = (JSONObject)bindings.get( bindingKey );
-
-                    if( match == null ) {
-                        // Try exact IP and hostname ends with match
-                        bindingKey = IP + ":" + port + "::endswith:";
-                        JSONArray endsWithOptions = (JSONArray)bindings.get( bindingKey );
-                        if( endsWithOptions != null ) {
-                            for( Object option : endsWithOptions ) {
-                                LOG.trace( "Does [" + hostName + "] end with [" + ((JSONObject)option).get( "endsWithMatch" ) + "]? " + bindingKey );
-                                if( hostName.endsWith( (String)(((JSONObject)option).get( "endsWithMatch" )) ) ) {
-                                    match = (JSONObject)option;
-                                    break;
-                                }
-                            }
-                        }
-                    }
-
-                    if( match == null ) {
-                        // Try exact IP and hostname starts with match
-                        bindingKey = IP + ":" + port + "::startswith:";
-                        JSONArray startsWithOptions = (JSONArray)bindings.get( bindingKey );
-                        if( startsWithOptions != null ) {
-                            for( Object option : startsWithOptions ) {
-                                LOG.trace( "Does [" + hostName + "] start with [" + ((JSONObject)option).get( "startsWithMatch" ) + "]? " + bindingKey );
-                                if( hostName.startsWith( (String)(((JSONObject)option).get( "startsWithMatch" )) ) ) {
-                                    match = (JSONObject)option;
-                                    break;
-                                }
-                            }
-                        }
-                    }
-
-                    if( match == null ) {
-                        // Try exact IP and hostname regex match
-                        bindingKey = IP + ":" + port + "::regex:";
-                        JSONArray regexWithOptions = (JSONArray)bindings.get( bindingKey );
-                        if( regexWithOptions != null ) {
-                            for( Object option : regexWithOptions ) {
-                                LOG.trace( "Does [" + hostName + "] match the regex [" + ((JSONObject)option).get( "regexMatch" ) + "]? " + bindingKey );
-                                if( ((Pattern)((JSONObject)option).get( "pattern" )).matcher(hostName).matches() ) {
-                                    match = (JSONObject)option;
-                                    break;
-                                }
-                            }
-                        }
-                    }
-
-                    if( match == null ) {
-                        // Try exact hostname on any IP
-                        bindingKey = "0.0.0.0:" + port + ":" + hostName;
-                        LOG.trace( "Trying binding key: " + bindingKey );
-                        match = (JSONObject)bindings.get( bindingKey );
-                    }
-
-                    if( match == null ) {
-                        // Try any IP and hostname ends with match
-                        bindingKey = "0.0.0.0:" + port + "::endswith:";
-                        JSONArray endsWithOptions = (JSONArray)bindings.get( bindingKey );
-                        if( endsWithOptions != null ) {
-                            for( Object option : endsWithOptions ) {
-                                LOG.trace( "Does [" + hostName + "] end with [" + ((JSONObject)option).get( "endsWithMatch" ) + "]? " + bindingKey );
-                                if( hostName.endsWith( (String)(((JSONObject)option).get( "endsWithMatch" )) ) ) {
-                                    match = (JSONObject)option;
-                                    break;
-                                }
-                            }
-                        }
-                    }
-
-                    if( match == null ) {
-                        // Try any IP and hostname starts with match
-                        bindingKey = "0.0.0.0:" + port + "::startswith:";
-                        JSONArray startsWithOptions = (JSONArray)bindings.get( bindingKey );
-                        if( startsWithOptions != null ) {
-                            for( Object option : startsWithOptions ) {
-                                LOG.trace( "Does [" + hostName + "] start with [" + ((JSONObject)option).get( "startsWithMatch" ) + "]? " + bindingKey );
-                                if( hostName.startsWith( (String)(((JSONObject)option).get( "startsWithMatch" )) ) ) {
-                                    match = (JSONObject)option;
-                                    break;
-                                }
-                            }
-                        }
-                    }
-
-                    if( match == null ) {
-                        // Try exact IP and hostname regex match
-                        bindingKey = "0.0.0.0:" + port + "::regex:";
-                        JSONArray regexWithOptions = (JSONArray)bindings.get( bindingKey );
-                        if( regexWithOptions != null ) {
-                            for( Object option : regexWithOptions ) {
-                                LOG.trace( "Does [" + hostName + "] match the regex [" + ((JSONObject)option).get( "regexMatch" ) + "]? " + bindingKey );
-                                if( ((Pattern)((JSONObject)option).get( "pattern" )).matcher(hostName).matches() ) {
-                                    match = (JSONObject)option;
-                                    break;
-                                }
-                            }
-                        }
-                    }
-
-                    if( match == null ) {
-                        // Try wildcard hostname on exact IP
-                        bindingKey = IP + ":" + port + ":*" ;
-                        LOG.trace( "Trying binding key: " + bindingKey );
-                        match = (JSONObject)bindings.get( bindingKey );
-                    }
-
-                    if( match == null ) {
-                        // Try wildcard hostname on any IP
-                        bindingKey = "0.0.0.0:" + port + ":*" ;
-                        LOG.trace( "Trying binding key: " + bindingKey );
-                        match = (JSONObject)bindings.get( bindingKey );
-                    }
-
-                    if( match == null ) {
-                        // Look for a default site
-                        bindingKey = "default" ;
-                        LOG.trace( "Trying binding key: " + bindingKey );
-                        match = (JSONObject)bindings.get( bindingKey );
-                    }
-
-                    if( match == null ) {
-                        String message = "Can't find a matching binding for IP [" + IP + "], port [" + port + "], and hostname [" + hostName + "]";
-                        LOG.debug( message );
-
-                        // TODO: How to customize this
-                        final String errorPage = "<html><head><title>Site Not Found</title></head><body><h1>Site Not Found</h1>" + message.replace("<", "&lt;").replace(">", "&gt;").replace("&", "&amp;") + "</body></html>";
-                        exchange.setStatusCode(404);
-                        exchange.getResponseHeaders().put(Headers.CONTENT_LENGTH, "" + errorPage.length());
-                        exchange.getResponseHeaders().put(Headers.CONTENT_TYPE, "text/html");
-                        Sender sender = exchange.getResponseSender();
-                        sender.send(errorPage);
-                        return;
-                    }
-
-                    deploymentKey = (String)match.get( "site" );
-                    LOG.trace( "Binding is for site: " + deploymentKey );
-                	exchange.putAttachment(DEPLOYMENT_KEY, deploymentKey);
-            		deployment = deployments.get( deploymentKey );
-                }
-
-            	// If we're not auto-creating contexts, then just pass to our default servlet deployment
-            	else if( !serverOptions.autoCreateContexts() ) {
-            		deployment = deployments.get( SiteDeployment.DEFAULT );
-
-            	// Otherwise, see if a deployment already exists
-            	} else {
-
-            		if( !isHeaderSafe( exchange, "", "X-Webserver-Context" ) ) return;
-
-                	deploymentKey = exchange.getRequestHeaders().getFirst( "X-Webserver-Context" );
-                	if( deploymentKey == null ){
-                		deploymentKey = exchange.getHostName().toLowerCase();
-                	}
-                	// Save into the exchange for later in the thread
-                	exchange.putAttachment(DEPLOYMENT_KEY, deploymentKey);
-
-            		deployment = deployments.get( deploymentKey );
-            		if( deployment == null ) {
-
-                		if( !isHeaderSafe( exchange, deploymentKey, "X-Tomcat-DocRoot" ) ) return;
-                    	String docRoot = exchange.getRequestHeaders().getFirst( "X-Tomcat-DocRoot" );
-
-                    	if( docRoot != null && !docRoot.isEmpty() ) {
-                    		File docRootFile = new File( docRoot );
-                    		if( docRootFile.exists() && docRootFile.isDirectory() ) {
-
-                    			// Enforce X-ModCFML-SharedKey
-                        		if( !isHeaderSafe( exchange, deploymentKey, "X-ModCFML-SharedKey" ) ) return;
-                            	String modCFMLSharedKey = exchange.getRequestHeaders().getFirst( "X-ModCFML-SharedKey" );
-                            	if( modCFMLSharedKey == null ) {
-                            		modCFMLSharedKey = "";
-                            	}
-
-                            	// If a secret was provided, enforce it
-                            	if( !serverOptions.autoCreateContextsSecret().equals( "" ) && !serverOptions.autoCreateContextsSecret().equals( modCFMLSharedKey ) ) {
-									exchange.getResponseHeaders().put(Headers.CONTENT_TYPE, "text/plain");
-									exchange.setStatusCode(403);
-									exchange.getResponseSender().send( "The web server's X-ModCFML-SharedKey was not supplied or doesn't match the configured secret." );
-									logOnce( deploymentKey, "SharedKeyNotMatch", "debug", "The web server's X-ModCFML-SharedKey [" + modCFMLSharedKey + "] was not supplied or doesn't match the auto-create-contexts-secret setting [" + ( serverOptions.autoCreateContextsSecret() == null ? "" : serverOptions.autoCreateContextsSecret() ) + "] for deploymentKey [" + deploymentKey + "]." );
-									return;
-                            	}
-                            	String vDirs = null;
-                            	if( serverOptions.autoCreateContextsVDirs() ) {
-                            		if( !isHeaderSafe( exchange, deploymentKey, "x-vdirs" ) ) return;
-                                	vDirs = exchange.getRequestHeaders().getFirst( "x-vdirs" );
-                                    if( vDirs != null && !vDirs.isEmpty() ) {
-                                    	// Ensure we can trust the x-vdirs header.  Only use it if the x-vdirs-sharedkey header is also supplied with the shared key
-                                		if( !isHeaderSafe( exchange, deploymentKey, "x-vdirs-sharedkey" ) ) return;
-                                    	String vDirsSharedKey = exchange.getRequestHeaders().getFirst( "x-vdirs-sharedkey" );
-                                    	if( vDirsSharedKey == null || vDirsSharedKey.isEmpty() ) {
-                                    		vDirs = null;
-        									logOnce( deploymentKey, "NovDirsSharedKey", "warn", "The x-vdirs header was provided, but it is being igonred because no x-vdirs-sharedkey header is present." );
-                                    	} else {
-                                        	// If a secret was provided, enforce it
-                                        	if( !serverOptions.autoCreateContextsSecret().equals( "" ) && !serverOptions.autoCreateContextsSecret().equals( vDirsSharedKey ) ) {
-                                        		vDirs = null;
-            									logOnce( deploymentKey, "VDirsSharedKeyNotMatch", "warn", "The x-vdirs header was provided, but it is being igonred because the x-vdirs-sharedkey header [" + vDirsSharedKey + "] doesn't match the auto-create-contexts-secret setting [" + ( serverOptions.autoCreateContextsSecret() == null ? "" : serverOptions.autoCreateContextsSecret() ) + "] for deploymentKey [" + deploymentKey + "]." );
-                                        	}
-                                    	}
-                                    }
-                            	}
-                            	try {
-                            		deployment = createSiteDeployment( servletBuilder, docRootFile, configurer, deploymentKey, vDirs, serverOptions.getSites().get(0) );
-                            	} catch ( MaxContextsException e ) {
-
-									exchange.getResponseHeaders().put(Headers.CONTENT_TYPE, "text/plain");
-									exchange.setStatusCode(500);
-									exchange.getResponseSender().send( e.getMessage() );
-
-									logOnce( deploymentKey, "MaxContextsException", "error", e.getMessage() + "  The requested deploymentKey was [" + deploymentKey + "]" );
-                       	        	return;
-                            	}
-                    		} else {
-                    	        LOG.warn( "X-Tomcat-DocRoot of [" + docRoot + "] does not exist or is not directory.  Using default context." );
-                        		deployment = deployments.get( SiteDeployment.DEFAULT );
-                    		}
-                    	} else {
-                    		logOnce( deploymentKey, "NoDocRootHeader", "warn", "X-Tomcat-DocRoot is null or empty.  Using default context for deploymentKey [" + deploymentKey + "]." );
-                    		deployment = deployments.get( SiteDeployment.DEFAULT );
-                    	}
-
-            		}
-            	}
-
-                // Save into the exchange for later in the thread
-                exchange.putAttachment(SITE_DEPLOYMENT_KEY, deployment);
-                deployment.processRequest( exchange );
-
-            }
-
-            @Override
-            public String toString() {
-                return "Runwar HostHandler";
-            }
-        };
 
         LOG.debug("started servlet deployment manager");
 
@@ -834,7 +444,7 @@ public class Server {
         LOG.debug("Direct Buffers: " + serverOptions.directBuffers());
         serverBuilder.setDirectBuffers(serverOptions.directBuffers());
 
-        serverBuilder.setHandler(hostHandler);
+        serverBuilder.setHandler( new BindingMatcherHandler( serverOptions, siteDeploymentManager, configurer, servletBuilder ) );
         try {
             PID = ManagementFactory.getRuntimeMXBean().getName().split("@")[0];
             String pidFile = serverOptions.pidFile();
@@ -854,7 +464,7 @@ public class Server {
 
         // start the stop monitor thread
         assert monitor == null;
-        monitor = new MonitorThread(stoppassword);
+        monitor = new StopMonitor(stoppassword,serverOptions);
         monitor.start();
         LOG.debug("started stop monitor");
         tray = new Tray();
@@ -931,12 +541,8 @@ public class Server {
             serverBuilder.setSocketOption(option, serverXnioOptionsMap.get(option));
         }
     }
-/*
-    PortRequisitioner getPorts() {
-        return ports;
-    }*/
 
-    static String fullExchangePath(HttpServerExchange exchange) {
+    public static String fullExchangePath(HttpServerExchange exchange) {
         return exchange.getRequestURL() + (exchange.getQueryString().length() > 0 ? "?" + exchange.getQueryString() : "");
     }
 
@@ -1015,9 +621,9 @@ public class Server {
                     if (serverOptions.mariaDB4jEnable()) {
                         mariadb4jManager.stop();
                     }
-                    if (deployments != null) {
+                    if (siteDeploymentManager.getDeployments() != null) {
                         try {
-                        	 for ( Map.Entry<String,SiteDeployment> deployment : deployments.entrySet() ) {
+                        	 for ( Map.Entry<String,SiteDeployment> deployment : siteDeploymentManager.getDeployments().entrySet() ) {
                         		 DeploymentManager manager = deployment.getValue().getDeploymentManager();
                                  switch (manager.getState()) {
                                      case UNDEPLOYED:
@@ -1064,10 +670,10 @@ public class Server {
 
                 if (monitor != null) {
                     LOG.debug("Stopping server monitor");
-                    MonitorThread monitorThread = monitor;
+                    StopMonitor stopMonitor = monitor;
                     monitor = null;
-                    monitorThread.stopListening(false);
-                    monitorThread.interrupt();
+                    stopMonitor.stopListening(false);
+                    stopMonitor.interrupt();
                 }
 
                 if (exitCode != 0) {
@@ -1079,53 +685,6 @@ public class Server {
         }
 
     }
-
-    public ResourceManager getResourceManager(File warFile, Long transferMinSize, Map<String, Path> aliases, File internalCFMLServerRoot) {
-    	Boolean cached = !siteOptions.directoryListingRefreshEnable() && siteOptions.cacheServletPaths();
-
-        LOG.debugf("Initialized " + ( cached ? "CACHED " : "" ) + "MappedResourceManager - base: %s, web-inf: %s, aliases: %s", warFile.getAbsolutePath(), internalCFMLServerRoot.getAbsolutePath(), aliases);
-
-        MappedResourceManager mappedResourceManager = new MappedResourceManager(warFile, transferMinSize, aliases, internalCFMLServerRoot, siteOptions);
-        if ( !cached ) {
-            return mappedResourceManager;
-        }
-
-        LOG.debugf("ResourceManager Cache total size: %s MB", siteOptions.fileCacheTotalSizeMB() );
-        LOG.debugf("ResourceManager Cache max file size: %s KB", siteOptions.fileCacheMaxFileSizeKB() );
-
-        // 8 hours in in milliseconds-- used for both the path metadata cache AND the file contents cache
-        // Setting to -1 will never expire items from the cache, which is tempting-- but having some sort of expiration will keep errant entries from clogging the cache forever
-        int METADATA_MAX_AGE = 8 * 60 * 60 * 1000;
-        /* DirectBufferCache.sliceSize: internally DirectBufferCache has a buffer pool. This pool is responsible for allocating byte buffers to store the data that is in the cache,
-         * the size of those buffers will be sliceSize * slicesPerPage. Each byte buffer region that is allocated in the memory is split into slicesPerPage, and then each buffer
-         *  will have sliceSize. To give you an example, if you have 50 slicesPerPage and each one is 10,000 bytes long (this would be sliceSize), each time a buffer is needed,
-         *  it allocates a region whose size is 500,000 bytes. That region is split into 50 byte buffers of length 10,000 (in bytes).
-         *  If those buffers are all used at some point and not reclaimed, when the pool needs more buffers, it will allocate another 500,000 bytes long chunk, and so on, but there is a limit to it,
-         *  which is maxMemory
-         */
-        // Max file size to cache directly in memory-- measured in bytes.
-        final long maxFileSize = siteOptions.fileCacheMaxFileSizeKB() * 1024; // Convert KB to B
-        /* DirectBufferCache.maxMemory: this is the maximum number of bytes that can be allocated by the pool. So, in the example above, supposed that slicesPerPage is 50, and sliceSize is 10,000 bytes,
-         * if you have a maxMemory of 1,000,000 bytes, it means that the buffer pool can only allocate two chunks of 500,000 bytes each, because that's the number of 500,000 bytes long
-         * regions that fit into 1,000,000. If none of those buffers are reclaimed at some point, and more buffers are needed, the buffer pool will refuse to do more allocations.
-         * The cache will remove the oldest entry from usage pov because it is LRU. This cache is used by CachingResourceManager to store contents of files in direct memory. */
-        int maxMemory = siteOptions.fileCacheTotalSizeMB() * 1024 * 1024; // Convert MB to B
-        // Number of paths to cache. i.e. /foo.txt maps to C:/webroot/foo.txt
-        // I assume the memory overhead of the meta is nearly zero since it's just a single POJO instance per path
-        final int metadataCacheSize = 10000;
-        if( maxMemory > 0 && maxFileSize > 0 ) {
-            int sliceSize = 1024 * 1024; // 1 KB per slice
-            // DirectBufferCache slicesPerPage: the explanation is right above.
-            int slicesPerPage = 10; // 10 slices per page means 10 KB per buffer
-            final DirectBufferCache dataCache = new DirectBufferCache(sliceSize, slicesPerPage, maxMemory, BufferAllocator.DIRECT_BYTE_BUFFER_ALLOCATOR, METADATA_MAX_AGE);
-
-            return new CachingResourceManager(metadataCacheSize, maxFileSize, dataCache, mappedResourceManager, METADATA_MAX_AGE);
-        } else {
-        	LOG.debug("ResourceManager file cache disabled since size is zero. Path lookups will still be cached." );
-            return new CachingResourceManager(metadataCacheSize, maxFileSize, null, mappedResourceManager, METADATA_MAX_AGE);
-        }
-    }
-
     public static File getThisJarLocation() {
         return LaunchUtil.getJarDir(Server.class);
     }
@@ -1238,22 +797,9 @@ public class Server {
         String[] version = versionProp.split("=");
         return version[version.length - 1].trim();
     }
-/*
-    public int getHttpPort() {
-        return ports.get("http").socket;
-    }
-
-    public int getSslPort() {
-        return ports.get("https").socket;
-    }
-
-    public int getStopPort() {
-        return ports.get("stop").socket;
-    }
-    */
 
     public boolean serverWentDown() {
-        return serverWentDown(serverOptions.launchTimeout(), 3000, getInetAddress(siteOptions.host()), siteOptions.httpPort());
+        return serverWentDown(serverOptions.launchTimeout(), 3000, getInetAddress("127.0.0.1"), serverOptions.stopPort());
     }
 
     public static boolean serverWentDown(int timeout, long sleepTime, InetAddress server, int port) {
@@ -1332,29 +878,20 @@ public class Server {
     class OpenBrowserTask extends TimerTask {
 
         public void run() {
-            int portNumber = siteOptions.httpPort();
+            int portNumber = serverOptions.stopPort();
             String protocol = "http";
-            String host = siteOptions.host();
+            String host = "127.0.0.1";
             String openbrowserURL = serverOptions.openbrowserURL();
+            if( openbrowserURL == null ) {
+                LOG.warn("Open Browser URL is empty, ignoring...");
+                return;
+            }
             int timeout = serverOptions.launchTimeout();
-            if (openbrowserURL == null || openbrowserURL.length() == 0) {
-                openbrowserURL = "http://" + host + ":" + portNumber;
-            }
-            if (siteOptions.sslEnable()) {
-                portNumber = siteOptions.sslPort();
-                protocol = "https";
-                if (openbrowserURL.startsWith("http:")) {
-                    openbrowserURL = openbrowserURL.replaceFirst("http:", "https:");
-                }
-            }
-            if (!openbrowserURL.startsWith("http")) {
-                openbrowserURL = (!openbrowserURL.startsWith("/")) ? "/" + openbrowserURL : openbrowserURL;
-                openbrowserURL = protocol + "://" + host + ":" + portNumber + openbrowserURL;
-            }
+
             // if binding to all IPs, swap out with localhost.
             openbrowserURL = Utils.replaceHost(openbrowserURL, "0.0.0.0", "127.0.0.1");
 
-            LOG.info("Waiting up to " + (timeout / 1000) + " seconds for " + host + ":" + portNumber + "...");
+            LOG.info("Waiting up to " + (timeout / 1000) + " seconds for stop port " + host + ":" + portNumber + "...");
             try {
                 if (serverCameUp(timeout, 3000, getInetAddress(host), portNumber)) {
                     LOG.infof("Opening browser to url: %s", openbrowserURL);
@@ -1381,129 +918,12 @@ public class Server {
         return processName;
     }
 
-    public String getServerState() {
+    public static String getServerState() {
         return serverState;
     }
 
-    public synchronized SiteDeployment createSiteDeployment( DeploymentInfo servletBuilder, File webroot, RunwarConfigurer configurer, String deploymentKey, String vDirs, SiteOptions siteOptions ) throws Exception {
-    	SiteDeployment deployment;
-
-    	// If another thread already created this deployment
-    	if( ( deployment = deployments.get( deploymentKey ) ) != null ) {
-    		return deployment;
-    	}
-
-    	if( deployments.size() > serverOptions.autoCreateContextsMax() ) {
-    		throw new MaxContextsException( "Cannot create new servlet deployment.  The configured max is [" + serverOptions.autoCreateContextsMax() + "]." );
-    	}
-
-        LOG.info("Creating deployment [" + deploymentKey + "] in " + webroot.toString() );
-
-    	File webInfDir = serverOptions.webInfDir();
-        Long transferMinSize= siteOptions.transferMinSize();
-        Map<String,Path> aliases = new HashMap<>();
-        siteOptions.aliases().forEach((s, s2) -> aliases.put(s,Paths.get(s2)));
-
-        // Add any web server VDirs to Undertow. They come in this format:
-        // /foo,C:\path\to\foo;/bar,C:\path\to\bar
-        if( vDirs != null && !vDirs.isEmpty() ) {
-        	// Parsing logic borrowed from mod_cfml source:
-        	// https://github.com/paulklinkenberg/mod_cfml/blob/32e1fd868d7698f91ad12cffcaeb17258b4071d8/java/mod_cfml-valve/src/mod_cfml/core.java#L409-L420
-			String[] aVDirs = vDirs.split(";");
-			for (int i=0; i<aVDirs.length; i++) {
-				String[] dirParts = aVDirs[i].split(",");
-				if (dirParts.length == 2 && dirParts[0].length() > 1 && dirParts[1].length() > 1) {
-					// windows paths to forward slash
-					dirParts[1] = dirParts[1].replace("\\", "/");
-					if( !aliases.containsKey( dirParts[0] ) ) {
-						aliases.put( dirParts[0], Paths.get( dirParts[1] ) );
-					}
-				}
-			}
-        }
-
-        ResourceManager resourceManager = getResourceManager(webroot, transferMinSize, aliases, webInfDir);
-
-
-        // For non=Adobe (Lucee), create actual servlet context
-        if( serverOptions.cfEngineName().toLowerCase().indexOf("adobe") == -1 ) {
-            servletBuilder.setResourceManager(resourceManager);
-        	DeploymentManager manager = defaultContainer().addDeployment(servletBuilder);
-        	manager.deploy();
-
-        	deployment = new SiteDeployment( manager.start(), manager, siteOptions );
-            LOG.debug("New servlet context created for [" + deploymentKey + "]" );
-        // For Adobe
-        } else {
-        	// For first deployment, create initial resource manager and deploy
-        	if( deployments.size() == 0 ) {
-
-                servletBuilder.setResourceManager( new HostResourceManager( resourceManager ) );
-            	DeploymentManager manager = defaultContainer().addDeployment(servletBuilder);
-            	manager.deploy();
-            	deployment = new SiteDeployment( manager.start(), manager, siteOptions );
-                this.adobeDefaultDeployment = deployment;
-                LOG.debug("Initial servlet context created for [" + deploymentKey + "]" );
-
-           	// For all subsequent deploys, reuse default deployment and simply add new resource manager
-        	} else {
-
-        		((HostResourceManager)servletBuilder.getResourceManager()).addResourceManager( deploymentKey, resourceManager );
-                // Create a new deployment and site handler chain that calls the same servlet initial handler
-            	deployment = new SiteDeployment( this.adobeDefaultDeployment.getServletInitialHandler(), this.adobeDefaultDeployment.getDeploymentManager(), siteOptions );
-                LOG.debug("Cloned servlet context added for deployment [" + deploymentKey + "]" );
-
-        	}
-
-        }
-
-    	deployments.put(deploymentKey, deployment);
-
-    	return deployment;
-    }
-
-    private void logOnce( String deploymentKey, String type, String severity, String message ) {
-    	String logKey = deploymentKey + type;
-    	severity = severity.toLowerCase();
-		if( !deploymentKeyWarnings.contains( logKey ) ) {
-			deploymentKeyWarnings.add( logKey );
-			switch (severity) {
-			case "trace":
-				LOG.trace( message );
-				break;
-			case "debug":
-				LOG.debug( message );
-				break;
-			case "info":
-				LOG.info( message );
-				break;
-			case "warn":
-				LOG.warn( message );
-				break;
-			case "error":
-				LOG.error( message );
-				break;
-			case "fatal":
-				LOG.fatal( message );
-				break;
-			default:
-				LOG.info( message );
-			}
-
-		}
-    }
-
-    private Boolean isHeaderSafe( HttpServerExchange exchange, String deploymentKey, String headerName ) {
-    	HeaderValues headerValues = exchange.getRequestHeaders().get( headerName );
-    	if( headerValues != null && headerValues.size() > 1 ) {
-        	exchange.getResponseHeaders().put(Headers.CONTENT_TYPE, "text/plain");
-        	exchange.setStatusCode(403);
-        	exchange.getResponseSender().send( "The request header [" + headerName + "] was supplied " + headerValues.size() + " times which is likely a configuration error.  CommandBox won't serve requests with fishy ModCFML headers for security." );
-        	logOnce( deploymentKey, "SharedKeyNotMatch", "debug", "The request header [" + headerName + "] was supplied " + headerValues.size() + " times which is likely a configuration error. The values are " + headerValues.toString() + ""
-        			+ ".  CommandBox won't serve requests with fishy ModCFML headers for security." );
-        	return false;
-    	}
-    	return true;
+    public static Thread getMainThread() {
+        return mainThread;
     }
 
     public static HttpServerExchange getCurrentExchange() {
@@ -1512,6 +932,18 @@ public class Server {
 
     public static void setCurrentExchange( HttpServerExchange exchange ) {
     	currentExchange.set( exchange );
+    }
+
+    public static String getCurrentDeploymentKey() {
+    	return currentDeploymentKey.get();
+    }
+
+    public static void setCurrentDeploymentKey( String deploymentKey ) {
+    	currentDeploymentKey.set( deploymentKey );
+    }
+
+    public static XnioWorker getLogWorker() {
+        return logWorker;
     }
 
     public static class ServerState {
@@ -1531,347 +963,6 @@ public class Server {
         public static final String SERVLET = "servlet";
         public static final String DEFAULT = "default";
     }
-
-    private class MonitorThread extends Thread {
-
-        private char[] stoppassword;
-        private volatile boolean listening = false;
-        private volatile boolean systemExitOnStop = true;
-        private ServerSocket serverSocket;
-
-        public MonitorThread(char[] stoppassword) {
-            this.stoppassword = stoppassword;
-            setDaemon(true);
-            setName("StopMonitor");
-        }
-
-        @Override
-        public void run() {
-            // Executor exe = Executors.newCachedThreadPool();
-            int exitCode = 0;
-            serverSocket = null;
-            try {
-                serverSocket = new ServerSocket(serverOptions.stopPort(), 1, getInetAddress(siteOptions.host()));
-                listening = true;
-                LOG.info(bar);
-                LOG.info("*** starting 'stop' listener thread - Host: " + siteOptions.host()
-                        + " - Socket: " + serverOptions.stopPort());
-                LOG.info(bar);
-                while (listening) {
-                    LOG.debug("StopMonitor listening for password");
-                    if (serverState == ServerState.STOPPED || serverState == ServerState.STOPPING) {
-                        listening = false;
-                    }
-                    final Socket clientSocket = serverSocket.accept();
-                    int r, i = 0;
-                    BufferedReader reader = new BufferedReader(new InputStreamReader(clientSocket.getInputStream()));
-                    try {
-                        while (listening && (r = reader.read()) != -1) {
-                            char ch = (char) r;
-                            if (stoppassword.length > i && ch == stoppassword[i]) {
-                                i++;
-                            } else {
-                                i = 0; // prevent prefix only matches
-                            }
-                        }
-                        if (i == stoppassword.length) {
-                            listening = false;
-                        } else {
-                            if (listening) {
-                                LOG.warn("Incorrect password used when trying to stop server.");
-                            } else {
-                                LOG.debug("stopped listening for stop password.");
-                            }
-
-                        }
-                    } catch (java.net.SocketException e) {
-                        // reset
-                    }
-                    try {
-                        clientSocket.close();
-                    } catch (IOException e) {
-                        LOG.error(e);
-                    }
-                }
-            } catch (Exception e) {
-                LOG.error(e);
-                exitCode = 1;
-                e.printStackTrace();
-            } finally {
-                LOG.debug("Closing server socket");
-                try {
-                    serverSocket.close();
-                    serverSocket = null;
-                } catch (IOException e) {
-                    LOG.error(e);
-                    e.printStackTrace();
-                }
-                try {
-                    if (mainThread.isAlive()) {
-                        LOG.debug("monitor joining main thread");
-                        mainThread.interrupt();
-                        try {
-                            mainThread.join();
-                        } catch (InterruptedException ie) {
-                            // expected
-                        }
-                    }
-                } catch (Exception e) {
-                    LOG.error(e);
-                    e.printStackTrace();
-                }
-            }
-            if (systemExitOnStop) {
-                System.exit(exitCode); // this will call our shutdown hook
-            }
-            return;
-        }
-
-        public void stopListening(boolean systemExitOnStop) {
-            this.systemExitOnStop = systemExitOnStop;
-            listening = false;
-            // send a char to the reader so it will stop waiting
-            Socket s;
-            try {
-                s = new Socket(getInetAddress(siteOptions.host()), serverOptions.stopPort());
-                OutputStream out = s.getOutputStream();
-                out.write('s');
-                out.flush();
-                out.close();
-                s.close();
-            } catch (IOException e) {
-                // expected if already stopping
-            }
-
-        }
-
-    }
-
-	public class SiteDeployment {
-
-	    private final HttpHandler siteInitialHandler;
-	    private final HttpHandler servletInitialHandler;
-	    private final DeploymentManager deploymentManager;
-	    public final static String DEFAULT = "default";
-
-	    public SiteDeployment(HttpHandler servletInitialHandler, DeploymentManager deploymentManager, SiteOptions siteOptions ) throws Exception {
-	        this.deploymentManager = deploymentManager;
-            this.servletInitialHandler = servletInitialHandler;
-	        this.siteInitialHandler = buildSiteHandlerChain( servletInitialHandler, siteOptions );
-	    }
-
-        private HttpHandler buildSiteHandlerChain( HttpHandler servletInitialHandler, SiteOptions siteOptions ) throws Exception {
-
-            final PathHandler pathHandler = new PathHandler(Handlers.redirect(serverOptions.contextPath())) {
-                private final HttpString HTTPONLY = new HttpString("HttpOnly");
-                private final HttpString SECURE = new HttpString("Secure");
-                private final boolean addHttpOnlyHeader = serverOptions.cookieHttpOnly();
-                private final boolean addSecureHeader = serverOptions.cookieHttpOnly();
-
-                @Override
-                public void handleRequest(final HttpServerExchange exchange) throws Exception {
-
-                    if (!exchange.getResponseHeaders().contains(HTTPONLY) && addHttpOnlyHeader) {
-                        exchange.getResponseHeaders().add(HTTPONLY, "true");
-                    }
-                    if (!exchange.getResponseHeaders().contains("Secure") && addSecureHeader) {
-                        exchange.getResponseHeaders().add(SECURE, "true");
-                    }
-
-                    if (exchange.getRequestPath().endsWith(".svgz")) {
-                        exchange.getResponseHeaders().put(Headers.CONTENT_ENCODING, "gzip");
-                    }
-                    // clear any welcome-file info cached after initial request *NOT THREAD SAFE*
-                    if (siteOptions.directoryListingRefreshEnable() && exchange.getRequestPath().endsWith("/")) {
-                        CONTEXT_LOG.trace("*** Resetting servlet path info");
-                        //manager.getDeployment().getServletPaths().invalidate();
-                    }
-
-                    if (serverOptions.debug() && serverOptions.testing() && exchange.getRequestPath().endsWith("/dumprunwarrequest")) {
-                        new RequestDumper().handleRequest(exchange);
-                    } else {
-                        String requestPath = exchange.getRequestPath();
-                        while( !requestPath.isEmpty() && ( requestPath.startsWith( "/" ) || requestPath.startsWith( "\\" ) ) ) {
-                            requestPath = requestPath.substring( 1 );
-                        }
-                        requestPath = requestPath.toUpperCase();
-                        // Undertow has checks for this, but a more careful check is required with a case insensitive resource manager
-                        if( !requestPath.isEmpty() && ( requestPath.startsWith( "WEB-INF/" ) || requestPath.startsWith( "WEB-INF\\" ) ) ) {
-                            CONTEXT_LOG.trace("Blocking suspicious access to : " + exchange.getRequestPath() );
-                            // Not ending the exchange here so the servlet can still send any custom error page.
-                            exchange.setStatusCode( 404 );
-                        }
-
-                        // Then ensures any error status codes set in our predicate/server rules don't go any further
-                        // The default response listener on the exchange will render the appropriate error page for us.
-                        if( exchange.getStatusCode() > 399 ) {
-                             //&& !exchange.isResponseStarted()
-                             exchange.endExchange();
-                             return;
-                        }
-                        super.handleRequest(exchange);
-                    }
-                }
-
-                @Override
-                public String toString() {
-                    return "Runwar PathHandler";
-                }
-            };
-
-            MimeMappings.Builder mimeMappings = MimeMappings.builder();
-            siteOptions.mimeTypes().forEach((ext, contentType) -> {
-                LOG.debugf("Adding Mime type %s = '%s'", ext, contentType);
-                mimeMappings.addMapping(ext, contentType);
-            });
-            // Only needed until this is complete: https://issues.redhat.com/browse/UNDERTOW-2218
-            mimeMappings.addMapping("webp", "image/webp");
-
-            ResourceManager resourceManager = this.deploymentManager.getDeployment().getDeploymentInfo().getResourceManager();
-
-            final HttpHandler resourceHandler = new ResourceHandler( resourceManager )
-                    .setDirectoryListingEnabled( siteOptions.directoryListingEnable() )
-                    .setMimeMappings( mimeMappings.build() );
-
-
-        // Default list of what the default servlet will serve
-        String allowedExt = "3gp,3gpp,7z,ai,aif,aiff,asf,asx,atom,au,avi,bin,bmp,btm,cco,crt,css,csv,deb,der,dmg,doc,docx,eot,eps,flv,font,gif,hqx,htc,htm,html,ico,img,ini,iso,jad,jng,jnlp,jpeg,jpg,js,json,kar,kml,kmz,m3u8,m4a,m4v,map,mid,midi,mml,mng,mov,mp3,mp4,mpeg,mpeg4,mpg,msi,msm,msp,ogg,otf,pdb,pdf,pem,pl,pm,png,ppt,pptx,prc,ps,psd,ra,rar,rpm,rss,rtf,run,sea,shtml,sit,svg,svgz,swf,tar,tcl,tif,tiff,tk,ts,ttf,txt,wav,wbmp,webm,webp,wmf,wml,wmlc,wmv,woff,woff2,xhtml,xls,xlsx,xml,xpi,xspf,zip,aifc,aac,apk,bak,bk,bz2,cdr,cmx,dat,dtd,eml,fla,gz,gzip,ipa,ia,indd,hey,lz,maf,markdown,md,mkv,mp1,mp2,mpe,odt,ott,odg,odf,ots,pps,pot,pmd,pub,raw,sdd,tsv,xcf,yml,yaml,handlebars,hbs";        // Add any custom additions by our users
-        if( siteOptions.defaultServletAllowedExt().length() > 0 ) {
-        	allowedExt += "," + siteOptions.defaultServletAllowedExt();
-        }
-
-        LOG.debug("Extensions allowed by the resource handler for static files: " + allowedExt);
-
-        // Put allowed extensions for faster lookup
-        Set<String> extSet = new HashSet<String>();
-        Collections.addAll(extSet, allowedExt.toLowerCase().split(","));
-
-            HttpHandler allowedExtensions = new HttpHandler() {
-
-                @Override
-                public void handleRequest(final HttpServerExchange exchange) throws Exception {
-
-                    Resource resource = resourceManager.getResource(CanonicalPathUtils.canonicalize(exchange.getRelativePath()));
-                    if( resource != null && !resource.isDirectory() ) {
-                        String ext = resource.getFile().getName().toLowerCase();
-                        if( ext.contains(".") ) {
-                            ext = ext.substring(ext.lastIndexOf(".") + 1);
-                        }
-
-                        if( !extSet.contains(ext) ) {
-                            LOG.debug( "Blocking access to [" + exchange.getRelativePath() + "] based on allowed extensions." );
-                            exchange.setStatusCode( 403 );
-                            return;
-                        }
-                    }
-                    resourceHandler.handleRequest( exchange );
-                }
-
-                @Override
-                public String toString() {
-                    return "Default status code Handler";
-                }
-            };
-
-            // In the event we are rendering a custom error page and the servlet is NOT processing it, then put the original
-            // status code back before the resource handler closes the reponse channel
-            HttpHandler defaultStatusCodeHandler = new HttpHandler() {
-                @Override
-                public void handleRequest(final HttpServerExchange exchange) throws Exception {
-                    Map<String, String> requestAttrs = exchange.getAttachment( exchange.REQUEST_ATTRIBUTES );
-                    if( requestAttrs != null && requestAttrs.containsKey( "default-response-handler" ) ) {
-                        exchange.setStatusCode( Integer.parseInt( requestAttrs.get( "default-response-handler" ) ) );
-                    }
-                    allowedExtensions.handleRequest( exchange );
-                }
-
-                @Override
-                public String toString() {
-                    return "Default status code Handler";
-                }
-            };
-
-            HttpHandler CFOrStaticHandler = Handlers.predicate(
-                Predicates.parse( siteOptions.servletPassPredicate() ),
-                servletInitialHandler,
-                defaultStatusCodeHandler
-            );
-
-            HttpHandler welcomeFileHandler = new WelcomeFileHandler(CFOrStaticHandler, resourceManager, Arrays.asList(siteOptions.welcomeFiles()) );
-
-            pathHandler.addPrefixPath(serverOptions.contextPath(), welcomeFileHandler);
-            HttpHandler httpHandler = pathHandler;
-
-            if (siteOptions.predicateText() != null && siteOptions.predicateText().length() > 0 ) {
-                LOG.debug("Adding predicates");
-
-                List<PredicatedHandler> ph = PredicatedHandlersParser.parse(siteOptions.predicateText(), _classLoader);
-                LOG.trace(siteOptions.predicateText());
-
-                httpHandler = Handlers.predicates(ph, httpHandler);
-            }
-
-            if (siteOptions.gzipEnable()) {
-                //the default packet size on the internet is 1500 bytes so
-                //any file less than 1.5k can be sent in a single packet
-                if (siteOptions.gzipPredicate() != null) {
-                    LOG.debug("Setting GZIP predicate to = " + siteOptions.gzipPredicate());
-                }
-                // The max-content-size predicate was replaced with request-larger-than
-                httpHandler = new EncodingHandler(new ContentEncodingRepository().addEncodingHandler(
-                        "gzip", new GzipEncodingProvider(), 50, Predicates.parse(siteOptions.gzipPredicate()))).setNext(httpHandler);
-            }
-
-            if (siteOptions.logAccessEnable()) {
-                RunwarAccessLogReceiver accessLogReceiver = RunwarAccessLogReceiver.builder().setLogWriteExecutor(logWorker)
-                        .setRotate(true)
-                        .setOutputDirectory(siteOptions.logAccessDir().toPath())
-                        .setLogBaseName(siteOptions.logAccessBaseFileName())
-                        .setLogNameSuffix(serverOptions.logSuffix())
-                        .build();
-                LOG.debug("Logging combined access to " + siteOptions.logAccessDir() + " base name of '" + siteOptions.logAccessBaseFileName() + "." + serverOptions.logSuffix() + ", rotated daily'");
-                httpHandler = new AccessLogHandler(httpHandler, accessLogReceiver, "combined", Server.class.getClassLoader());
-            }
-
-            if (siteOptions.proxyPeerAddressEnable()) {
-                LOG.debug("Enabling Proxy Peer Address handling");
-                httpHandler = new ProxyPeerAddressHandler(httpHandler);
-            }
-
-            if (siteOptions.clientCertTrustHeaders()) {
-                LOG.debug("Checking for upstream client cert HTTP headers");
-                httpHandler = new SSLHeaderHandler(httpHandler);
-            }
-
-            return new LifecyleHandler(httpHandler, serverOptions, siteOptions);
-
-        }
-
-	    public HttpHandler getServletInitialHandler() {
-	        return servletInitialHandler;
-	    }
-
-	    public HttpHandler getSiteInitialHandler() {
-	        return siteInitialHandler;
-	    }
-
-	    public DeploymentManager getDeploymentManager() {
-	        return deploymentManager;
-	    }
-
-	    public void processRequest( HttpServerExchange exchange ) throws Exception {
-	        siteInitialHandler.handleRequest(exchange);
-	    }
-	}
-
-	private class MaxContextsException extends Exception {
-
-		public MaxContextsException( String message ) {
-			super( message );
-		}
-
-	}
-
 
 }
 

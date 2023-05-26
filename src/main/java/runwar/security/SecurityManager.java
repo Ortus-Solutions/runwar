@@ -4,7 +4,7 @@ import io.undertow.UndertowLogger;
 import io.undertow.Undertow.Builder;
 import io.undertow.security.api.AuthenticationMechanism;
 import io.undertow.security.api.AuthenticationMode;
-import io.undertow.servlet.handlers.security.ServletAuthenticationCallHandler;
+import io.undertow.security.handlers.AuthenticationCallHandler;
 import io.undertow.security.handlers.AuthenticationConstraintHandler;
 import io.undertow.security.handlers.AuthenticationMechanismsHandler;
 import io.undertow.security.handlers.SecurityInitialHandler;
@@ -18,20 +18,12 @@ import io.undertow.security.impl.BasicAuthenticationMechanism;
 import io.undertow.security.impl.ClientCertAuthenticationMechanism;
 import io.undertow.server.HttpHandler;
 import io.undertow.server.HttpServerExchange;
-import io.undertow.servlet.api.AuthMethodConfig;
-import io.undertow.servlet.api.DeploymentInfo;
-import io.undertow.servlet.api.LoginConfig;
-import io.undertow.servlet.api.SecurityConstraint;
-import io.undertow.servlet.api.WebResourceCollection;
-import io.undertow.servlet.api.SecurityInfo;
 import io.undertow.util.HexConverter;
 import io.undertow.predicate.Predicates;
 import io.undertow.predicate.Predicate;
 import runwar.logging.RunwarLogger;
-import runwar.options.ServerOptions;
 import runwar.options.SiteOptions;
 import io.undertow.server.HandlerWrapper;
-
 
 import java.nio.charset.Charset;
 import java.nio.charset.StandardCharsets;
@@ -65,58 +57,53 @@ public class SecurityManager implements IdentityManager {
     private List<Map<String,String>> subjectDNs = new ArrayList<Map<String,String>>();
     private List<Map<String,String>> issuerDNs = new ArrayList<Map<String,String>>();
 
-    public void configureAuth( Builder serverBuilder, SiteOptions siteOptions, DeploymentInfo servletBuilder) {
+    public HttpHandler configureAuth( SiteOptions siteOptions, final HttpHandler toWrap ) {
+        HttpHandler handler = toWrap;
     	splitDNs( siteOptions.clientCertSubjectDNs(), subjectDNs );
     	splitDNs( siteOptions.clientCertIssuerDNs(), issuerDNs );
 
-        final IdentityManager sm = this;
-        servletBuilder.setInitialSecurityWrapper( new HandlerWrapper() {
+
+        handler = new AuthenticationCallHandler(handler);
+        Predicate authRequired = ( siteOptions.authPredicate() != null && siteOptions.authPredicate().length() > 0 ) ? Predicates.parse( siteOptions.authPredicate() ) : null;
+        if( authRequired != null ) {
+            RunwarLogger.SECURITY_LOGGER.debug( "Authentication will only apply to [ " + siteOptions.authPredicate() + " ]" );
+        } else {
+            RunwarLogger.SECURITY_LOGGER.debug( "Authentication will apply to all requests" );
+        }
+        handler = new AuthenticationConstraintHandler(handler){
+
+
             @Override
-            public HttpHandler wrap(HttpHandler handler) {
-
-            	handler = new ServletAuthenticationCallHandler(handler);
-                Predicate authRequired = ( siteOptions.authPredicate() != null && siteOptions.authPredicate().length() > 0 ) ? Predicates.parse( siteOptions.authPredicate() ) : null;
-                if( authRequired != null ) {
-                    RunwarLogger.SECURITY_LOGGER.debug( "Authentication will only apply to [ " + siteOptions.authPredicate() + " ]" );
-                } else {
-                    RunwarLogger.SECURITY_LOGGER.debug( "Authentication will apply to all requests" );
+            protected boolean isAuthenticationRequired(final HttpServerExchange exchange) {
+                if( authRequired == null ) {
+                    return true;
                 }
-                handler = new AuthenticationConstraintHandler(handler){
-
-
-                	@Override
-                    protected boolean isAuthenticationRequired(final HttpServerExchange exchange) {
-                		if( authRequired == null ) {
-                			return true;
-                		}
-                		// Either auth is already been marked required for this context or our predicate resolves to true
-                        return exchange.getSecurityContext().isAuthenticationRequired() || authRequired.resolve( exchange );
-                    }
-
-                };
-
-                final List<AuthenticationMechanism> mechanisms = new ArrayList<AuthenticationMechanism>();
-
-                if( siteOptions.clientCertEnable() ) {
-                    RunwarLogger.SECURITY_LOGGER.debug( "Client Cert Auth mechanism enabled.  Renegotiation: " + siteOptions.clientCertRenegotiation() );
-                    mechanisms.add( new ClientCertAuthenticationMechanism( siteOptions.clientCertRenegotiation() ) );
-                }
-
-                if( siteOptions.basicAuthEnable() ) {
-                    RunwarLogger.SECURITY_LOGGER.debug( "Basic Auth mechanism enabled for realm [" + siteOptions.securityRealm() + "]" );
-                    for(Entry<String,String> userNpass : siteOptions.basicAuth().entrySet()) {
-                        addUser(userNpass.getKey(), userNpass.getValue(), "role1");
-                        RunwarLogger.SECURITY_LOGGER.debug(String.format("User:%s password:****",userNpass.getKey()));
-                    }
-
-                    mechanisms.add( new BasicAuthenticationMechanism(siteOptions.securityRealm()) );
-                }
-
-                handler = new AuthenticationMechanismsHandler(handler, mechanisms);
-                return new SecurityInitialHandler(AuthenticationMode.PRO_ACTIVE, sm, handler);
-
+                // Either auth is already been marked required for this context or our predicate resolves to true
+                return exchange.getSecurityContext().isAuthenticationRequired() || authRequired.resolve( exchange );
             }
-        } );
+
+        };
+
+        final List<AuthenticationMechanism> mechanisms = new ArrayList<AuthenticationMechanism>();
+
+        if( siteOptions.clientCertEnable() ) {
+            RunwarLogger.SECURITY_LOGGER.debug( "Client Cert Auth mechanism enabled.  Renegotiation: " + siteOptions.clientCertRenegotiation() );
+            mechanisms.add( new ClientCertAuthenticationMechanism( siteOptions.clientCertRenegotiation() ) );
+        }
+
+        if( siteOptions.basicAuthEnable() ) {
+            RunwarLogger.SECURITY_LOGGER.debug( "Basic Auth mechanism enabled for realm [" + siteOptions.securityRealm() + "]" );
+            for(Entry<String,String> userNpass : siteOptions.basicAuth().entrySet()) {
+                addUser(userNpass.getKey(), userNpass.getValue(), "role1");
+                RunwarLogger.SECURITY_LOGGER.debug(String.format("User:%s password:****",userNpass.getKey()));
+            }
+
+            mechanisms.add( new BasicAuthenticationMechanism(siteOptions.securityRealm()) );
+        }
+
+        handler = new AuthenticationMechanismsHandler(handler, mechanisms);
+        return new SecurityInitialHandler(AuthenticationMode.PRO_ACTIVE, this, handler);
+
     }
 
     public void addUser(final String name, final String password, final String... roles) {

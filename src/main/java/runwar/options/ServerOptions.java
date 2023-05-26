@@ -172,8 +172,6 @@ public class ServerOptions {
      * @see runwar.options.ServerOptions#commandLineArgs()
      */
     public String[] commandLineArgs() {
-        // TODO: totally refactor argument handling so we can serialize and not
-        // muck around like this.
         List<String> argarray = new ArrayList<String>();
 
         return argarray.toArray(new String[0]);
@@ -1247,14 +1245,7 @@ public class ServerOptions {
         return this.undertowOptions;
     }
 
-    ///////////////////// DEPRECATE /////////////////////
-
-    // backwards compat workaround to get stuff running
-    public String host() {
-        System.out.println( "serverOptions.host() FIX ME!" );
-        return getSites().get(0).host();
-    }
-
+    ///////////////////// TOTO: DEPRECATE /////////////////////
 
     public boolean testing() {
         return testing;

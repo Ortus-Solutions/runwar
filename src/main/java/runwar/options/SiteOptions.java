@@ -74,7 +74,7 @@ public class SiteOptions {
 
     private Boolean clientCertRenegotiation = false;
 
-    private static Map<String, String> userPasswordList;
+    private Map<String, String> userPasswordList;
 
     private boolean enableBasicAuth = false;
 

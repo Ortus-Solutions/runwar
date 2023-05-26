@@ -27,7 +27,7 @@ import static io.undertow.Handlers.predicate;
 import static io.undertow.servlet.Servlets.servlet;
 import static runwar.logging.RunwarLogger.LOG;
 
-class RunwarConfigurer {
+public class RunwarConfigurer {
 
     private static ServerOptions serverOptions;
     private final Server server;
@@ -59,7 +59,7 @@ class RunwarConfigurer {
         String cfusionDir = new File(webInfDir,"cfusion").getAbsolutePath().replace('\\', '/');
 
         if (cfengine.equals("adobe") || cfengine.equals("") && new File(cfusionDir).exists()) {
-            String cfformDir = new File(webInfDir,"cfform").getAbsolutePath().replace('\\', '/');
+/*            String cfformDir = new File(webInfDir,"cfform").getAbsolutePath().replace('\\', '/');
 
         	final String cfClasspath = "%s/lib/updates,%s/lib/,%s/lib/axis2,%s/gateway/lib/,%s/../cfform/jars,%s/../flex/jars,%s/lib/oosdk/lib,%s/lib/oosdk/classes".replaceAll("%s", cfusionDir);
             final HashMap<String,String> cfprops = new HashMap<>();
@@ -89,6 +89,7 @@ class RunwarConfigurer {
                     LOG.tracef("Setting %s = '%s'", k, v);
                 });
             }
+            */
             cfengine = "adobe";
         }
 
@@ -142,7 +143,7 @@ class RunwarConfigurer {
     @SuppressWarnings("unchecked")
     private void configureURLRewrite(DeploymentInfo servletBuilder, File webInfDir) throws ClassNotFoundException {
         if(serverOptions.urlRewriteEnable()) {
-            LOG.debug("enabling URL rewriting");
+            LOG.debug("enabling Tuckey URL rewriting");
             Class<Filter> rewriteFilter;
             String urlRewriteFile = "runwar/urlrewrite.xml";
             if(new File(webInfDir,"urlrewrite.xml").exists() && serverOptions.urlRewriteFile() == null){
@@ -179,7 +180,7 @@ class RunwarConfigurer {
             servletBuilder.addFilter(rewriteFilterInfo);
             servletBuilder.addFilterUrlMapping("UrlRewriteFilter", "/*", DispatcherType.REQUEST);
         } else {
-            LOG.debug("URL rewriting is disabled");
+            LOG.debug("Tuckey URL rewriting is disabled");
         }
     }
 

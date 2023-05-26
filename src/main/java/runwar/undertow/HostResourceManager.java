@@ -29,7 +29,8 @@ import io.undertow.server.handlers.resource.ResourceChangeEvent;
 import io.undertow.server.handlers.resource.ResourceChangeListener;
 import io.undertow.server.handlers.resource.ResourceManager;
 import runwar.Server;
-import runwar.Server.SiteDeployment;
+import runwar.undertow.SiteDeployment;
+import runwar.undertow.SiteDeploymentManager;
 import runwar.options.ServerOptions;
 import io.undertow.servlet.handlers.ServletRequestContext;
 
@@ -54,7 +55,7 @@ public class HostResourceManager implements ResourceManager {
     public HostResourceManager( ResourceManager defaultResourceManager ) {
     	resourceManagers = new HashMap<String, ResourceManager>();
 
-    	addResourceManager( Server.SiteDeployment.DEFAULT, defaultResourceManager );
+    	addResourceManager( SiteDeployment.DEFAULT, defaultResourceManager );
     }
 
     /**
@@ -83,20 +84,27 @@ public class HostResourceManager implements ResourceManager {
     	HttpServerExchange exchange = null;
     	ResourceManager resourceManager = null;
     	String deploymentKey = null;
+        // This will exist if there is a request running in this thread
     	exchange = Server.getCurrentExchange();
 
     	if( exchange != null ) {
-            deploymentKey = exchange.getAttachment(Server.DEPLOYMENT_KEY);
+            deploymentKey = exchange.getAttachment(SiteDeploymentManager.DEPLOYMENT_KEY);
+    	}
+
+        // This will exist if we're deploying a servlet context in this thread
+        if( deploymentKey == null ) {
+        	deploymentKey = Server.getCurrentDeploymentKey();
     	}
 
         if( deploymentKey == null ) {
-        	deploymentKey = Server.SiteDeployment.DEFAULT;
+        	deploymentKey = SiteDeployment.DEFAULT;
     	}
 
     	resourceManager = resourceManagers.get( deploymentKey );
 
+        // Checking default again here in case we had a deployment key, but it was bogus
     	if( resourceManager == null ) {
-    		resourceManager = resourceManagers.get( Server.SiteDeployment.DEFAULT );
+    		resourceManager = resourceManagers.get( SiteDeployment.DEFAULT );
     	}
 
         if(resourceManager instanceof MappedResourceManager && ((MappedResourceManager)resourceManager).getDebugLogging() ) {

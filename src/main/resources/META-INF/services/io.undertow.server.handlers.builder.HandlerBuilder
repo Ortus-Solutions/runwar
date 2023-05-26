@@ -2,3 +2,5 @@ runwar.undertow.handler.BlockExternal$Builder
 runwar.undertow.handler.BlockCFAdmin$Builder
 runwar.undertow.handler.AuthRequired$Builder
 runwar.undertow.handler.ProxyHandlerBuilder
+runwar.undertow.handler.ProxyHandlerBuilderShort
+runwar.undertow.handler.FrameworkRewritesBuilder

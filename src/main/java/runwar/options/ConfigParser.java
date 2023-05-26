@@ -152,7 +152,7 @@ public class ConfigParser {
         */
 
 
-        if (!serverConfig.hasOption("rewritesEnable")) {
+        if (serverConfig.hasOption("rewritesEnable")) {
             serverOptions.urlRewriteEnable(serverConfig.getOptionBoolean("rewritesEnable"));
         }
         if (serverConfig.hasOption("rewritesConfig")) {
@@ -208,7 +208,7 @@ public class ConfigParser {
         if (serverConfig.hasOption("trayicon")) {
             serverOptions.iconImage(serverConfig.getOptionValue("trayicon"));
         }
-        // TODO: use JSONd irectly as "trayOptions"
+        // TODO: use JSON irectly as "trayOptions"
         if (serverConfig.hasOption("trayOptionsFile")) {
             serverOptions.trayConfig(getFile(serverConfig.getOptionValue("trayOptionsFile")));
         }
