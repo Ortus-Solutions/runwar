@@ -64,7 +64,6 @@ public class RunwarConfigurer {
         	final String cfClasspath = "%s/lib/updates,%s/lib/,%s/lib/axis2,%s/gateway/lib/,%s/../cfform/jars,%s/../flex/jars,%s/lib/oosdk/lib,%s/lib/oosdk/classes".replaceAll("%s", cfusionDir);
             final HashMap<String,String> cfprops = new HashMap<>();
 
-            // TODO: See if the next 6 lines are actuallly needed or not in a CF WAR.
             cfprops.put("coldfusion.home", cfusionDir);
             cfprops.put("coldfusion.rootDir", cfusionDir);
             cfprops.put("coldfusion.libPath", cfusionDir + "/lib");
@@ -72,9 +71,6 @@ public class RunwarConfigurer {
             cfprops.put("coldfusion.jsafe.defaultalgo", "FIPS186Random");
             cfprops.put("coldfusion.classPath", cfClasspath);
 
-            // Hide error messages about MediaLib stuff
-            cfprops.put("com.sun.media.jai.disableMediaLib", "true");
-            // Make the embedded version of Jetty inside Adobe CF shut up since it dumps everything to the error stream
             cfprops.put("java.security.policy", cfusionDir + "/lib/coldfusion.policy");
             cfprops.put("java.security.auth.policy", cfusionDir + "/lib/neo_jaas.policy");
             cfprops.put("java.nixlibrary.path", cfusionDir + "/lib");
@@ -90,6 +86,8 @@ public class RunwarConfigurer {
                 });
             }
             */
+            // Hide error messages about MediaLib stuff
+            System.setProperty("com.sun.media.jai.disableMediaLib", "true");
             cfengine = "adobe";
         }
 

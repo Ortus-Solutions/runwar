@@ -465,7 +465,7 @@ public class LaunchUtil {
     public static String getResourceAsString(String path) {
         InputStream streamPath = LaunchUtil.class.getClassLoader().getResourceAsStream(path);
         if (streamPath == null) {
-            return null;
+            throw new RuntimeException( "Cannot load resource: " + path );
         }
         return readStream(streamPath);
     }

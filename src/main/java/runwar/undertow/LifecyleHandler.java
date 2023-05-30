@@ -1,6 +1,6 @@
 package runwar.undertow;
 
-import static runwar.logging.RunwarLogger.CONTEXT_LOG;
+import static runwar.logging.RunwarLogger.LOG;
 
 import io.undertow.io.Sender;
 import io.undertow.server.HttpHandler;
@@ -13,6 +13,7 @@ import runwar.logging.RunwarLogger;
 import runwar.options.ServerOptions;
 import runwar.options.SiteOptions;
 import runwar.Server;
+import runwar.LaunchUtil;
 import java.util.Map;
 import java.util.HashMap;
 import javax.servlet.RequestDispatcher;
@@ -23,12 +24,24 @@ public class LifecyleHandler implements HttpHandler {
     private final ServerOptions serverOptions;
     private final SiteOptions siteOptions;
     private final Map<Integer, String> errorPages;
+    private final String error401;
+    private final String error403;
+    private final String error404;
+    private final String error500;
+    private final String errorDefault;
+
+
 
     LifecyleHandler(final HttpHandler next, ServerOptions serverOptions, SiteOptions siteOptions) {
         this.next = next;
         this.serverOptions = serverOptions;
         this.siteOptions = siteOptions;
         this.errorPages = siteOptions.errorPages();
+        this.error401 = LaunchUtil.getResourceAsString( "runwar/error-401.html" );
+        this.error403 = LaunchUtil.getResourceAsString( "runwar/error-403.html" );
+        this.error404 = LaunchUtil.getResourceAsString( "runwar/error-404.html" );
+        this.error500 = LaunchUtil.getResourceAsString( "runwar/error-500.html" );
+        this.errorDefault = LaunchUtil.getResourceAsString( "runwar/error-default.html" );
     }
 
     @Override
@@ -44,7 +57,7 @@ public class LifecyleHandler implements HttpHandler {
         if( !attrs.containsKey( "default-response-handler" ) ) {
             inExchange.addExchangeCompleteListener((httpServerExchange, nextListener) -> {
                 if ( serverOptions.debug() && httpServerExchange.getStatusCode() > 399) {
-                    CONTEXT_LOG.warnf("responded: Status Code %s (%s)", httpServerExchange.getStatusCode(), Server.fullExchangePath(httpServerExchange));
+                    LOG.warnf("responded: Status Code %s (%s)", httpServerExchange.getStatusCode(), Server.fullExchangePath(httpServerExchange));
                 }
                 nextListener.proceed();
             });
@@ -67,8 +80,9 @@ public class LifecyleHandler implements HttpHandler {
                     if( attrs.containsKey( "default-response-handler" ) ) {
                         exchange.setStatusCode( Integer.parseInt( attrs.get( "default-response-handler" ) ) );
                     }
-                    CONTEXT_LOG.debug("Dispatching default error page " + exchange.getStatusCode());
-                    final String errorPage = "<html><head><title>Error " + exchange.getStatusCode() + "</title></head><body bgcolor=\"lightGray\"><h1 style=\"text-align: center;\">" + StatusCodes.getReason( exchange.getStatusCode() ) + "</h1><p style=\"text-align: center;\">Powered By CommandBox</p></body></html>";
+                    LOG.debug("Dispatching default error page " + exchange.getStatusCode());
+
+                    final String errorPage = getDefaultErrorPage( exchange.getStatusCode() );
                     exchange.getResponseHeaders().put(Headers.CONTENT_LENGTH, "" + errorPage.length());
                     exchange.getResponseHeaders().put(Headers.CONTENT_TYPE, "text/html");
                     Sender sender = exchange.getResponseSender();
@@ -76,7 +90,7 @@ public class LifecyleHandler implements HttpHandler {
                     return true;
                 }
 
-                CONTEXT_LOG.debug("Dispatching custom " + exchange.getStatusCode() + " error page: [" + customErrorPage + "]");
+                LOG.debug("Dispatching custom " + exchange.getStatusCode() + " error page: [" + customErrorPage + "]");
                 attrs.put( "default-response-handler", String.valueOf( exchange.getStatusCode() ) );
 
                       try {
@@ -125,7 +139,31 @@ public class LifecyleHandler implements HttpHandler {
             return false;
         });
 
-        CONTEXT_LOG.debug("requested: '" + Server.fullExchangePath(inExchange) + "'");
+        LOG.debug("requested: '" + Server.fullExchangePath(inExchange) + "'");
         next.handleRequest(inExchange);
+    }
+
+    private String getDefaultErrorPage( int statusCode ) {
+        if( statusCode == 401 ) {
+            return this.error401;
+        } else if( statusCode == 403 ) {
+            return this.error403;
+        } else if( statusCode == 404 ) {
+            return this.error404;
+        } else if( statusCode == 500 ) {
+            return this.error500;
+        } else {
+            return this.errorDefault
+                .replace( "@@statusCode@@", String.valueOf( statusCode ) )
+                .replace( "@@statusText@@", escapeHTML( StatusCodes.getReason( statusCode ) ) );
+
+        }
+    }
+
+    private String escapeHTML( String text ) {
+        return text
+                .replace("<", "&lt;")
+                .replace(">", "&gt;")
+                .replace("&", "&amp;");
     }
 }

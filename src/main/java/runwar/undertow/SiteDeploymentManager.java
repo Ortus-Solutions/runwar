@@ -86,7 +86,6 @@ import static io.undertow.servlet.Servlets.deployment;
 import io.undertow.servlet.handlers.ServletRequestContext;
 import io.undertow.server.HandlerWrapper;
 
-import static runwar.logging.RunwarLogger.CONTEXT_LOG;
 import static runwar.logging.RunwarLogger.LOG;
 import static runwar.logging.RunwarLogger.MAPPER_LOG;
 

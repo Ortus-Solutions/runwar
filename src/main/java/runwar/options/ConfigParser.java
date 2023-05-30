@@ -16,7 +16,6 @@ import java.util.*;
 import java.util.stream.Collectors;
 
 import static runwar.logging.RunwarLogger.CONF_LOG;
-import static runwar.logging.RunwarLogger.CONTEXT_LOG;
 
 public class ConfigParser {
 
@@ -208,7 +207,7 @@ public class ConfigParser {
         if (serverConfig.hasOption("trayicon")) {
             serverOptions.iconImage(serverConfig.getOptionValue("trayicon"));
         }
-        // TODO: use JSON irectly as "trayOptions"
+
         if (serverConfig.hasOption("trayOptionsFile")) {
             serverOptions.trayConfig(getFile(serverConfig.getOptionValue("trayOptionsFile")));
         }

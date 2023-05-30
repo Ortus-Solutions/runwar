@@ -1,6 +1,6 @@
 package runwar.undertow;
 
-import static runwar.logging.RunwarLogger.CONTEXT_LOG;
+import static runwar.logging.RunwarLogger.LOG;
 
 import java.io.File;
 import java.io.IOException;

@@ -1,7 +1,5 @@
 package runwar;
 
-import static runwar.logging.RunwarLogger.CONTEXT_LOG;
-
 
 import io.undertow.Handlers;
 import io.undertow.Undertow;
@@ -87,8 +85,8 @@ import static io.undertow.servlet.Servlets.deployment;
 import io.undertow.servlet.handlers.ServletRequestContext;
 import io.undertow.server.HandlerWrapper;
 import runwar.undertow.SiteDeploymentManager;
+import runwar.LaunchUtil;
 
-import static runwar.logging.RunwarLogger.CONTEXT_LOG;
 import static runwar.logging.RunwarLogger.LOG;
 import static runwar.logging.RunwarLogger.MAPPER_LOG;
 
@@ -103,6 +101,7 @@ public class BindingMatcherHandler implements HttpHandler {
     private SiteDeploymentManager siteDeploymentManager;
     private RunwarConfigurer configurer;
     private DeploymentInfo servletBuilder;
+    private final String error404Site;
 
     BindingMatcherHandler( ServerOptions serverOptions, SiteDeploymentManager siteDeploymentManager, RunwarConfigurer configurer, DeploymentInfo servletBuilder) {
         this.serverOptions = serverOptions;
@@ -110,6 +109,7 @@ public class BindingMatcherHandler implements HttpHandler {
         this.siteDeploymentManager = siteDeploymentManager;
         this.configurer = configurer;
         this.servletBuilder = servletBuilder;
+        this.error404Site = LaunchUtil.getResourceAsString( "runwar/error-404-site.html" );
     }
 
     @Override
@@ -130,9 +130,7 @@ public class BindingMatcherHandler implements HttpHandler {
             if( match == null ) {
                 String message = "Can't find a matching binding for IP [" + IP + "], port [" + port + "], and hostname [" + hostName + "]";
                 LOG.debug( message );
-
-                // TODO: How to customize this
-                final String errorPage = "<html><head><title>Site Not Found</title></head><body><h1>Site Not Found</h1>" + message.replace("<", "&lt;").replace(">", "&gt;").replace("&", "&amp;") + "</body></html>";
+                final String errorPage = this.error404Site.replace( "@@message@@", escapeHTML( message ) );
                 exchange.setStatusCode(404);
                 exchange.getResponseHeaders().put(Headers.CONTENT_LENGTH, "" + errorPage.length());
                 exchange.getResponseHeaders().put(Headers.CONTENT_TYPE, "text/html");
@@ -411,5 +409,11 @@ public class BindingMatcherHandler implements HttpHandler {
         return "Runwar HostHandler";
     }
 
+    private String escapeHTML( String text ) {
+        return text
+                .replace("<", "&lt;")
+                .replace(">", "&gt;")
+                .replace("&", "&amp;");
+    }
 }
 

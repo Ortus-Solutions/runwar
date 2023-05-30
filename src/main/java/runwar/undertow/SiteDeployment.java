@@ -84,7 +84,6 @@ import static io.undertow.servlet.Servlets.deployment;
 import io.undertow.servlet.handlers.ServletRequestContext;
 import io.undertow.server.HandlerWrapper;
 
-import static runwar.logging.RunwarLogger.CONTEXT_LOG;
 import static runwar.logging.RunwarLogger.LOG;
 import static runwar.logging.RunwarLogger.MAPPER_LOG;
 
@@ -128,7 +127,7 @@ public class SiteDeployment {
                 }
                 // clear any welcome-file info cached after initial request *NOT THREAD SAFE*
                 if (siteOptions.directoryListingRefreshEnable() && exchange.getRequestPath().endsWith("/")) {
-                    CONTEXT_LOG.trace("*** Resetting servlet path info");
+                    LOG.trace("*** Resetting servlet path info");
                     //manager.getDeployment().getServletPaths().invalidate();
                 }
 
@@ -142,7 +141,7 @@ public class SiteDeployment {
                     requestPath = requestPath.toUpperCase();
                     // Undertow has checks for this, but a more careful check is required with a case insensitive resource manager
                     if( !requestPath.isEmpty() && ( requestPath.startsWith( "WEB-INF/" ) || requestPath.startsWith( "WEB-INF\\" ) ) ) {
-                        CONTEXT_LOG.trace("Blocking suspicious access to : " + exchange.getRequestPath() );
+                        LOG.trace("Blocking suspicious access to : " + exchange.getRequestPath() );
                         // Not ending the exchange here so the servlet can still send any custom error page.
                         exchange.setStatusCode( 404 );
                     }
