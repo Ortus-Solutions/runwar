@@ -151,18 +151,19 @@ public class ConfigParser {
         */
 
 
-        if (serverConfig.hasOption("rewritesEnable")) {
+        if (serverConfig.hasOption("rewritesEnable") && serverConfig.hasOption("rewritesConfig") && serverConfig.getOptionValue("rewritesConfig").length()>0 ) {
             serverOptions.urlRewriteEnable(serverConfig.getOptionBoolean("rewritesEnable"));
-        }
-        if (serverConfig.hasOption("rewritesConfig")) {
             serverOptions.urlRewriteFile(getFile(serverConfig.getOptionValue("rewritesConfig")));
+
+            if (serverConfig.hasOption("rewritesConfigReloadSeconds")) {
+                serverOptions.urlRewriteCheckInterval(serverConfig.getOptionValue("rewritesConfigReloadSeconds"));
+            }
+
+            if (serverConfig.hasOption("rewritesStatusPath")) {
+                serverOptions.urlRewriteStatusPath(serverConfig.getOptionValue("rewritesStatusPath"));
+            }
         }
-        if (serverConfig.hasOption("rewritesConfigReloadSeconds")) {
-            serverOptions.urlRewriteCheckInterval(serverConfig.getOptionValue("rewritesConfigReloadSeconds"));
-        }
-        if (serverConfig.hasOption("rewritesStatusPath")) {
-            serverOptions.urlRewriteStatusPath(serverConfig.getOptionValue("rewritesStatusPath"));
-        }
+
 
         if (serverConfig.hasOption("openBrowser")) {
             serverOptions.openbrowser(serverConfig.getOptionBoolean("openBrowser"));
