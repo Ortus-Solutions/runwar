@@ -56,7 +56,6 @@ import runwar.undertow.RequestDebugHandler;
 import runwar.undertow.SSLClientCertHeaderHandler;
 import runwar.undertow.LifecyleHandler;
 import runwar.undertow.WelcomeFileHandler;
-import runwar.undertow.SiteDeployment;
 import runwar.util.ClassLoaderUtils;
 import runwar.util.RequestDumper;
 import runwar.Server;
@@ -95,6 +94,9 @@ public class SiteDeployment {
     private final DeploymentManager deploymentManager;
     private SecurityManager securityManager;
     private final ResourceManager resourceManager;
+    // Provides a context for this site deployment to store items, such as rewrite maps
+    private volatile Map<String,Object> deploymentContext = new ConcurrentHashMap<String,Object>() ;
+
     public final static String DEFAULT = "default";
 
     public SiteDeployment(HttpHandler servletInitialHandler, DeploymentManager deploymentManager, SiteOptions siteOptions, ServerOptions serverOptions, ResourceManager resourceManager ) throws Exception {
@@ -296,26 +298,6 @@ public class SiteDeployment {
 
     }
 
-    public HttpHandler getServletInitialHandler() {
-        return servletInitialHandler;
-    }
-
-    public HttpHandler getSiteInitialHandler() {
-        return siteInitialHandler;
-    }
-
-    public DeploymentManager getDeploymentManager() {
-        return deploymentManager;
-    }
-
-    public SecurityManager getSecurityManager() {
-        return securityManager;
-    }
-
-    public ResourceManager getResourceManager() {
-        return resourceManager;
-    }
-
     public void processRequest( HttpServerExchange exchange ) throws Exception {
         HttpHandler exchangeSetter = new HttpHandler() {
             @Override
@@ -340,6 +322,30 @@ public class SiteDeployment {
         } else {
             exchangeSetter.handleRequest(exchange);
         }
+    }
+
+    public HttpHandler getServletInitialHandler() {
+        return servletInitialHandler;
+    }
+
+    public HttpHandler getSiteInitialHandler() {
+        return siteInitialHandler;
+    }
+
+    public DeploymentManager getDeploymentManager() {
+        return deploymentManager;
+    }
+
+    public SecurityManager getSecurityManager() {
+        return securityManager;
+    }
+
+    public ResourceManager getResourceManager() {
+        return resourceManager;
+    }
+
+    public Map<String,Object> getDeploymentContext() {
+        return deploymentContext;
     }
 
 }

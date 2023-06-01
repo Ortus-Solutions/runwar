@@ -7,3 +7,4 @@ runwar.undertow.predicate.EqualsPredicateNoCase$Builder
 runwar.undertow.predicate.ContainsPredicateNoCase$Builder
 runwar.undertow.predicate.IsFilePredicate$Builder
 runwar.undertow.predicate.IsDirectoryPredicate$Builder
+runwar.undertow.predicate.RewriteMapExists$Builder

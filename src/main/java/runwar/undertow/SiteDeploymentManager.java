@@ -57,6 +57,7 @@ import runwar.undertow.SSLClientCertHeaderHandler;
 import runwar.undertow.LifecyleHandler;
 import runwar.undertow.WelcomeFileHandler;
 import runwar.undertow.SiteDeployment;
+import runwar.undertow.SiteDeploymentManager;
 import runwar.util.ClassLoaderUtils;
 import runwar.util.RequestDumper;
 import runwar.util.MaxContextsException;

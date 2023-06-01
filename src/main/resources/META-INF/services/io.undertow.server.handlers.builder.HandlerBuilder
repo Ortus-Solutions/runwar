@@ -4,3 +4,4 @@ runwar.undertow.handler.AuthRequired$Builder
 runwar.undertow.handler.ProxyHandlerBuilder
 runwar.undertow.handler.ProxyHandlerBuilderShort
 runwar.undertow.handler.FrameworkRewritesBuilder
+runwar.undertow.handler.RewriteMapHandler$Builder
