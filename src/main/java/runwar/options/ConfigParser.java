@@ -242,23 +242,17 @@ public class ConfigParser {
 
         if (serverConfig.hasOption("restMappings")) {
             serverOptions.servletRestMappings(serverConfig.getOptionValue("restMappings"));
-            // No setting for this
-            //if (!serverConfig.hasOption("SERVLETREST")) {
-                serverOptions.servletRestEnable(true);
-           // }
+            // If rest mappings are provided, then it's enabled!
+            serverOptions.servletRestEnable(true);
         }
 
-        // TODO: No setting exists for this
+        // No first-class setting exists for this
         if (serverConfig.hasOption("FILTERPATHINFO")) {
             serverOptions.filterPathInfoEnable(serverConfig.getOptionBoolean("FILTERPATHINFO"));
         }
         // TODO: No setting for this
         if (serverConfig.hasOption("BUFFERSIZE")) {
             serverOptions.bufferSize(Integer.valueOf(serverConfig.getOptionValue("BUFFERSIZE")));
-        }
-        // TODO: No setting for this
-        if (serverConfig.hasOption("IOTHREADS")) {
-            serverOptions.ioThreads(Integer.valueOf(serverConfig.getOptionValue("IOTHREADS")));
         }
         if (serverConfig.hasOption("maxRequests")) {
             serverOptions.workerThreads(Integer.valueOf(serverConfig.getOptionValue("maxRequests")));

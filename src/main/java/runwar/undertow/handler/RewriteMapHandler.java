@@ -78,7 +78,6 @@ public final class RewriteMapHandler implements HttpHandler {
             Map<String, Class<?>> params = new HashMap<>();
             params.put("name", String.class);
             params.put("file", String.class);
-            params.put("type", String.class);
             params.put("case-sensitive", Boolean.class);
             return params;
         }

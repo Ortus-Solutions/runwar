@@ -32,7 +32,6 @@ import runwar.security.SecurityManager;
 public class SSLClientCertHeaderHandler implements HttpHandler {
 
 	private final HttpHandler next;
-	final SiteOptions siteOptions;
 	// Adobe will access CGI elements from request attribtues, but Lucee requires an HTTP request header.
 	final Boolean addHTTPHeaders;
 
@@ -50,9 +49,8 @@ public class SSLClientCertHeaderHandler implements HttpHandler {
 	private static final HttpString SUBJECT_DN_MAP = new HttpString("javax.servlet.request.X509Certificate.subjectDNMap" );
 	private static final HttpString ISSUER_DN_MAP = new HttpString("javax.servlet.request.X509Certificate.issuerDNMap" );
 
-    public SSLClientCertHeaderHandler(HttpHandler next, SiteOptions siteOptions, Boolean addHTTPHeaders ) {
+    public SSLClientCertHeaderHandler(HttpHandler next, Boolean addHTTPHeaders ) {
         this.next = next;
-        this.siteOptions = siteOptions;
 		this.addHTTPHeaders = addHTTPHeaders;
     }
 
@@ -62,6 +60,9 @@ public class SSLClientCertHeaderHandler implements HttpHandler {
 		if(attrs == null) {
 			exchange.putAttachment(HttpServerExchange.REQUEST_ATTRIBUTES, attrs = new HashMap<>());
 		}
+
+		// Get the settings for the current site
+		SiteOptions siteOptions = exchange.getAttachment(SiteDeploymentManager.SITE_DEPLOYMENT_KEY).getSiteOptions();
 
         // If Undertow is in the business of accepting client certs, discard any incoming HTTP headers so we can ensure they are valid
         String clientCertNegotiation = siteOptions.clientCertNegotiation();

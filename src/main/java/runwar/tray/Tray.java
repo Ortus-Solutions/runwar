@@ -47,7 +47,6 @@ import runwar.util.Utils;
 import javax.swing.JFileChooser;
 import javax.swing.JFrame;
 import runwar.gui.SubmitActionlistioner;
-import runwar.util.dae.OSType;
 
 import java.lang.reflect.Method;
 import static runwar.util.Reflection.invoke;

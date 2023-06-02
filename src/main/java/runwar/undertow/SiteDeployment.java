@@ -94,6 +94,9 @@ public class SiteDeployment {
     private final DeploymentManager deploymentManager;
     private SecurityManager securityManager;
     private final ResourceManager resourceManager;
+    private final SiteOptions siteOptions;
+    // Will be null if access logging is off for this site
+    private XnioWorker logWorker;
     // Provides a context for this site deployment to store items, such as rewrite maps
     private volatile Map<String,Object> deploymentContext = new ConcurrentHashMap<String,Object>() ;
 
@@ -103,10 +106,11 @@ public class SiteDeployment {
         this.deploymentManager = deploymentManager;
         this.servletInitialHandler = servletInitialHandler;
         this.resourceManager = resourceManager;
-        this.siteInitialHandler = buildSiteHandlerChain( servletInitialHandler, siteOptions, serverOptions );
+        this.siteOptions = siteOptions;
+        this.siteInitialHandler = buildSiteHandlerChain( servletInitialHandler, serverOptions );
     }
 
-    private HttpHandler buildSiteHandlerChain( HttpHandler servletInitialHandler, SiteOptions siteOptions, ServerOptions serverOptions ) throws Exception {
+    private HttpHandler buildSiteHandlerChain( HttpHandler servletInitialHandler, ServerOptions serverOptions ) throws Exception {
 
         final PathHandler pathHandler = new PathHandler(Handlers.redirect(serverOptions.contextPath())) {
             private final HttpString HTTPONLY = new HttpString("HttpOnly");
@@ -269,7 +273,20 @@ public class SiteDeployment {
         }
 
         if (siteOptions.logAccessEnable()) {
-            RunwarAccessLogReceiver accessLogReceiver = RunwarAccessLogReceiver.builder().setLogWriteExecutor(Server.getLogWorker())
+
+            // separate log worker to prevent logging-caused bottleneck
+            Xnio xnio = Xnio.getInstance("nio", Server.class.getClassLoader());
+            XnioWorker logWorker = xnio.createWorker(OptionMap.builder()
+                    .set(Options.WORKER_IO_THREADS, 2)
+                    .set(Options.CONNECTION_HIGH_WATER, 1000000)
+                    .set(Options.CONNECTION_LOW_WATER, 1000000)
+                    .set(Options.WORKER_TASK_CORE_THREADS, 2)
+                    .set(Options.WORKER_TASK_MAX_THREADS, 2)
+                    .set(Options.TCP_NODELAY, true)
+                    .set(Options.CORK, true)
+                    .getMap());
+
+            RunwarAccessLogReceiver accessLogReceiver = RunwarAccessLogReceiver.builder().setLogWriteExecutor( logWorker )
                     .setRotate(true)
                     .setOutputDirectory(siteOptions.logAccessDir().toPath())
                     .setLogBaseName(siteOptions.logAccessBaseFileName())
@@ -346,6 +363,27 @@ public class SiteDeployment {
 
     public Map<String,Object> getDeploymentContext() {
         return deploymentContext;
+    }
+
+    public SiteOptions getSiteOptions() {
+        return siteOptions;
+    }
+
+    public void stop() {
+        try {
+            switch (deploymentManager.getState()) {
+                case UNDEPLOYED:
+                    break;
+                default:
+                    deploymentManager.stop();
+                    deploymentManager.undeploy();
+            }
+            if (logWorker != null) {
+                logWorker.shutdown();
+            }
+        } catch( Exception e ){
+            throw new RuntimeException( e );
+        }
     }
 
 }

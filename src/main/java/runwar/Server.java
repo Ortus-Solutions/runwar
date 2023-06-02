@@ -96,7 +96,6 @@ public class Server {
     private static final ThreadLocal<HttpServerExchange> currentExchange= new ThreadLocal<HttpServerExchange>();
     private static final ThreadLocal<String> currentDeploymentKey= new ThreadLocal<String>();
     private volatile static ServerOptions serverOptions;
-    private volatile static SiteOptions siteOptions;
     private volatile static SiteDeploymentManager siteDeploymentManager;
     private static MariaDB4jManager mariadb4jManager;
     private Undertow undertow;
@@ -118,7 +117,6 @@ public class Server {
 
     private static final Thread mainThread = Thread.currentThread();
 
-    private static XnioWorker worker, logWorker;
     private Tray tray;
     //private FusionReactor fusionReactor;
 
@@ -192,8 +190,6 @@ public class Server {
 
     public synchronized void startServer(final ServerOptions options) throws Exception {
         serverOptions = options;
-        // One site for now-- this becomes a loop!
-        siteOptions = serverOptions.getSites().get(0);
         //LoggerFactory.configure(serverOptions);
         // redirect out and err to context logger
         hookSystemStreams();
@@ -226,10 +222,8 @@ public class Server {
 
         Builder serverBuilder = Undertow.builder();
 
-        setUndertowOptions(serverBuilder);
-
         // Add all HTTP/SSL/AJP listeners
-        ListenerManager.configureListeners( serverBuilder, serverOptions, siteOptions);
+        ListenerManager.configureListeners( serverBuilder, serverOptions );
 
         // Compile and regex hostname patterns
         if( serverOptions.getSites().size() > 1 ) {
@@ -340,43 +334,10 @@ public class Server {
         LOG.info(bar);
         addShutDownHook();
 
-        //LOG.debug("Transfer Min Size: " + siteOptions.transferMinSize());
-
-        // configure NIO options and worker
-        Xnio xnio = Xnio.getInstance("nio", Server.class.getClassLoader());
-        OptionMap.Builder serverXnioOptions = serverOptions.xnioOptions();
-
-        // TODO: Set this on listener level
-        if (siteOptions.clientCertNegotiation() != null) {
-	    	LOG.debug("Client Cert Negotiation: " + siteOptions.clientCertNegotiation() );
-	        serverXnioOptions.set(Options.SSL_CLIENT_AUTH_MODE, SslClientAuthMode.valueOf( siteOptions.clientCertNegotiation() ) );
-        }
-
-        logXnioOptions(serverXnioOptions,serverBuilder);
-
-        if (serverOptions.ioThreads() != 0) {
-        	LOG.debug("IO Threads: " + serverOptions.ioThreads());
-            serverBuilder.setIoThreads(serverOptions.ioThreads()); // posterity: ignored when managing worker
-            serverXnioOptions.set(Options.WORKER_IO_THREADS, serverOptions.ioThreads());
-        }
         if (serverOptions.workerThreads() != 0) {
         	LOG.debug("Worker threads: " + serverOptions.workerThreads());
-            serverBuilder.setWorkerThreads(serverOptions.workerThreads()); // posterity: ignored when managing worker
-            serverXnioOptions.set(Options.WORKER_TASK_CORE_THREADS, serverOptions.workerThreads())
-                    .set(Options.WORKER_TASK_MAX_THREADS, serverOptions.workerThreads());
+            serverBuilder.setWorkerThreads(serverOptions.workerThreads());
         }
-        worker = xnio.createWorker(serverXnioOptions.getMap());
-
-        // separate log worker to prevent logging-caused bottleneck
-        logWorker = xnio.createWorker(OptionMap.builder()
-                .set(Options.WORKER_IO_THREADS, 2)
-                .set(Options.CONNECTION_HIGH_WATER, 1000000)
-                .set(Options.CONNECTION_LOW_WATER, 1000000)
-                .set(Options.WORKER_TASK_CORE_THREADS, 2)
-                .set(Options.WORKER_TASK_MAX_THREADS, 2)
-                .set(Options.TCP_NODELAY, true)
-                .set(Options.CORK, true)
-                .getMap());
 
         ServletSessionConfig servletSessionConfig = new ServletSessionConfig();
         servletSessionConfig.setHttpOnly(serverOptions.cookieHttpOnly());
@@ -404,13 +365,12 @@ public class Server {
                 .setServletSessionConfig(servletSessionConfig)
                 .setDisplayName(serverName)
                 .setServerName("WildFly / Undertow")
-                // This handler is run after the security handlers, just before the request is dispatched to deployment code.
                 // I need this "inside" the servlet so it can access the HttpServletRequest
                 .addInnerHandlerChainWrapper(new HandlerWrapper() {
                     @Override
                     public HttpHandler wrap(HttpHandler next) {
                         // Set SSL_CLIENT_ headers if client certs are present
-                        return new SSLClientCertHeaderHandler( next, siteOptions, serverOptions.cfEngineName().toLowerCase().contains( "lucee" ) );
+                        return new SSLClientCertHeaderHandler( next, serverOptions.cfEngineName().toLowerCase().contains( "lucee" ) );
 
                     }
                 });
@@ -422,7 +382,7 @@ public class Server {
         configurer.configureRestMappings(servletBuilder);
 
         servletBuilder.addServletContextAttribute(WebSocketDeploymentInfo.ATTRIBUTE_NAME,
-                new WebSocketDeploymentInfo().setBuffers(new DefaultByteBufferPool(true, 1024 * 16)).setWorker(worker));
+                new WebSocketDeploymentInfo().setBuffers(new DefaultByteBufferPool(true, 1024 * 16)));
         LOG.debug("Added websocket context");
 
         siteDeploymentManager = new SiteDeploymentManager( serverOptions );
@@ -459,7 +419,9 @@ public class Server {
             LOG.error("Unable to get PID:" + e.getMessage());
         }
 
-        serverBuilder.setWorker(worker);
+        setUndertowOptions(serverBuilder);
+        setXnioOptions(serverBuilder);
+
         undertow = serverBuilder.build();
 
         // start the stop monitor thread
@@ -501,7 +463,7 @@ public class Server {
             try {
                 mariadb4jManager.start(serverOptions.mariaDB4jPort(), serverOptions.mariaDB4jBaseDir(),
                         serverOptions.mariaDB4jDataDir(), serverOptions.mariaDB4jImportSQLFile());
-            } catch (Exception dbStartException) {
+        } catch (Exception dbStartException) {
                 LOG.error("Could not start MariaDB4j", dbStartException);
             }
         } else {
@@ -528,14 +490,13 @@ public class Server {
         for (Option option : undertowOptionsMap) {
         	LOG.debug("UndertowOption " + option.getName() + ':' + undertowOptionsMap.get(option));
             serverBuilder.setServerOption(option, undertowOptionsMap.get(option));
-            serverBuilder.setSocketOption(UndertowOptions.IDLE_TIMEOUT, 999999999);
             serverBuilder.setSocketOption(option, undertowOptionsMap.get(option));
         }
     }
 
     @SuppressWarnings("unchecked")
-    private void logXnioOptions(OptionMap.Builder xnioOptions, Builder serverBuilder) {
-        OptionMap serverXnioOptionsMap = xnioOptions.getMap();
+    private void setXnioOptions(Builder serverBuilder) {
+        OptionMap serverXnioOptionsMap = serverOptions.xnioOptions().getMap();
         for (Option option : serverXnioOptionsMap) {
         	LOG.debug("XNIO-Option " + option.getName() + ':' + serverXnioOptionsMap.get(option));
             serverBuilder.setSocketOption(option, serverXnioOptionsMap.get(option));
@@ -624,23 +585,11 @@ public class Server {
                     if (siteDeploymentManager.getDeployments() != null) {
                         try {
                         	 for ( Map.Entry<String,SiteDeployment> deployment : siteDeploymentManager.getDeployments().entrySet() ) {
-                        		 DeploymentManager manager = deployment.getValue().getDeploymentManager();
-                                 switch (manager.getState()) {
-                                     case UNDEPLOYED:
-                                         break;
-                                     default:
-                                         manager.stop();
-                                         manager.undeploy();
-                                 }
-
+                        		 deployment.getValue().stop();
                         	 }
 
                             if (undertow != null) {
                                 undertow.stop();
-                            }
-                            if (worker != null) {
-                                worker.shutdown();
-                                logWorker.shutdown();
                             }
                             //                Thread.sleep(1000);
                         } catch (Exception notRunning) {
@@ -940,10 +889,6 @@ public class Server {
 
     public static void setCurrentDeploymentKey( String deploymentKey ) {
     	currentDeploymentKey.set( deploymentKey );
-    }
-
-    public static XnioWorker getLogWorker() {
-        return logWorker;
     }
 
     public static class ServerState {

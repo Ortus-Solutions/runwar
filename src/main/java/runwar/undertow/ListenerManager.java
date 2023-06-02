@@ -47,7 +47,6 @@ import runwar.logging.LoggerPrintStream;
 import runwar.logging.RunwarAccessLogReceiver;
 import runwar.mariadb4j.MariaDB4jManager;
 import runwar.options.ServerOptions;
-import runwar.options.SiteOptions;
 import runwar.security.SSLUtil;
 import runwar.security.SecurityManager;
 import runwar.tray.Tray;
@@ -88,7 +87,7 @@ public class ListenerManager {
     ListenerManager(){
     }
 
-    public static void configureListeners(Builder serverBuilder, ServerOptions serverOptions, SiteOptions siteOptions) {
+    public static void configureListeners(Builder serverBuilder, ServerOptions serverOptions ) {
         JSONOption listeners = serverOptions.listeners();
         String cfengine = serverOptions.cfEngineName();
 
@@ -107,6 +106,12 @@ public class ListenerManager {
 
             }
         }
+        // TODO: embed this information in the listener objects when building them
+/*
+        if (siteOptions.clientCertNegotiation() != null) {
+	    	LOG.debug("Client Cert Negotiation: " + siteOptions.clientCertNegotiation() );
+	        serverXnioOptions.set(Options.SSL_CLIENT_AUTH_MODE, SslClientAuthMode.valueOf( siteOptions.clientCertNegotiation() ) );
+        }
 
         // TODO: This needs to be done on a per listener basis
         if( siteOptions.clientCertRenegotiation() ) {
@@ -116,7 +121,7 @@ public class ListenerManager {
                 serverOptions.xnioOptions().setSequence( Options.SSL_ENABLED_PROTOCOLS, "TLSv1.1", "TLSv1.2" );
             }
         }
-
+*/
 
         if( listeners.hasOption( "ssl" ) ) {
             JSONOption HTTPSListeners = listeners.g( "ssl" );

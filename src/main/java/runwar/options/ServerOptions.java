@@ -84,7 +84,7 @@ public class ServerOptions {
 
     private boolean directBuffers = true;
 
-    int bufferSize, ioThreads, workerThreads = 0;
+    int bufferSize, workerThreads = 0;
 
     private boolean secureCookies = false, cookieHttpOnly = false, cookieSecure = false;
 
@@ -120,14 +120,7 @@ public class ServerOptions {
         return logPattern;
     }
 
-    private OptionMap.Builder serverXnioOptions = OptionMap.builder()
-            .set(Options.WORKER_IO_THREADS, 8)
-            .set(Options.CONNECTION_HIGH_WATER, 1000000)
-            .set(Options.CONNECTION_LOW_WATER, 1000000)
-            .set(Options.WORKER_TASK_CORE_THREADS, 30)
-            .set(Options.WORKER_TASK_MAX_THREADS, 30)
-            .set(Options.TCP_NODELAY, true)
-            .set(Options.CORK, true);
+    private OptionMap.Builder serverXnioOptions = OptionMap.builder();
 
     private boolean testing = false;
     private OptionMap.Builder undertowOptions = OptionMap.builder();
@@ -175,35 +168,6 @@ public class ServerOptions {
         List<String> argarray = new ArrayList<String>();
 
         return argarray.toArray(new String[0]);
-/*
-        if (cmdlineArgs == null) {
-            cmdlineArgs = "".split("");
-            argarray.add("-war");
-            argarray.add(warFile() != null ? warFile().getAbsolutePath() : new File(".").getAbsolutePath());
-        }
-        Boolean skipNext = false;
-        for (String arg : cmdlineArgs) {
-            arg = arg.trim();
-            if (arg.equals("--background") || arg.equals("--port") || arg.equals("--stop-port") || arg.equals("--host") ) {
-                skipNext = true;
-            } else {
-                if(skipNext) {
-                    skipNext = false;
-                } else if( !arg.equals("--background=true") ) {
-                    argarray.add(arg);
-                }
-            }
-        }
-        argarray.add("--host");
-        argarray.add(String.valueOf(host()));
-        argarray.add("--background");
-        argarray.add(Boolean.toString(background()));
-        argarray.add("--port");
-        argarray.add(Integer.toString(httpPort()));
-        argarray.add("--stop-port");
-        argarray.add(Integer.toString(stopPort()));
-        return argarray.toArray(new String[argarray.size()]);
-        */
     }
 
     /**
@@ -986,21 +950,6 @@ public class ServerOptions {
      */
     public boolean filterPathInfoEnable() {
         return this.filterPathInfoEnable;
-    }
-
-    /**
-     * @see runwar.options.ServerOptions#ioThreads()
-     */
-    public int ioThreads() {
-        return ioThreads;
-    }
-
-    /**
-     * @see runwar.options.ServerOptions#ioThreads(int)
-     */
-    public ServerOptions ioThreads(int ioThreads) {
-        this.ioThreads = ioThreads;
-        return this;
     }
 
     /**
