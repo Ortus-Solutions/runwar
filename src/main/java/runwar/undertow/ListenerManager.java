@@ -129,15 +129,28 @@ public class ListenerManager {
                 }
 
                 try {
-                    SSLContext sslContext=null;
+                    JSONOption clientCert = listener.g( "clientCert" );
+                    // This was never really used.  It allows you to add arbitrary certs to the key store
+                    // I think it was an early attempt at SNI, but now we have proper support for a full array of cert/key files and key passwords
                     String[] sslAddCerts=null;
                     String[] sslAddCACerts=null;
                     String sslTruststore=null;
                     String sslTruststorePass=null;
+
+                    if ( clientCert.hasOption( "CATrustStoreFile" ) ) {
+                        sslTruststore = clientCert.getOptionValue( "CATrustStoreFile" );
+                        sslTruststorePass = clientCert.getOptionValue( "CATrustStorePass" );
+                    }
+                    // Even if there is a trust store provided above, any certs below will be added in along with the original contents.
+                    if ( clientCert.hasOption( "sslAddCACerts" ) ) {
+                        sslAddCACerts = clientCert.getOptionArray( "sslAddCACerts" ).stream().toArray(String[]::new);
+                    }
+
                     JSONArray certs = listener.getOptionArray( "certs" );
                     SNIContextMatcher.Builder sniMatchBuilder = new SNIContextMatcher.Builder();
                     boolean first = true;
 
+                    SSLContext sslContext=null;
                     if( certs.size() > 0 ) {
 
                         for( Object certObject : certs ) {
@@ -154,10 +167,12 @@ public class ListenerManager {
 
                             sslContext = SSLUtil.createSSLContext(certFile, keyFile, keypass, sslAddCerts, sslTruststore, sslTruststorePass, sslAddCACerts, sniMatchBuilder);
                             if( first ) {
-                                // The first cert is the default
+                                // The first SSL Context we come across becomes the default
+                                // If the site allows in a hostname not matched by any of the certs, this context will get used.
                                 sniMatchBuilder.setDefaultContext(sslContext);
                                 first = false;
                             }
+                            // Wipe out the password just so it's not laying around memory
                             if (keypass != null) {
                                 Arrays.fill(keypass, '*');
                             }
@@ -174,7 +189,6 @@ public class ListenerManager {
                     }
                     OptionMap.Builder socketOptions = OptionMap.builder();
 
-                    JSONOption clientCert = listener.g( "clientCert" );
                     if ( clientCert.hasOption( "mode" ) ) {
                         LOG.debug("Client Cert Negotiation: " + clientCert.getOptionValue( "mode" ) );
                         socketOptions.set(Options.SSL_CLIENT_AUTH_MODE, SslClientAuthMode.valueOf( clientCert.getOptionValue( "mode" ) ) );
