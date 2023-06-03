@@ -3,6 +3,8 @@ package runwar;
 import io.undertow.Handlers;
 import io.undertow.Undertow;
 import io.undertow.Undertow.Builder;
+import io.undertow.Undertow.ListenerBuilder;
+import io.undertow.Undertow.ListenerType;
 import io.undertow.client.ClientConnection;
 import io.undertow.UndertowOptions;
 import io.undertow.predicate.Predicates;
@@ -42,6 +44,8 @@ import net.minidev.json.JSONArray;
 import net.minidev.json.JSONObject;
 import runwar.options.ConfigParser.JSONOption;
 import org.xnio.*;
+import org.xnio.OptionMap;
+import org.xnio.Options;
 import runwar.logging.LoggerFactory;
 import runwar.logging.LoggerPrintStream;
 import runwar.logging.RunwarAccessLogReceiver;
@@ -96,43 +100,28 @@ public class ListenerManager {
             for( String key : HTTPListeners.getKeys() ) {
                 JSONOption listener = HTTPListeners.g( key );
                 LOG.info("Binding HTTP on " + listener.getOptionValue("IP") + ":" + listener.getOptionValue("port") );
-                serverBuilder.addHttpListener(listener.getOptionInt("port"), listener.getOptionValue("IP"));
+                OptionMap.Builder socketOptions = OptionMap.builder();
 
-                // TODO: set socket-specific XNIO Options so each binding can have a different setting
                 if (listener.hasOption("HTTP2Enable" ) ) {
                     LOG.info("Setting HTTP/2 enabled: " + listener.getOptionBoolean("HTTP2Enable" ) );
-                    serverBuilder.setServerOption(UndertowOptions.ENABLE_HTTP2, listener.getOptionBoolean("HTTP2Enable" ));
+                    socketOptions.set(UndertowOptions.ENABLE_HTTP2, listener.getOptionBoolean("HTTP2Enable" ) );
                 }
 
+                serverBuilder.addListener(
+                    new ListenerBuilder()
+                    .setType( ListenerType.HTTP )
+                    .setPort( listener.getOptionInt("port") )
+                    .setHost( listener.getOptionValue("IP") )
+                    .setOverrideSocketOptions( socketOptions.getMap() )
+                );
             }
         }
-        // TODO: embed this information in the listener objects when building them
-/*
-        if (siteOptions.clientCertNegotiation() != null) {
-	    	LOG.debug("Client Cert Negotiation: " + siteOptions.clientCertNegotiation() );
-	        serverXnioOptions.set(Options.SSL_CLIENT_AUTH_MODE, SslClientAuthMode.valueOf( siteOptions.clientCertNegotiation() ) );
-        }
-
-        // TODO: This needs to be done on a per listener basis
-        if( siteOptions.clientCertRenegotiation() ) {
-            LOG.info("SSL Client cert renegotiation is enabled.  Disabling HTTP/2 and TLS1.3");
-            siteOptions.http2Enable(false);
-            if( !serverOptions.xnioOptions().getMap().contains( Options.SSL_ENABLED_PROTOCOLS ) ) {
-                serverOptions.xnioOptions().setSequence( Options.SSL_ENABLED_PROTOCOLS, "TLSv1.1", "TLSv1.2" );
-            }
-        }
-*/
 
         if( listeners.hasOption( "ssl" ) ) {
             JSONOption HTTPSListeners = listeners.g( "ssl" );
             for( String key : HTTPSListeners.getKeys() ) {
-
-                // TODO: Why is this set by default for SSL?
-                serverOptions.directBuffers(true);
-
                 JSONOption listener = HTTPSListeners.g( key );
                 LOG.info("Binding SSL on " + listener.getOptionValue("IP") + ":" + listener.getOptionValue("port") );
-
 
                 if (serverOptions.sslEccDisable() && cfengine.toLowerCase().equals("adobe")) {
                     LOG.debug("disabling com.sun.net.ssl.enableECC");
@@ -183,7 +172,31 @@ public class ListenerManager {
                         LOG.info("Enabling SNI on SSLContext. (" + certs.size() + " certs)");
                         sslContext = new SNISSLContext( sniMatchBuilder.build() );
                     }
-                    serverBuilder.addHttpsListener(listener.getOptionInt("port"), listener.getOptionValue("IP"), sslContext );
+                    OptionMap.Builder socketOptions = OptionMap.builder();
+
+                    JSONOption clientCert = listener.g( "clientCert" );
+                    if ( clientCert.hasOption( "mode" ) ) {
+                        LOG.debug("Client Cert Negotiation: " + clientCert.getOptionValue( "mode" ) );
+                        socketOptions.set(Options.SSL_CLIENT_AUTH_MODE, SslClientAuthMode.valueOf( clientCert.getOptionValue( "mode" ) ) );
+                    }
+
+                    if( clientCert.hasOption( "SSLRenegotiationEnable" ) ) {
+                        LOG.info("SSL Client cert renegotiation is enabled.  Disabling HTTP/2 and TLS1.3");
+                        socketOptions.set(UndertowOptions.ENABLE_HTTP2, false );
+                        if( !socketOptions.getMap().contains( Options.SSL_ENABLED_PROTOCOLS ) ) {
+                            socketOptions.setSequence( Options.SSL_ENABLED_PROTOCOLS, "TLSv1.1", "TLSv1.2" );
+                        }
+                    }
+
+                    serverBuilder.addListener(
+                        new ListenerBuilder()
+                        .setType( ListenerType.HTTPS )
+                        .setPort( listener.getOptionInt("port") )
+                        .setHost( listener.getOptionValue("IP") )
+                        .setSslContext( sslContext )
+                        .setOverrideSocketOptions( socketOptions.getMap() )
+                    );
+
                 } catch (Exception e) {
                     throw new RuntimeException( "Unable to start SSL", e );
                 }
@@ -196,11 +209,19 @@ public class ListenerManager {
             for( String key : AJPListeners.getKeys() ) {
                 JSONOption listener = AJPListeners.g( key );
                 LOG.info("Binding AJP on " + listener.getOptionValue("IP") + ":" + listener.getOptionValue("port") );
-                serverBuilder.addAjpListener(listener.getOptionInt("port"), listener.getOptionValue("IP"));
+                OptionMap.Builder socketOptions = OptionMap.builder();
                 if (serverOptions.undertowOptions().getMap().size() == 0) {
                     // if no options is set, default to the large packet size
-                    serverBuilder.setServerOption(UndertowOptions.MAX_AJP_PACKET_SIZE, 65536);
+                    socketOptions.set(UndertowOptions.MAX_AJP_PACKET_SIZE, 65536);
                 }
+
+                serverBuilder.addListener(
+                    new ListenerBuilder()
+                    .setType( ListenerType.AJP )
+                    .setPort( listener.getOptionInt("port") )
+                    .setHost( listener.getOptionValue("IP") )
+                    .setOverrideSocketOptions( socketOptions.getMap() )
+                );
             }
         }
 

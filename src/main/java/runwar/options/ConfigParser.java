@@ -270,7 +270,7 @@ public class ConfigParser {
             serverOptions.cookieSecure(serverConfig.getOptionBoolean("sessionCookieSecure"));
         }
 
-        // TODO: No setting for this
+        // No setting for this
         if (serverConfig.hasOption("SSLECCDISABLE")) {
             serverOptions.sslEccDisable(serverConfig.getOptionBoolean("SSLECCDISABLE"));
         }
@@ -484,7 +484,7 @@ public class ConfigParser {
                 site.errorPages(siteConfig.getOptionObject("errorPages"));
             }
 
-            // TODO: No CommandBox setting for this
+            // No CommandBox setting for this
             if (siteConfig.hasOption("DIRECTORYREFRESH")) {
                 site.directoryListingRefreshEnable(siteConfig.getOptionBoolean("DIRECTORYREFRESH"));
             }
