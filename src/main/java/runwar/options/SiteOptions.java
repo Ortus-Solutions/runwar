@@ -32,8 +32,6 @@ public class SiteOptions {
 
     private boolean directoryListingEnable = true, logAccessEnable = false;
 
-    private boolean directoryListingRefreshEnable = false;
-
     private String[] welcomeFiles;
 
     private boolean cacheEnable = false;
@@ -63,8 +61,6 @@ public class SiteOptions {
     private Long transferMinSize = (long) 1024 * 1024 * 10; // 10 MB
 
     private Map<Integer, String> errorPages = null;
-
-    private String[] sslAddCerts = null;
 
     private String[] sslAddCACerts = null;
 
@@ -288,15 +284,6 @@ public class SiteOptions {
         return this;
     }
 
-    public boolean directoryListingRefreshEnable() {
-        return directoryListingRefreshEnable;
-    }
-
-    public SiteOptions directoryListingRefreshEnable(boolean directoryListingRefreshEnable) {
-        this.directoryListingRefreshEnable = directoryListingRefreshEnable;
-        return this;
-    }
-
     public String[] welcomeFiles() {
         // Default to the server-wide welcome files found in the web.xml
         if( welcomeFiles == null || welcomeFiles.length == 0 ) {
@@ -395,6 +382,10 @@ public class SiteOptions {
     }
 
     public SiteOptions transferMinSize(Long minSize) {
+        if( minSize == -1L ) {
+            // Effectivley turns it off
+            this.transferMinSize = Long.MAX_VALUE;
+        }
         this.transferMinSize = minSize;
         return this;
     }
@@ -402,6 +393,7 @@ public class SiteOptions {
     public Long transferMinSize() {
         return this.transferMinSize;
     }
+
 
     public SiteOptions gzipEnable(boolean enable) {
         this.gzipEnable = enable;
@@ -487,19 +479,6 @@ public class SiteOptions {
 
     public Map<String, String> basicAuth() {
         return userPasswordList;
-    }
-
-    public SiteOptions sslAddCerts(String sslCerts) {
-        return sslAddCerts(sslCerts.split("(?<!\\\\),"));
-    }
-
-    public SiteOptions sslAddCerts(String[] sslCerts) {
-        this.sslAddCerts = sslCerts;
-        return this;
-    }
-
-    public String[] sslAddCerts() {
-        return this.sslAddCerts;
     }
 
     public SiteOptions sslAddCACerts(JSONArray sslAddCACerts) {

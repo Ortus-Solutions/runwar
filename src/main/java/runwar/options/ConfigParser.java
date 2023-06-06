@@ -143,13 +143,11 @@ public class ConfigParser {
         if (serverConfig.hasOption("webXMLOverrideForce")) {
             serverOptions.webXmlOverrideForce(serverConfig.getOptionBoolean("webXMLOverrideForce"));
         }
-        /*
-        CommandBox has no setting for this
-        if (serverConfig.hasOption("CONTEXT")) {
-            serverOptions.contextPath(serverConfig.getOptionValue("CONTEXT"));
-        }
-        */
 
+        // CommandBox has no setting for this
+        if (serverConfig.hasOption("contextPath")) {
+            serverOptions.contextPath(serverConfig.getOptionValue("contextPath"));
+        }
 
         if (serverConfig.hasOption("rewritesEnable") && serverConfig.hasOption("rewritesConfig") && serverConfig.getOptionValue("rewritesConfig").length()>0 ) {
             serverOptions.urlRewriteEnable(serverConfig.getOptionBoolean("rewritesEnable"));
@@ -237,7 +235,6 @@ public class ConfigParser {
         if (serverConfig.hasOption("MARIADB4JIMPORT")) {
             serverOptions.mariaDB4jImportSQLFile(new File(serverConfig.getOptionValue("MARIADB4JIMPORT")));
         }
-        // TODO: Is anyone using this???
 
 
         if (serverConfig.hasOption("restMappings")) {
@@ -247,19 +244,20 @@ public class ConfigParser {
         }
 
         // No first-class setting exists for this
-        if (serverConfig.hasOption("FILTERPATHINFO")) {
-            serverOptions.filterPathInfoEnable(serverConfig.getOptionBoolean("FILTERPATHINFO"));
+        if (serverConfig.hasOption("filterPathInfo")) {
+            serverOptions.filterPathInfoEnable(serverConfig.getOptionBoolean("filterPathInfo"));
         }
-        // TODO: No setting for this
-        if (serverConfig.hasOption("BUFFERSIZE")) {
-            serverOptions.bufferSize(Integer.valueOf(serverConfig.getOptionValue("BUFFERSIZE")));
+        // No first-class setting exists for this
+        if (serverConfig.hasOption("bufferSize")) {
+            serverOptions.bufferSize(Integer.valueOf(serverConfig.getOptionValue("bufferSize")));
         }
+        // No first-class setting exists for this
+        if (serverConfig.hasOption("directBuffers")) {
+            serverOptions.directBuffers(serverConfig.getOptionBoolean("directBuffers"));
+        }
+
         if (serverConfig.hasOption("maxRequests")) {
             serverOptions.workerThreads(Integer.valueOf(serverConfig.getOptionValue("maxRequests")));
-        }
-        // TODO: No setting for this
-        if (serverConfig.hasOption("DIRECTBUFFERS")) {
-            serverOptions.directBuffers(serverConfig.getOptionBoolean("DIRECTBUFFERS"));
         }
 
         if (serverConfig.hasOption("sessionCookieHTTPOnly")) {
@@ -271,8 +269,8 @@ public class ConfigParser {
         }
 
         // No setting for this
-        if (serverConfig.hasOption("SSLECCDISABLE")) {
-            serverOptions.sslEccDisable(serverConfig.getOptionBoolean("SSLECCDISABLE"));
+        if (serverConfig.hasOption("SSLECCDisable")) {
+            serverOptions.sslEccDisable(serverConfig.getOptionBoolean("SSLECCDisable"));
         }
 
         if (serverConfig.hasOption("preferredBrowser")) {
@@ -301,11 +299,7 @@ public class ConfigParser {
 
             SiteOptions site = new SiteOptions().siteName( siteName );
 
-            CONF_LOG.info("Loading config for site [" + siteName + "].");
-
             site.webroot(getFile( siteConfig.getOptionValue("webroot")));
-
-
 
             if (siteConfig.hasOption("servletPassPredicate")) {
                 site.servletPassPredicate(siteConfig.getOptionValue("servletPassPredicate"));
@@ -344,8 +338,6 @@ public class ConfigParser {
             if (siteConfig.hasOption("SSLEnable")) {
                 site.sslEnable(siteConfig.getOptionBoolean("SSLEnable"));
                 if (!siteConfig.hasOption("sessionCookieSecure")) {
-                    // TODO: This isn't being used!
-                    CONF_LOG.trace("SSL enabled and secure cookies not explicitly disabled; enabling secure cookies");
                     serverOptions.secureCookies(true);
                 }
             }
@@ -391,11 +383,6 @@ public class ConfigParser {
                 site.clientCertTrustHeaders(siteConfig.getOptionBoolean("clientCertTrustUpstreamHeaders"));
             }
 
-
-            // TODO: This setting doesn't exist
-            if (siteConfig.hasOption("SSLADDCERTS")) {
-                site.sslAddCerts(siteConfig.getOptionValue("SSLADDCERTS"));
-            }
             if (siteConfig.hasOption("clientCertCACertFiles")) {
                 site.sslAddCACerts(siteConfig.getOptionArray("clientCertCACertFiles"));
             }
@@ -456,6 +443,7 @@ public class ConfigParser {
 
             if (siteConfig.hasOption("accessLogBaseName")) {
                 site.logAccessBaseFileName(siteConfig.getOptionValue("accessLogBaseName"));
+                // Undertow uses Java's
             }
             if (siteConfig.hasOption("accessLogBaseDir")) {
                 site.logAccessDir(getFile(siteConfig.getOptionValue("accessLogBaseDir")));
@@ -463,15 +451,16 @@ public class ConfigParser {
             if (siteConfig.hasOption("accessLogEnable")) {
                 site.logAccessEnable(siteConfig.getOptionBoolean("accessLogEnable"));
             }
-            /* TODO: No CommandBox setting for these
-            if (siteConfig.hasOption("TRANSFERMINSIZE")) {
-                site.transferMinSize(Long.valueOf(siteConfig.getOptionValue("TRANSFERMINSIZE")));
-            }
 
-            if (siteConfig.hasOption("SENDFILE")) {
-                site.sendfileEnable(siteConfig.getOptionBoolean("SENDFILE"));
+            // Related info:
+            // Undertow transferMinSize is set at the resourceManager level, and described as "Size to use direct FS to network transfer (if supported by OS/JDK) instead of read/write"
+            // Undertow uses Java's FileChannel.transferTo() method which (depending on the OS) can greatly optimize sending of files by having the kernel directly
+            // transfer the bytes from the file to the socket without Java needing to have an intermediate buffer in memory.
+            // The feature is called "send file" in programs like Apache, and can cause issues as detailed here:
+            // https://issues.redhat.com/browse/UNDERTOW-584
+            if (siteConfig.hasOption("sendFileMinSizeKB")) {
+                site.transferMinSize(Long.valueOf(siteConfig.getOptionValue("transferMinSize"))*1024);
             }
-            */
 
             if (siteConfig.hasOption("GZipEnable")) {
                 site.gzipEnable(siteConfig.getOptionBoolean("GZipEnable"));
@@ -484,19 +473,12 @@ public class ConfigParser {
                 site.errorPages(siteConfig.getOptionObject("errorPages"));
             }
 
-            // No CommandBox setting for this
-            if (siteConfig.hasOption("DIRECTORYREFRESH")) {
-                site.directoryListingRefreshEnable(siteConfig.getOptionBoolean("DIRECTORYREFRESH"));
-            }
-
             if (siteConfig.hasOption("useProxyForwardedIP")) {
                 site.proxyPeerAddressEnable(siteConfig.getOptionBoolean("useProxyForwardedIP"));
             }
 
             serverOptions.addSite( site );
         }
-
-
 
     }
 

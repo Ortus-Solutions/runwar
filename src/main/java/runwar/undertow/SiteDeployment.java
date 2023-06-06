@@ -131,36 +131,26 @@ public class SiteDeployment {
                 if (exchange.getRequestPath().endsWith(".svgz")) {
                     exchange.getResponseHeaders().put(Headers.CONTENT_ENCODING, "gzip");
                 }
-                // clear any welcome-file info cached after initial request *NOT THREAD SAFE*
-                if (siteOptions.directoryListingRefreshEnable() && exchange.getRequestPath().endsWith("/")) {
-                    LOG.trace("*** Resetting servlet path info");
-                    //manager.getDeployment().getServletPaths().invalidate();
+
+                String requestPath = exchange.getRequestPath();
+                while( !requestPath.isEmpty() && ( requestPath.startsWith( "/" ) || requestPath.startsWith( "\\" ) ) ) {
+                    requestPath = requestPath.substring( 1 );
+                }
+                requestPath = requestPath.toUpperCase();
+                // Undertow has checks for this, but a more careful check is required with a case insensitive resource manager
+                if( !requestPath.isEmpty() && ( requestPath.startsWith( "WEB-INF/" ) || requestPath.startsWith( "WEB-INF\\" ) ) ) {
+                    LOG.trace("Blocking suspicious access to : " + exchange.getRequestPath() );
+                    // Not ending the exchange here so the servlet can still send any custom error page.
+                    exchange.setStatusCode( 404 );
                 }
 
-                if (serverOptions.debug() && serverOptions.testing() && exchange.getRequestPath().endsWith("/dumprunwarrequest")) {
-                    new RequestDumper().handleRequest(exchange);
-                } else {
-                    String requestPath = exchange.getRequestPath();
-                    while( !requestPath.isEmpty() && ( requestPath.startsWith( "/" ) || requestPath.startsWith( "\\" ) ) ) {
-                        requestPath = requestPath.substring( 1 );
-                    }
-                    requestPath = requestPath.toUpperCase();
-                    // Undertow has checks for this, but a more careful check is required with a case insensitive resource manager
-                    if( !requestPath.isEmpty() && ( requestPath.startsWith( "WEB-INF/" ) || requestPath.startsWith( "WEB-INF\\" ) ) ) {
-                        LOG.trace("Blocking suspicious access to : " + exchange.getRequestPath() );
-                        // Not ending the exchange here so the servlet can still send any custom error page.
-                        exchange.setStatusCode( 404 );
-                    }
-
-                    // Then ensures any error status codes set in our predicate/server rules don't go any further
-                    // The default response listener on the exchange will render the appropriate error page for us.
-                    if( exchange.getStatusCode() > 399 ) {
-                            //&& !exchange.isResponseStarted()
-                            exchange.endExchange();
-                            return;
-                    }
-                    super.handleRequest(exchange);
+                // Then ensures any error status codes set in our predicate/server rules don't go any further
+                // The default response listener on the exchange will render the appropriate error page for us.
+                if( exchange.getStatusCode() > 399 ) {
+                        exchange.endExchange();
+                        return;
                 }
+                super.handleRequest(exchange);
             }
 
             @Override
@@ -170,8 +160,11 @@ public class SiteDeployment {
         };
 
         MimeMappings.Builder mimeMappings = MimeMappings.builder();
+        if( siteOptions.mimeTypes().size() > 0 ) {
+            LOG.debugf("  Adding Mime types");
+        }
         siteOptions.mimeTypes().forEach((ext, contentType) -> {
-            LOG.debugf("Adding Mime type %s = '%s'", ext, contentType);
+            LOG.tracef("  - %s = '%s'", ext, contentType);
             mimeMappings.addMapping(ext, contentType);
         });
         // Only needed until this is complete: https://issues.redhat.com/browse/UNDERTOW-2218
@@ -188,9 +181,9 @@ public class SiteDeployment {
     String allowedExt = "3gp,3gpp,7z,ai,aif,aiff,asf,asx,atom,au,avi,bin,bmp,btm,cco,crt,css,csv,deb,der,dmg,doc,docx,eot,eps,flv,font,gif,hqx,htc,htm,html,ico,img,ini,iso,jad,jng,jnlp,jpeg,jpg,js,json,kar,kml,kmz,m3u8,m4a,m4v,map,mid,midi,mml,mng,mov,mp3,mp4,mpeg,mpeg4,mpg,msi,msm,msp,ogg,otf,pdb,pdf,pem,pl,pm,png,ppt,pptx,prc,ps,psd,ra,rar,rpm,rss,rtf,run,sea,shtml,sit,svg,svgz,swf,tar,tcl,tif,tiff,tk,ts,ttf,txt,wav,wbmp,webm,webp,wmf,wml,wmlc,wmv,woff,woff2,xhtml,xls,xlsx,xml,xpi,xspf,zip,aifc,aac,apk,bak,bk,bz2,cdr,cmx,dat,dtd,eml,fla,gz,gzip,ipa,ia,indd,hey,lz,maf,markdown,md,mkv,mp1,mp2,mpe,odt,ott,odg,odf,ots,pps,pot,pmd,pub,raw,sdd,tsv,xcf,yml,yaml,handlebars,hbs";        // Add any custom additions by our users
     if( siteOptions.defaultServletAllowedExt().length() > 0 ) {
         allowedExt += "," + siteOptions.defaultServletAllowedExt();
+        LOG.trace("  Additional extensions allowed by the resource handler for static files: " + siteOptions.defaultServletAllowedExt() );
     }
 
-    LOG.debug("Extensions allowed by the resource handler for static files: " + allowedExt);
 
     // Put allowed extensions for faster lookup
     Set<String> extSet = new HashSet<String>();
@@ -253,7 +246,7 @@ public class SiteDeployment {
         HttpHandler httpHandler = pathHandler;
 
         if (siteOptions.predicateText() != null && siteOptions.predicateText().length() > 0 ) {
-            LOG.debug("Adding predicates");
+            LOG.debug("  Adding Server Rules");
             LOG.trace(siteOptions.predicateText());
 
             List<PredicatedHandler> ph = PredicatedHandlersParser.parse(siteOptions.predicateText(), Server.getClassLoader());
@@ -265,7 +258,7 @@ public class SiteDeployment {
             //the default packet size on the internet is 1500 bytes so
             //any file less than 1.5k can be sent in a single packet
             if (siteOptions.gzipPredicate() != null) {
-                LOG.debug("Setting GZIP predicate to = " + siteOptions.gzipPredicate());
+                LOG.debug("  Setting GZIP predicate to = " + siteOptions.gzipPredicate());
             }
             // The max-content-size predicate was replaced with request-larger-than
             httpHandler = new EncodingHandler(new ContentEncodingRepository().addEncodingHandler(
@@ -292,17 +285,17 @@ public class SiteDeployment {
                     .setLogBaseName(siteOptions.logAccessBaseFileName())
                     .setLogNameSuffix(serverOptions.logSuffix())
                     .build();
-            LOG.debug("Logging combined access to " + siteOptions.logAccessDir() + " base name of '" + siteOptions.logAccessBaseFileName() + "." + serverOptions.logSuffix() + ", rotated daily'");
+            LOG.debug("  Logging combined access to " + siteOptions.logAccessDir() + " base name of '" + siteOptions.logAccessBaseFileName() + "." + serverOptions.logSuffix() + ", rotated daily'");
             httpHandler = new AccessLogHandler(httpHandler, accessLogReceiver, "combined", Server.class.getClassLoader());
         }
 
         if (siteOptions.proxyPeerAddressEnable()) {
-            LOG.debug("Enabling Proxy Peer Address handling");
+            LOG.debug("  Enabling Proxy Peer Address handling");
             httpHandler = new ProxyPeerAddressHandler(httpHandler);
         }
 
         if (siteOptions.clientCertTrustHeaders()) {
-            LOG.debug("Checking for upstream client cert HTTP headers");
+            LOG.debug("  Checking for upstream client cert HTTP headers");
             httpHandler = new SSLHeaderHandler(httpHandler);
         }
 

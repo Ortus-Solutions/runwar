@@ -95,15 +95,17 @@ public class ListenerManager {
         JSONOption listeners = serverOptions.listeners();
         String cfengine = serverOptions.cfEngineName();
 
+        LOG.info("Listeners:" );
+
         if( listeners.hasOption( "http" ) ) {
             JSONOption HTTPListeners = listeners.g( "http" );
             for( String key : HTTPListeners.getKeys() ) {
                 JSONOption listener = HTTPListeners.g( key );
-                LOG.info("Binding HTTP on " + listener.getOptionValue("IP") + ":" + listener.getOptionValue("port") );
+                LOG.info("  -Binding HTTP on " + listener.getOptionValue("IP") + ":" + listener.getOptionValue("port") );
                 OptionMap.Builder socketOptions = OptionMap.builder();
 
                 if (listener.hasOption("HTTP2Enable" ) ) {
-                    LOG.info("Setting HTTP/2 enabled: " + listener.getOptionBoolean("HTTP2Enable" ) );
+                    LOG.debug("     Setting HTTP/2 enabled: " + listener.getOptionBoolean("HTTP2Enable" ) );
                     socketOptions.set(UndertowOptions.ENABLE_HTTP2, listener.getOptionBoolean("HTTP2Enable" ) );
                 }
 
@@ -121,18 +123,15 @@ public class ListenerManager {
             JSONOption HTTPSListeners = listeners.g( "ssl" );
             for( String key : HTTPSListeners.getKeys() ) {
                 JSONOption listener = HTTPSListeners.g( key );
-                LOG.info("Binding SSL on " + listener.getOptionValue("IP") + ":" + listener.getOptionValue("port") );
+                LOG.info("  -Binding SSL on " + listener.getOptionValue("IP") + ":" + listener.getOptionValue("port") );
 
                 if (serverOptions.sslEccDisable() && cfengine.toLowerCase().equals("adobe")) {
-                    LOG.debug("disabling com.sun.net.ssl.enableECC");
+                    LOG.debug("   Disabling com.sun.net.ssl.enableECC");
                     System.setProperty("com.sun.net.ssl.enableECC", "false");
                 }
 
                 try {
                     JSONOption clientCert = listener.g( "clientCert" );
-                    // This was never really used.  It allows you to add arbitrary certs to the key store
-                    // I think it was an early attempt at SNI, but now we have proper support for a full array of cert/key files and key passwords
-                    String[] sslAddCerts=null;
                     String[] sslAddCACerts=null;
                     String sslTruststore=null;
                     String sslTruststorePass=null;
@@ -165,7 +164,7 @@ public class ListenerManager {
                                 keypass = "".toCharArray();
                             }
 
-                            sslContext = SSLUtil.createSSLContext(certFile, keyFile, keypass, sslAddCerts, sslTruststore, sslTruststorePass, sslAddCACerts, sniMatchBuilder);
+                            sslContext = SSLUtil.createSSLContext(certFile, keyFile, keypass, null, sslTruststore, sslTruststorePass, sslAddCACerts, sniMatchBuilder);
                             if( first ) {
                                 // The first SSL Context we come across becomes the default
                                 // If the site allows in a hostname not matched by any of the certs, this context will get used.
@@ -179,23 +178,23 @@ public class ListenerManager {
                         }
 
                     } else {
-                        sslContext = SSLUtil.createSSLContext( sslAddCerts, sslTruststore, sslTruststorePass, sslAddCACerts, sniMatchBuilder );
+                        sslContext = SSLUtil.createSSLContext( null, sslTruststore, sslTruststorePass, sslAddCACerts, sniMatchBuilder );
                         sniMatchBuilder.setDefaultContext(sslContext);
                     }
                     // Only enable SNI if there was more than 1 cert
                     if( certs.size() > 1 ) {
-                        LOG.info("Enabling SNI on SSLContext. (" + certs.size() + " certs)");
+                        LOG.debug("     Enabling SNI on SSLContext. (" + certs.size() + " certs)");
                         sslContext = new SNISSLContext( sniMatchBuilder.build() );
                     }
                     OptionMap.Builder socketOptions = OptionMap.builder();
 
                     if ( clientCert.hasOption( "mode" ) ) {
-                        LOG.debug("Client Cert Negotiation: " + clientCert.getOptionValue( "mode" ) );
+                        LOG.debug("     Client Cert Negotiation: " + clientCert.getOptionValue( "mode" ) );
                         socketOptions.set(Options.SSL_CLIENT_AUTH_MODE, SslClientAuthMode.valueOf( clientCert.getOptionValue( "mode" ) ) );
                     }
 
                     if( clientCert.hasOption( "SSLRenegotiationEnable" ) ) {
-                        LOG.info("SSL Client cert renegotiation is enabled.  Disabling HTTP/2 and TLS1.3");
+                        LOG.warn("     SSL Client cert renegotiation is enabled.  Disabling HTTP/2 and TLS1.3");
                         socketOptions.set(UndertowOptions.ENABLE_HTTP2, false );
                         if( !socketOptions.getMap().contains( Options.SSL_ENABLED_PROTOCOLS ) ) {
                             socketOptions.setSequence( Options.SSL_ENABLED_PROTOCOLS, "TLSv1.1", "TLSv1.2" );
@@ -222,7 +221,7 @@ public class ListenerManager {
             JSONOption AJPListeners = listeners.g( "ajp" );
             for( String key : AJPListeners.getKeys() ) {
                 JSONOption listener = AJPListeners.g( key );
-                LOG.info("Binding AJP on " + listener.getOptionValue("IP") + ":" + listener.getOptionValue("port") );
+                LOG.info("  -Binding AJP on " + listener.getOptionValue("IP") + ":" + listener.getOptionValue("port") );
                 OptionMap.Builder socketOptions = OptionMap.builder();
                 if (serverOptions.undertowOptions().getMap().size() == 0) {
                     // if no options is set, default to the large packet size

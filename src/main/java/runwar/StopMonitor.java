@@ -40,11 +40,8 @@ public class StopMonitor extends Thread {
         try {
             serverSocket = new ServerSocket(serverOptions.stopPort(), 1, Server.getInetAddress("127.0.0.1"));
             listening = true;
-            LOG.info(Server.bar);
-            LOG.info("*** starting 'stop' listener thread - Host: 127.0.0.1 - Socket: " + serverOptions.stopPort());
-            LOG.info(Server.bar);
+            LOG.info("Starting 'stop' listener thread - Host: 127.0.0.1 - Socket: " + serverOptions.stopPort());
             while (listening) {
-                LOG.debug("StopMonitor listening for password");
                 if (Server.getServerState() == Server.ServerState.STOPPED || Server.getServerState() == Server.ServerState.STOPPING) {
                     listening = false;
                 }
@@ -66,7 +63,7 @@ public class StopMonitor extends Thread {
                         if (listening) {
                             LOG.warn("Incorrect password used when trying to stop server.");
                         } else {
-                            LOG.debug("stopped listening for stop password.");
+                            LOG.debug("Stopped listening for stop password.");
                         }
 
                     }

@@ -27,16 +27,14 @@ public class ServerOptions {
 
     private String serverName = null, processName = "RunWAR", logLevel = "INFO", contextPath = "/";
 
-    private boolean debug = false, isBackground = true, openbrowser = false, startedFromCommandline = false, enableURLRewrite = false;
+    private boolean debug = false, openbrowser = false, enableURLRewrite = false;
 
     private String pidFile, openbrowserURL,  logFileBaseName="server", logSuffix="txt", libDirs = null;
 
                                 // 50 secs
     private int launchTimeout = 50 * 1000, socketNumber = 8779;
 
-    private URL jarURL = null;
-
-    private File workingDir, warFile, webInfDir, webXmlFile, webXmlOverrideFile, logDir, urlRewriteFile, urlRewriteLog, trayConfig, statusFile = null;
+    private File workingDir, warFile, webInfDir, webXmlFile, webXmlOverrideFile, logDir, urlRewriteFile, urlRewriteLog, trayConfig;
 
     private String iconImage = null;
 
@@ -80,9 +78,7 @@ public class ServerOptions {
 
     private String[] cmdlineArgs = null;
 
-    private String[] loadBalance = null;
-
-    private boolean directBuffers = true;
+    private Boolean directBuffers = null;
 
     int bufferSize, workerThreads = 0;
 
@@ -91,10 +87,6 @@ public class ServerOptions {
     private JSONArray trayConfigJSON;
 
     private boolean sslEccDisable = true;
-
-    private boolean sslSelfSign = false;
-
-    private boolean service = false;
 
     public String logPattern = "[%-5p] %c: %m%n";
 
@@ -122,7 +114,6 @@ public class ServerOptions {
 
     private OptionMap.Builder serverXnioOptions = OptionMap.builder();
 
-    private boolean testing = false;
     private OptionMap.Builder undertowOptions = OptionMap.builder();
 
     public String toJson(Set<String> set){
@@ -875,15 +866,6 @@ public class ServerOptions {
     }
 
     /**
-     * @see runwar.options.ServerOptions#sendfileEnable(boolean)
-     */
-    public ServerOptions sendfileEnable(boolean enable) {
-        //if (!enable) {
-//            this.transferMinSize = Long.MAX_VALUE;
-        //}
-        return this;
-    }
-    /**
      * @see runwar.options.ServerOptions#jvmArgs(java.util.List)
      */
     public ServerOptions jvmArgs(List<String> args) {
@@ -970,7 +952,7 @@ public class ServerOptions {
     /**
      * @see runwar.options.ServerOptions#directBuffers(boolean)
      */
-    public ServerOptions directBuffers(boolean enable) {
+    public ServerOptions directBuffers(Boolean enable) {
         this.directBuffers = enable;
         return this;
     }
@@ -978,8 +960,17 @@ public class ServerOptions {
     /**
      * @see runwar.options.ServerOptions#directBuffers()
      */
-    public boolean directBuffers() {
+    public Boolean directBuffers() {
         return this.directBuffers;
+    }
+
+    public int bufferSize() {
+        return bufferSize;
+    }
+
+    public ServerOptions bufferSize(int bufferSize) {
+        this.bufferSize = bufferSize;
+        return this;
     }
 
     /**
@@ -1194,68 +1185,6 @@ public class ServerOptions {
         return this.undertowOptions;
     }
 
-    ///////////////////// TOTO: DEPRECATE /////////////////////
-
-    public boolean testing() {
-        return testing;
-    }
-
-    public boolean service() {
-        return service;
-    }
-
-    public ServerOptions service(boolean enable) {
-        service = enable;
-        return this;
-    }
-
-    public ServerOptions sslSelfSign(boolean enable) {
-        this.sslSelfSign = enable;
-        return this;
-    }
-
-    public boolean sslSelfSign() { return this.sslSelfSign; }
-
-    public String serverMode() {
-        if(webInfDir() != null && webInfDir().exists()) {
-            return Mode.WAR;
-        } else if( new File(warFile(), "WEB-INF").exists()) {
-            return Mode.WAR;
-        }
-        return Mode.DEFAULT;
-    }
-
-    public ServerOptions startedFromCommandLine(boolean enable) {
-        this.startedFromCommandline = enable;
-        return this;
-    }
-
-    public boolean startedFromCommandLine() {
-        return this.startedFromCommandline;
-    }
-
-    public ServerOptions loadBalance(String hosts) {
-        return loadBalance(hosts.split("(?<!\\\\),"));
-    }
-
-    public ServerOptions loadBalance(String[] hosts) {
-        this.loadBalance = hosts;
-        return this;
-    }
-
-    public String[] loadBalance() {
-        return this.loadBalance;
-    }
-
-    public int bufferSize() {
-        return bufferSize;
-    }
-
-    public ServerOptions bufferSize(int bufferSize) {
-        this.bufferSize = bufferSize;
-        return this;
-    }
-
     public ServerOptions mariaDB4jEnable(boolean enable) {
         this.mariadb4jEnable = enable;
         return this;
@@ -1300,51 +1229,5 @@ public class ServerOptions {
     public File mariaDB4jImportSQLFile() {
         return this.mariadb4jImportSQLFile;
     }
-
-    public ServerOptions action(String action) {
-        this.action = action;
-        return this;
-    }
-
-    public String action() {
-        return this.action;
-    }
-
-    public File statusFile() {
-        return statusFile;
-    }
-
-    public ServerOptions statusFile(File statusFile) {
-        this.statusFile = statusFile;
-        return this;
-    }
-
-    public ServerOptions testing(boolean testing) {
-        this.testing = testing;
-        if (testing && logLevel == "WARN") {
-            logLevel = "DEBUG";
-        }
-        return this;
-    }
-
-    public URL jarURL() {
-        return jarURL;
-    }
-
-    public ServerOptions jarURL(URL jarURL) {
-        this.jarURL = jarURL;
-        return this;
-    }
-
-    public boolean background() {
-        return isBackground;
-    }
-
-    public ServerOptions background(boolean isBackground) {
-        this.isBackground = isBackground;
-        return this;
-    }
-
-
 
 }

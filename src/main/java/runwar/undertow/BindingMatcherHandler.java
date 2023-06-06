@@ -101,6 +101,7 @@ public class BindingMatcherHandler implements HttpHandler {
     private SiteDeploymentManager siteDeploymentManager;
     private RunwarConfigurer configurer;
     private DeploymentInfo servletBuilder;
+    private Map<String,JSONObject> bindingSiteCache = new ConcurrentHashMap<String,JSONObject>();
     private final String error404Site;
 
     BindingMatcherHandler( ServerOptions serverOptions, SiteDeploymentManager siteDeploymentManager, RunwarConfigurer configurer, DeploymentInfo servletBuilder) {
@@ -124,8 +125,7 @@ public class BindingMatcherHandler implements HttpHandler {
             String hostName = exchange.getHostName().toLowerCase();
             JSONObject match;
 
-            // TODO: See about caching these lookups.
-            match = findBinding( IP, port, hostName );
+            match = findBindingCached( IP, port, hostName );
 
             if( match == null ) {
                 String message = "Can't find a matching binding for IP [" + IP + "], port [" + port + "], and hostname [" + hostName + "]";
@@ -233,6 +233,25 @@ public class BindingMatcherHandler implements HttpHandler {
         exchange.putAttachment(SiteDeploymentManager.SITE_DEPLOYMENT_KEY, deployment);
         deployment.processRequest( exchange );
 
+    }
+
+    /**
+     * Caches found bindings in a HashMap.  This serves as a simple cache, but it is possible to send a huge amount of
+     * requests with random hostnames to the server and "fill up" the Map as there is reaping mechanism.  As such,
+     * we'll only cache the first 10,000 IP/port/hostname combinations we see.
+     */
+    private JSONObject findBindingCached( String IP, String port, String hostName ) {
+        String cacheBindingKey = IP + ":" + port + ":" + hostName;
+        if( bindingSiteCache.containsKey( cacheBindingKey ) ) {
+            return bindingSiteCache.get( cacheBindingKey );
+        }
+        // May be null, but we still want to cache even that
+        JSONObject match = findBinding( IP, port, hostName );
+        // A little protection to prevent an unlimited number of incoming hostname variations from eating up crazy memory
+        if( bindingSiteCache.size() < 10000 ) {
+            bindingSiteCache.put( cacheBindingKey, match );
+        }
+        return match;
     }
 
     /**

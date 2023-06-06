@@ -120,7 +120,7 @@ public class SiteDeploymentManager {
     		throw new MaxContextsException( "Cannot create new servlet deployment.  The configured max is [" + serverOptions.autoCreateContextsMax() + "]." );
     	}
 
-        LOG.info("Creating deployment [" + deploymentKey + "] in " + webroot.toString() );
+        LOG.info("Creating deployment [" + deploymentKey + "]" );
 
     	File webInfDir = serverOptions.webInfDir();
         Long transferMinSize= siteOptions.transferMinSize();
@@ -156,7 +156,7 @@ public class SiteDeploymentManager {
                 manager.deploy();
 
                 deployment = new SiteDeployment( manager.start(), manager, siteOptions, serverOptions, resourceManager );
-                LOG.debug("New servlet context created for [" + deploymentKey + "]" );
+                LOG.debug("  New servlet context created for [" + deploymentKey + "]" );
             // For Adobe
             } else {
                 // For first deployment, create initial resource manager and deploy
@@ -167,7 +167,7 @@ public class SiteDeploymentManager {
                     manager.deploy();
                     deployment = new SiteDeployment( manager.start(), manager, siteOptions, serverOptions, hostResourceManager );
                     this.adobeDefaultDeployment = deployment;
-                    LOG.debug("Initial servlet context created for [" + deploymentKey + "]" );
+                    LOG.debug("  Initial servlet context created for [" + deploymentKey + "]" );
 
                 // For all subsequent deploys, reuse default deployment and simply add new resource manager
                 } else {
@@ -175,7 +175,7 @@ public class SiteDeploymentManager {
                     ((HostResourceManager)servletBuilder.getResourceManager()).addResourceManager( deploymentKey, resourceManager );
                     // Create a new deployment and site handler chain that calls the same servlet initial handler
                     deployment = new SiteDeployment( this.adobeDefaultDeployment.getServletInitialHandler(), this.adobeDefaultDeployment.getDeploymentManager(), siteOptions, serverOptions, this.adobeDefaultDeployment.getResourceManager() );
-                    LOG.debug("Cloned servlet context added for deployment [" + deploymentKey + "]" );
+                    LOG.debug("  Cloned servlet context added for deployment [" + deploymentKey + "]" );
 
                 }
             }
@@ -189,17 +189,21 @@ public class SiteDeploymentManager {
     }
 
     public ResourceManager getResourceManager(File warFile, Long transferMinSize, Map<String, Path> aliases, File internalCFMLServerRoot, SiteOptions siteOptions) {
-    	Boolean cached = !siteOptions.directoryListingRefreshEnable() && siteOptions.cacheServletPaths();
+    	Boolean cached = siteOptions.cacheServletPaths();
 
-        LOG.debugf("Initialized " + ( cached ? "CACHED " : "" ) + "MappedResourceManager - base: %s, web-inf: %s, aliases: %s", warFile.getAbsolutePath(), internalCFMLServerRoot.getAbsolutePath(), aliases);
+        LOG.debugf("  Initialized " + ( cached ? "CACHED " : "" ) + "MappedResourceManager" );
+        LOG.debugf("    Web Root: %s", warFile.getAbsolutePath() );
+        if( aliases.size() > 0 ) {
+            LOG.debugf("    Aliases: %s", aliases );
+        }
 
         MappedResourceManager mappedResourceManager = new MappedResourceManager(warFile, transferMinSize, aliases, internalCFMLServerRoot, siteOptions);
         if ( !cached ) {
             return mappedResourceManager;
         }
 
-        LOG.debugf("ResourceManager Cache total size: %s MB", siteOptions.fileCacheTotalSizeMB() );
-        LOG.debugf("ResourceManager Cache max file size: %s KB", siteOptions.fileCacheMaxFileSizeKB() );
+        LOG.debugf("  ResourceManager Cache total size: %s MB", siteOptions.fileCacheTotalSizeMB() );
+        LOG.debugf("  ResourceManager Cache max file size: %s KB", siteOptions.fileCacheMaxFileSizeKB() );
 
         // 8 hours in in milliseconds-- used for both the path metadata cache AND the file contents cache
         // Setting to -1 will never expire items from the cache, which is tempting-- but having some sort of expiration will keep errant entries from clogging the cache forever
@@ -229,7 +233,7 @@ public class SiteDeploymentManager {
 
             return new CachingResourceManager(metadataCacheSize, maxFileSize, dataCache, mappedResourceManager, METADATA_MAX_AGE);
         } else {
-        	LOG.debug("ResourceManager file cache disabled since size is zero. Path lookups will still be cached." );
+        	LOG.debug("  ResourceManager file cache disabled since size is zero. Path lookups will still be cached." );
             return new CachingResourceManager(metadataCacheSize, maxFileSize, null, mappedResourceManager, METADATA_MAX_AGE);
         }
     }

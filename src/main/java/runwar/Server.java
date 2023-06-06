@@ -108,10 +108,8 @@ public class Server {
     private static ClassLoader _classLoader;
 
     private String serverName = "default";
-    private File statusFile = null;
     public static final String bar = "******************************************************************************";
     private Thread shutDownThread;
-    private String serverMode;
     private PrintStream originalSystemOut;
     private PrintStream originalSystemErr;
 
@@ -132,9 +130,9 @@ public class Server {
     private void initClassLoader(List<URL> _classpath) {
         if (_classLoader == null) {
             int paths = _classpath.size();
-            LOG.debug("Initializing classloader with " + _classpath.size() + " jar(s)");
+            LOG.debug("  Initializing classloader with " + _classpath.size() + " jar(s)");
             if (paths > 0) {
-                LOG.tracef("classpath: %s", _classpath);
+                LOG.tracef("    classpath: %s", _classpath);
                 _classLoader = new URLClassLoader(_classpath.toArray(new URL[paths]));
             } else {
                 _classLoader = Thread.currentThread().getContextClassLoader();
@@ -195,19 +193,10 @@ public class Server {
         hookSystemStreams();
 
         serverState = ServerState.STARTING;
-        if (serverOptions.action().equals("stop")) {
-            Stop.stopServer(serverOptions, true);
-        }
         serverName = serverOptions.serverName();
         String cfengine = serverOptions.cfEngineName(), processName = serverOptions.processName();
         String contextPath = serverOptions.contextPath();
         File warFile = serverOptions.warFile();
-        if (warFile == null) {
-            throw new RuntimeException("-war argument is required!");
-        }
-        if (serverOptions.statusFile() != null) {
-            statusFile = serverOptions.statusFile();
-        }
         String warPath = serverOptions.warUriString();
         char[] stoppassword = serverOptions.stopPassword();
         boolean ignoreWelcomePages = false;
@@ -218,12 +207,18 @@ public class Server {
         RunwarConfigurer configurer = new RunwarConfigurer(this);
 
         LOG.info(bar);
-        LOG.info("Starting RunWAR " + getVersion());
+        LOG.info("Starting Runwar" );
+        LOG.info( "  -Runwar Version: " + getVersion() );
+        LOG.info( "  -Java Version: " + System.getProperty( "java.vm.version", System.getProperty( "java.version", "Unknown" ) ) + " (" + System.getProperty( "java.vendor", "Unknown" ) + ")" );
+        LOG.info( "  -Java Home: " + System.getProperty( "java.home", "Unknown" ) );
+        LOG.info(bar);
 
         Builder serverBuilder = Undertow.builder();
 
         // Add all HTTP/SSL/AJP listeners
         ListenerManager.configureListeners( serverBuilder, serverOptions );
+        LOG.debug(bar);
+    	LOG.debug("Undertow Server:");
 
         // Compile and regex hostname patterns
         if( serverOptions.getSites().size() > 1 ) {
@@ -238,28 +233,14 @@ public class Server {
             }
         }
 
-    	LOG.debug("WAR root:" + warFile.getAbsolutePath());
         if (!warFile.exists()) {
-            throw new RuntimeException("war does not exist: " + warFile.getAbsolutePath());
+            throw new RuntimeException("WAR does not exist: " + warFile.getAbsolutePath());
         }
-/*
-        if (serverOptions.background()) {
-            setServerState(ServerState.STARTING_BACKGROUND);
-            // this will eventually system.exit();
-            LaunchUtil.relaunchAsBackgroundProcess(serverOptions.background(false), true);
-            setServerState(ServerState.STARTED_BACKGROUND);
-            // just in case
-            Thread.sleep(200);
-            System.exit(0);
-        } else {
-        	LOG.debug("background:" + serverOptions.background());
-        }
-*/
+
         File webinf = serverOptions.webInfDir();
         File webXmlFile = serverOptions.webXmlFile();
 
         String libDirs = serverOptions.libDirs();
-        URL jarURL = serverOptions.jarURL();
         // If this folder is a proper war, add its WEB-INF/lib folder to the passed libDirs
         if (warFile.isDirectory() && webXmlFile != null && webXmlFile.exists()) {
             if (libDirs == null) {
@@ -268,34 +249,20 @@ public class Server {
                 libDirs = libDirs + ",";
             }
             libDirs = libDirs + webinf.getAbsolutePath() + "/lib";
-            LOG.debug("Adding additional lib dir of: " + webinf.getAbsolutePath() + "/lib");
             serverOptions.libDirs(libDirs);
         }
 
         List<URL> cp = new ArrayList<>();
-//        cp.add(Server.class.getProtectionDomain().getCodeSource().getLocation());
         if (libDirs != null) {
             cp.addAll(getJarList(libDirs));
         }
-        if (jarURL != null) {
-            cp.add(jarURL);
-        }
 
         if (serverOptions.mariaDB4jImportSQLFile() != null) {
-        	LOG.debug("Importing sql file: " + serverOptions.mariaDB4jImportSQLFile().toURI().toURL());
+        	LOG.debug("  Importing sql file: " + serverOptions.mariaDB4jImportSQLFile().toURI().toURL());
             cp.add(serverOptions.mariaDB4jImportSQLFile().toURI().toURL());
         }
         cp.addAll(getClassesList(new File(webinf, "/classes")));
         initClassLoader(cp);
-
-        serverMode = Mode.WAR;
-        if (!webinf.exists()) {
-            serverMode = Mode.DEFAULT;
-            if (getCFMLServletClass(cfengine) != null) {
-                serverMode = Mode.SERVLET;
-            }
-        }
-        LOG.debugf("Server Mode: %s", serverMode);
 
         // redirect out and err to context logger
         //hookSystemStreams();
@@ -323,19 +290,27 @@ public class Server {
                     Method dockMethod = appInstance.getClass().getMethod("setDockIconImage", java.awt.Image.class);
                     dockMethod.invoke(appInstance, dockIcon);
                 } catch (Exception e) {
-                    LOG.warn("error setting dock icon image", e);
+                    LOG.warn("  Error setting dock icon image", e);
                 }
             } else {
                 System.setProperty("apple.awt.UIElement", "true");
             }
         }
-        LOG.info("Servlet Context: " + contextPath );
-        LOG.info("Log Directory: " + serverOptions.logDir().getAbsolutePath());
-        LOG.info(bar);
+    	LOG.debug("  WAR root:" + warFile.getAbsolutePath());
+        LOG.debug("  Servlet Context: " + contextPath );
+        LOG.debug("  Log Directory: " + serverOptions.logDir().getAbsolutePath());
+        if ( serverOptions.directBuffers() != null ) {
+            LOG.debug("  Direct Buffers: " + serverOptions.directBuffers());
+            serverBuilder.setDirectBuffers(serverOptions.directBuffers());
+        }
+        if ( serverOptions.bufferSize() != 0 ) {
+            LOG.debug("  Buffer Size: " + serverOptions.bufferSize());
+            serverBuilder.setBufferSize(serverOptions.bufferSize());
+        }
         addShutDownHook();
 
         if (serverOptions.workerThreads() != 0) {
-        	LOG.debug("Worker threads: " + serverOptions.workerThreads());
+        	LOG.debug("  Worker threads (Max requests): " + serverOptions.workerThreads());
             serverBuilder.setWorkerThreads(serverOptions.workerThreads());
         }
 
@@ -356,7 +331,6 @@ public class Server {
             javaLibraryPath = jarPath + filePathSeparator + javaLibraryPath;
         }
         System.setProperty("java.library.path", javaLibraryPath);
-        LOG.trace("java.library.path:" + System.getProperty("java.library.path"));
 
         final DeploymentInfo servletBuilder = deployment()
                 .setContextPath(contextPath.equals("/") ? "" : contextPath)
@@ -375,6 +349,9 @@ public class Server {
                     }
                 });
 
+        LOG.info(bar);
+        LOG.info("Configuring Servlet");
+
         configurer.configureServlet(servletBuilder);
 
         configurer.configureServerResourceHandler(servletBuilder);
@@ -383,34 +360,14 @@ public class Server {
 
         servletBuilder.addServletContextAttribute(WebSocketDeploymentInfo.ATTRIBUTE_NAME,
                 new WebSocketDeploymentInfo().setBuffers(new DefaultByteBufferPool(true, 1024 * 16)));
-        LOG.debug("Added websocket context");
 
-        siteDeploymentManager = new SiteDeploymentManager( serverOptions );
-        if( serverOptions.getSites().size() == 1 ) {
-            // Create default context
-            siteDeploymentManager.createSiteDeployment( servletBuilder, serverOptions.getSites().get(0).webroot(), configurer, SiteDeployment.DEFAULT, null, serverOptions.getSites().get(0) );
-        } else {
-            for( SiteOptions siteOptions : serverOptions.getSites() ) {
-                siteDeploymentManager.createSiteDeployment( servletBuilder, siteOptions.webroot(), configurer, siteOptions.siteName(), null, siteOptions );
-            }
-        }
-
-        LOG.debug("started servlet deployment manager");
-
-        if (serverOptions.bufferSize() != 0) {
-            LOG.debug("Buffer Size: " + serverOptions.bufferSize());
-            serverBuilder.setBufferSize(serverOptions.bufferSize());
-        }
-        LOG.debug("Direct Buffers: " + serverOptions.directBuffers());
-        serverBuilder.setDirectBuffers(serverOptions.directBuffers());
-
-        serverBuilder.setHandler( new BindingMatcherHandler( serverOptions, siteDeploymentManager, configurer, servletBuilder ) );
         try {
             PID = ManagementFactory.getRuntimeMXBean().getName().split("@")[0];
             String pidFile = serverOptions.pidFile();
             if (pidFile != null && pidFile.length() > 0) {
                 File file = new File(pidFile);
                 file.deleteOnExit();
+                LOG.debug("  PID file: " +  file.toString() );
                 try (PrintWriter writer = new PrintWriter(file)) {
                     writer.print(PID);
                 }
@@ -418,6 +375,24 @@ public class Server {
         } catch (Exception e) {
             LOG.error("Unable to get PID:" + e.getMessage());
         }
+
+        LOG.info(bar);
+        siteDeploymentManager = new SiteDeploymentManager( serverOptions );
+        if( serverOptions.getSites().size() == 1 ) {
+            // Create default context
+            siteDeploymentManager.createSiteDeployment( servletBuilder, serverOptions.getSites().get(0).webroot(), configurer, SiteDeployment.DEFAULT, null, serverOptions.getSites().get(0) );
+            LOG.debug(bar);
+        } else {
+            for( SiteOptions siteOptions : serverOptions.getSites() ) {
+                siteDeploymentManager.createSiteDeployment( servletBuilder, siteOptions.webroot(), configurer, siteOptions.siteName(), null, siteOptions );
+                LOG.debug(bar);
+            }
+        }
+        if( !serverOptions.debug() ) {
+            LOG.info(bar);
+        }
+
+        serverBuilder.setHandler( new BindingMatcherHandler( serverOptions, siteDeploymentManager, configurer, servletBuilder ) );
 
         setUndertowOptions(serverBuilder);
         setXnioOptions(serverBuilder);
@@ -428,15 +403,14 @@ public class Server {
         assert monitor == null;
         monitor = new StopMonitor(stoppassword,serverOptions);
         monitor.start();
-        LOG.debug("started stop monitor");
         tray = new Tray();
 
         if (serverOptions.trayEnable()) {
             try {
                 tray.hookTray(this);
-                LOG.debug("hooked system tray");
+                LOG.debug("Hooked system tray");
             } catch (Throwable e) {
-                LOG.error("system tray hook failed", e);
+                LOG.error("System tray hook failed", e);
             }
         } else {
             LOG.debug("System tray integration disabled");
@@ -487,19 +461,31 @@ public class Server {
     @SuppressWarnings("unchecked")
     private void setUndertowOptions(Builder serverBuilder) {
 		OptionMap undertowOptionsMap = serverOptions.undertowOptions().getMap();
+        if( undertowOptionsMap.size() > 0 ) {
+            LOG.debug( "Undertow Options:" );
+        }
         for (Option option : undertowOptionsMap) {
-        	LOG.debug("UndertowOption " + option.getName() + ':' + undertowOptionsMap.get(option));
+        	LOG.debug("  -" + option.getName() + " = " + undertowOptionsMap.get(option));
             serverBuilder.setServerOption(option, undertowOptionsMap.get(option));
             serverBuilder.setSocketOption(option, undertowOptionsMap.get(option));
+        }
+        if( undertowOptionsMap.size() > 0 ) {
+            LOG.debug( bar );
         }
     }
 
     @SuppressWarnings("unchecked")
     private void setXnioOptions(Builder serverBuilder) {
         OptionMap serverXnioOptionsMap = serverOptions.xnioOptions().getMap();
+        if( serverXnioOptionsMap.size() > 0 ) {
+            LOG.debug( "XNIO Options:" );
+        }
         for (Option option : serverXnioOptionsMap) {
-        	LOG.debug("XNIO-Option " + option.getName() + ':' + serverXnioOptionsMap.get(option));
+        	LOG.debug("  -" + option.getName() + " = " + serverXnioOptionsMap.get(option));
             serverBuilder.setSocketOption(option, serverXnioOptionsMap.get(option));
+        }
+        if( serverXnioOptionsMap.size() > 0 ) {
+            LOG.debug( bar );
         }
     }
 
@@ -533,17 +519,17 @@ public class Server {
         if (shutDownThread == null) {
             shutDownThread = new Thread() {
                 public void run() {
-                    LOG.debug("Running shutdown hook");
+                    LOG.debug("  Running shutdown hook");
                     try {
                         if (!getServerState().equals(ServerState.STOPPING) && !getServerState().equals(ServerState.STOPPED)) {
-                            LOG.debug("shutdown hook:stopServer()");
+                            LOG.debug("Shutdown hook:stopServer()");
                             stopServer();
                         }
 //                    if(tempWarDir != null) {
 //                        LaunchUtil.deleteRecursive(tempWarDir);
 //                    }
                         if (mainThread.isAlive()) {
-                            LOG.debug("shutdown hook joining main thread");
+                            LOG.debug("Shutdown hook joining main thread");
                             mainThread.interrupt();
                             mainThread.join(3000);
                         }
@@ -554,7 +540,7 @@ public class Server {
                 }
             };
             Runtime.getRuntime().addShutdownHook(shutDownThread);
-            LOG.debug("Added shutdown hook");
+            LOG.debug("  Added shutdown hook");
         }
     }
 
@@ -727,8 +713,6 @@ public class Server {
                     classpath.addAll(getClassesList(item));
                 }
             }
-        } else {
-            LOG.debug("WEB-INF classes directory (" + classesDir.getAbsolutePath() + ") does not exist");
         }
         return classpath;
     }

@@ -80,10 +80,10 @@ public class SSLUtil
 
     public static SSLContext createSSLContext( final String[] addCertificatePaths, String sslTruststore, String sslTruststorePass, final String[] addCACertificatePaths, SNIContextMatcher.Builder sniMatchBuilder ) throws IOException {
     	if( sslTruststore == null ) {
-            RunwarLogger.SECURITY_LOGGER.debug("Creating SSL context from: runwar/runwar.keystore trust store: runwar/runwar.truststore");
+            RunwarLogger.SECURITY_LOGGER.debug("     Creating SSL context from: runwar/runwar.keystore trust store: runwar/runwar.truststore");
             return createSSLContext(getServerKeyStore(), getTrustStore(), DEFAULT_STORE_PASSWORD.clone(), addCertificatePaths, addCACertificatePaths, false, sniMatchBuilder);
     	} else {
-            RunwarLogger.SECURITY_LOGGER.debug( "Creating SSL context from: runwar/runwar.keystore trust store: " + sslTruststore );
+            RunwarLogger.SECURITY_LOGGER.debug( "     Creating SSL context from: runwar/runwar.keystore trust store: " + sslTruststore );
             return createSSLContext(getServerKeyStore(), loadKeyStoreFromFile( sslTruststore, sslTruststorePass.toCharArray() ), DEFAULT_STORE_PASSWORD.clone(), addCertificatePaths, addCACertificatePaths, false, sniMatchBuilder);
     	}
     }
@@ -91,7 +91,7 @@ public class SSLUtil
 
     public static SSLContext createSSLContext(final File certfile, final File keyFile, char[] passphrase, final String[] addCertificatePaths, String sslTruststore, String sslTruststorePass, final String[] addCACertificatePaths, SNIContextMatcher.Builder sniMatchBuilder) throws IOException {
         if (passphrase == null ) {
-            RunwarLogger.SECURITY_LOGGER.debug("Using default store passphrase of empty string");
+            RunwarLogger.SECURITY_LOGGER.debug("     Using default store passphrase of empty string");
             passphrase = "".toCharArray();
         }
         SSLContext sslContext;
@@ -101,14 +101,14 @@ public class SSLUtil
 
             // Parse as PKCS12l which is an entire keystore with cert and key combined with optional password
             if( certfile.getCanonicalPath().toLowerCase().endsWith( ".pfx" ) ) {
-                RunwarLogger.SECURITY_LOGGER.debug("Creating SSL context from PKCS12l keystore: [" + certfile + "]");
+                RunwarLogger.SECURITY_LOGGER.debug("     Creating SSL context from PKCS12l keystore: [" + certfile + "]");
                 InputStream stream = new FileInputStream( certfile );
                 keystore = KeyStore.getInstance( "PKCS12" );
                 keystore.load( stream, passphrase );
 
             // Load up as DER cert with external DER key file/pass
             } else if( keyFile != null ) {
-                RunwarLogger.SECURITY_LOGGER.debug("Creating SSL context from cert: [" + certfile + "]  key: [" + keyFile + "]");
+                RunwarLogger.SECURITY_LOGGER.debug("     Creating SSL context from cert: [" + certfile + "]  key: [" + keyFile + "]");
                 keystore = keystoreFromDERCertificate(certfile, keyFile, passphrase);
                 //trustStore.setEntry("someAlias", new KeyStore.TrustedCertificateEntry(derKeystore.getCertificate("serverkey")), null);
             } else {
@@ -116,11 +116,11 @@ public class SSLUtil
             }
 
             if( sslTruststore == null ) {
-                RunwarLogger.SECURITY_LOGGER.debug("Creating SSL context from empty trust store");
+                RunwarLogger.SECURITY_LOGGER.debug("     Creating SSL context from empty trust store");
                 trustStore = KeyStore.getInstance("JKS", "SUN");
                 trustStore.load(null, passphrase);
             } else {
-                RunwarLogger.SECURITY_LOGGER.debug("Creating SSL context from trust store: [" + sslTruststore + "]");
+                RunwarLogger.SECURITY_LOGGER.debug("     Creating SSL context from trust store: [" + sslTruststore + "]");
                 trustStore = loadKeyStoreFromFile( sslTruststore, sslTruststorePass.toCharArray() );
             }
 
@@ -165,7 +165,7 @@ public class SSLUtil
         }
         SSLContext sslContext;
         try {
-            RunwarLogger.SECURITY_LOGGER.debug("UsingTSL");
+            RunwarLogger.SECURITY_LOGGER.debug("     UsingTSL");
             sslContext = SSLContext.getInstance("TLS");
             sslContext.init(keyManagers, trustManagers, null);
         }
@@ -209,7 +209,7 @@ public class SSLUtil
                                 String cn = list.get(1).toString();
                                 if (cn != null) {
                                     named = true;
-                                    RunwarLogger.SECURITY_LOGGER.trace("Adding SAN SNI host match of [" + cn + "] for cert [" + x509.getSubjectDN().toString() + "]");
+                                    RunwarLogger.SECURITY_LOGGER.trace("       Adding SAN SNI host match of [" + cn + "] for cert [" + x509.getSubjectDN().toString() + "]");
                                     sniMatchBuilder.addMatch( cn, sslContext );
                                 }
                             }
@@ -223,7 +223,7 @@ public class SSLUtil
                             if (rdn.getType().equalsIgnoreCase("cn")) {
                                 String cn = rdn.getValue().toString();
                                 if (cn != null && !cn.contains(" "))
-                                    RunwarLogger.SECURITY_LOGGER.trace("Adding CN SNI host match of [" + cn + "] for cert [" + x509.getSubjectDN().toString() + "]");
+                                    RunwarLogger.SECURITY_LOGGER.trace("       Adding CN SNI host match of [" + cn + "] for cert [" + x509.getSubjectDN().toString() + "]");
                                     sniMatchBuilder.addMatch( cn, sslContext );
                             }
                         }
@@ -252,7 +252,7 @@ public class SSLUtil
         try {
             final KeyStore keyStore = KeyStore.getInstance("JKS");
             keyStore.load(resourceAsStream, DEFAULT_STORE_PASSWORD);
-            RunwarLogger.SECURITY_LOGGER.debug("loaded store: " + resourcePath);
+            RunwarLogger.SECURITY_LOGGER.debug("     Loaded store: " + resourcePath);
             return keyStore;
         }
         catch (Exception ex) {
@@ -271,7 +271,7 @@ public class SSLUtil
         try {
             final KeyStore keyStore = KeyStore.getInstance("JKS");
             keyStore.load(resourceAsStream, keystorePass);
-            RunwarLogger.SECURITY_LOGGER.debug("loaded store: " + resourcePath);
+            RunwarLogger.SECURITY_LOGGER.debug("     Loaded store: " + resourcePath);
             return keyStore;
         }
         catch (Exception ex) {
@@ -298,12 +298,12 @@ public class SSLUtil
         final ArrayList<Certificate> certs = new ArrayList<>();
         if (certificates.size() == 1) {
             try(final InputStream fullStream = fullStream(certFile)){
-                RunwarLogger.SECURITY_LOGGER.debug("One certificate, no chain:");
+                RunwarLogger.SECURITY_LOGGER.debug("     One certificate, no chain:");
                 certs.add(certificateFactory.generateCertificate(fullStream));
             }
         }
         else {
-            RunwarLogger.SECURITY_LOGGER.debug(String.valueOf(certificates.size()) + " certificates in chain:");
+            RunwarLogger.SECURITY_LOGGER.debug("     " + String.valueOf(certificates.size()) + " certificates in chain:");
             for(Object certObject : certificates) {
                 if(certObject instanceof Certificate) {
                     certs.add((Certificate)certObject);
@@ -315,11 +315,11 @@ public class SSLUtil
         }
         for (Certificate certificate: certs) {
             X500Name x500name = new JcaX509CertificateHolder((X509Certificate) certificate).getSubject();
-            RunwarLogger.SECURITY_LOGGER.debugf("   %s  certificate, public key [ %s ] %s", certificate.getType(), certificate.getPublicKey().getAlgorithm(), x500name.toString());
+            RunwarLogger.SECURITY_LOGGER.debugf("       %s  certificate, public key [ %s ] %s", certificate.getType(), certificate.getPublicKey().getAlgorithm(), x500name.toString());
         }
         final char[] copy = Arrays.copyOf(passphrase, passphrase.length);
         Arrays.fill(copy, '*');
-        RunwarLogger.SECURITY_LOGGER.debug(String.format("Adding key to store - alias:[%s]  type:[%s %s]  passphrase:[%s]  certs in chain:[%s]", defaultalias, privateKey.getAlgorithm(), privateKey.getFormat(), String.valueOf(copy), certs.size()));
+        RunwarLogger.SECURITY_LOGGER.debug(String.format("     Adding key to store - alias:[%s]  type:[%s %s]  passphrase:[%s]  certs in chain:[%s]", defaultalias, privateKey.getAlgorithm(), privateKey.getFormat(), String.valueOf(copy), certs.size()));
         int certCount = certs.size();
         keyStore.setKeyEntry(defaultalias, privateKey, passphrase, certs.toArray(new Certificate[certCount]));
         return keyStore;
@@ -364,16 +364,16 @@ public class SSLUtil
             }
 
             if (object instanceof PEMEncryptedKeyPair) {
-                RunwarLogger.SECURITY_LOGGER.debug( "Encrypted private key - we will use provided password" );
+                RunwarLogger.SECURITY_LOGGER.debug( "     Encrypted private key - we will use provided password" );
                 return converter.getKeyPair(((PEMEncryptedKeyPair) object).decryptKeyPair(decProv)).getPrivate();
             } else if (object instanceof PEMKeyPair) {
-                RunwarLogger.SECURITY_LOGGER.debug( "Unencrypted private key - no password needed" );
+                RunwarLogger.SECURITY_LOGGER.debug( "     Unencrypted private key - no password needed" );
                 return converter.getKeyPair((PEMKeyPair) object).getPrivate();
             } else if (object instanceof PrivateKeyInfo) {
-                RunwarLogger.SECURITY_LOGGER.debug( "Private key in PrivateKeyInfo format" );
+                RunwarLogger.SECURITY_LOGGER.debug( "     Private key in PrivateKeyInfo format" );
                 return converter.getPrivateKey( (PrivateKeyInfo)object );
             } else if (object instanceof PKCS8EncryptedPrivateKeyInfo) {
-                RunwarLogger.SECURITY_LOGGER.debug( "Private key in PKCS8EncryptedPrivateKeyInfo format - we will use provided password" );
+                RunwarLogger.SECURITY_LOGGER.debug( "     Private key in PKCS8EncryptedPrivateKeyInfo format - we will use provided password" );
                 PKCS8EncryptedPrivateKeyInfo privateKeyInfo = (PKCS8EncryptedPrivateKeyInfo)object;
                 InputDecryptorProvider pkcs8Prov = new JceOpenSSLPKCS8DecryptorProviderBuilder().build(passphrase);
                 PrivateKeyInfo decryptedPrivateKeyInfo = privateKeyInfo.decryptPrivateKeyInfo(pkcs8Prov);
@@ -400,8 +400,8 @@ public class SSLUtil
             try{
                 X500Name x500name = new JcaX509CertificateHolder((X509Certificate) certificate).getSubject();
                 CN =  IETFUtils.valueToString(x500name.getRDNs(BCStyle.CN)[0].getFirst().getValue());
-                RunwarLogger.SECURITY_LOGGER.debug("Added certificate file:" + file.getAbsolutePath());
-                RunwarLogger.SECURITY_LOGGER.debugf("  %s  certificate, public key [ %s ] CN=%s", certificate.getType(), certificate.getPublicKey().getAlgorithm(), CN);
+                RunwarLogger.SECURITY_LOGGER.debug("     Added certificate file:" + file.getAbsolutePath());
+                RunwarLogger.SECURITY_LOGGER.debugf("       %s  certificate, public key [ %s ] CN=%s", certificate.getType(), certificate.getPublicKey().getAlgorithm(), CN);
             }catch(Exception e){
                 RunwarLogger.SECURITY_LOGGER.debug("The added certificate doesn't have a CN, public key cannot be displayed:" + e.getMessage());
             }

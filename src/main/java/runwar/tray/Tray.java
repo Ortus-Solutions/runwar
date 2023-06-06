@@ -356,7 +356,6 @@ public class Tray {
         Image image = null;
         if (iconImage != null && iconImage.length() != 0) {
             iconImage = iconImage.replaceAll("(^\")|(\"$)", "");
-            RunwarLogger.LOG.trace("trying to load icon: " + iconImage);
             if (iconImage.contains("!")) {
                 String[] zip = iconImage.split("!");
                 try {
@@ -401,7 +400,6 @@ public class Tray {
     public static void setIconImage(String iconImage) {
         if (iconImage != null && iconImage.length() != 0) {
             iconImage = iconImage.replaceAll("(^\")|(\"$)", "");
-            RunwarLogger.LOG.trace("trying to load icon: " + iconImage);
             if (iconImage.contains("!")) {
                 String[] zip = iconImage.split("!");
                 try {
@@ -440,7 +438,6 @@ public class Tray {
     public static InputStream getImageInputStream(String iconImage) {
         if (iconImage != null && iconImage.length() != 0) {
             iconImage = iconImage.replaceAll("(^\")|(\"$)", "");
-            RunwarLogger.LOG.trace("trying to load icon: " + iconImage);
             if (iconImage.contains("!")) {
                 String[] zip = iconImage.split("!");
                 try {

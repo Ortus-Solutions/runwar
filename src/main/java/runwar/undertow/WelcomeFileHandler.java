@@ -49,7 +49,6 @@ public class WelcomeFileHandler implements HttpHandler {
 
     }
 
-    // TODO: Cache these lookups
     private Resource getIndexFiles(HttpServerExchange exchange, ResourceManager resourceManager, final String base, List<String> possible) throws IOException {
         if( possible == null ) {
             return null;

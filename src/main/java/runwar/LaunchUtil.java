@@ -235,48 +235,6 @@ public class LaunchUtil {
         }
     }
 
-    public static void relaunchAsBackgroundProcess(ServerOptions serverOptions, boolean andExit) {
-        serverOptions.background(false);
-        relaunchAsBackgroundProcess(serverOptions.launchTimeout(), serverOptions.commandLineArgs(),
-                serverOptions.jvmArgs(), serverOptions.processName(), andExit);
-    }
-
-    public static void relaunchAsBackgroundProcess(int timeout, String[] args, List<String> jvmArgs, String processName) {
-        relaunchAsBackgroundProcess(timeout, args, jvmArgs, processName, true);
-    }
-
-    public static void relaunchAsBackgroundProcess(int timeout, String[] args, List<String> jvmArgs, String processName, boolean andExit) {
-        try {
-            if (relaunching) {
-                return;
-            }
-            relaunching = true;
-            LoggerFactory.initialize();
-            List<String> cmdarray = new ArrayList<String>();
-            cmdarray.add(getJreExecutable().toString());
-            List<String> VMArgs = jvmArgs != null ? jvmArgs : getCurrentVMArgs();
-            for (String arg : VMArgs) {
-                cmdarray.add(arg);
-            }
-            cmdarray.add("-cp");
-            cmdarray.add( System.getProperty("java.class.path") );
-            cmdarray.add( "runwar.Start" );
-
-            for (String propertyName : replicateProps) {
-                String property = System.getProperty(propertyName);
-                if (property != null) {
-                    cmdarray.add("-D" + propertyName + "=" + property);
-                }
-            }
-            for (String arg : args) {
-                cmdarray.add(arg);
-            }
-            launch(cmdarray, timeout, andExit);
-        } catch (Exception e) {
-            throw new RuntimeException(e);
-        }
-    }
-
     private static void appendToBuffer(List<String> resultBuffer, StringBuffer buf) {
         if (buf.length() > 0) {
             resultBuffer.add(buf.toString());
