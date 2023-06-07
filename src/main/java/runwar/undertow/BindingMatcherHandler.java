@@ -273,55 +273,55 @@ public class BindingMatcherHandler implements HttpHandler {
     private JSONObject findBinding( String IP, String port, String hostName ) {
         JSONObject match;
 
-        // Try exact IP and hostname match
+        // 1. Try exact IP and hostname match
         String bindingKey = IP + ":" + port + ":" + hostName;
         LOG.trace( "Trying binding key: " + bindingKey );
         match = (JSONObject)bindings.get( bindingKey );
         if( match != null ) return match;
 
-        // Try exact IP and hostname ends with match
+        // 2. Try exact IP and hostname ends with match
         match = findHostWildcardEndsWith( hostName, bindings, IP + ":" + port + "::endswith:" );
         if( match != null ) return match;
 
-        // Try exact IP and hostname starts with match
+        // 3. Try exact IP and hostname starts with match
         match = findHostWildcardStartsWith( hostName, bindings, IP + ":" + port + "::startswith:" );
         if( match != null ) return match;
 
-        // Try exact IP and hostname regex match
+        // 4. Try exact IP and hostname regex match
         match = findHostWildcardRegex( hostName, bindings, IP + ":" + port + "::regex:" );
         if( match != null ) return match;
 
-        // Try Any IP and hostname exact match
+        // 5. Try Any IP and hostname exact match
         bindingKey = "0.0.0.0:" + port + ":" + hostName;
         LOG.trace( "Trying binding key: " + bindingKey );
         match = (JSONObject)bindings.get( bindingKey );
         if( match != null ) return match;
 
-        // Try any IP and hostname ends with match
+        // 6. Try any IP and hostname ends with match
         match = findHostWildcardEndsWith( hostName, bindings, "0.0.0.0:" + port + "::endswith:" );
         if( match != null ) return match;
 
-        // Try any IP and hostname starts with match
+        // 7. Try any IP and hostname starts with match
         match = findHostWildcardStartsWith( hostName, bindings, "0.0.0.0:" + port + "::startswith:" );
         if( match != null ) return match;
 
-        // Try Any IP and hostname regex match
+        // 8. Try Any IP and hostname regex match
         match = findHostWildcardRegex( hostName, bindings, "0.0.0.0:" + port + "::regex:" );
         if( match != null ) return match;
 
-        // Try Exact IP and any hostname
+        // 9. Try Exact IP and any hostname
         bindingKey = IP + ":" + port + ":*" ;
         LOG.trace( "Trying binding key: " + bindingKey );
         match = (JSONObject)bindings.get( bindingKey );
         if( match != null ) return match;
 
-        // Try Any IP and any hostname
+        // 10. Try Any IP and any hostname
         bindingKey = "0.0.0.0:" + port + ":*" ;
         LOG.trace( "Trying binding key: " + bindingKey );
         match = (JSONObject)bindings.get( bindingKey );
         if( match != null ) return match;
 
-        // Look for a default site
+        // 11. Look for a default site
         bindingKey = "default" ;
         LOG.trace( "Trying binding key: " + bindingKey );
         match = (JSONObject)bindings.get( bindingKey );

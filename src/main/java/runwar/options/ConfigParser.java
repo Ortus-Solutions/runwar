@@ -219,7 +219,6 @@ public class ConfigParser {
             serverOptions.customHTTPStatusEnable(serverConfig.getOptionBoolean("customHTTPStatusEnable"));
         }
 
-        // TODO: Is anyone using this???
         if (serverConfig.hasOption("MARIADB4J")) {
             serverOptions.mariaDB4jEnable(serverConfig.getOptionBoolean("MARIADB4J"));
         }
