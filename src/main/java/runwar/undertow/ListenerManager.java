@@ -106,7 +106,15 @@ public class ListenerManager {
 
                 if (listener.hasOption("HTTP2Enable" ) ) {
                     LOG.debug("     Setting HTTP/2 enabled: " + listener.getOptionBoolean("HTTP2Enable" ) );
+                    // Undertow ignores this :/
                     socketOptions.set(UndertowOptions.ENABLE_HTTP2, listener.getOptionBoolean("HTTP2Enable" ) );
+                    // Only this server-wide setting appears to do anything.  If it's not set, set it.
+                    if( serverOptions.undertowOptions().getMap().get( UndertowOptions.ENABLE_HTTP2 )==null ) {
+                        serverOptions.undertowOptions().set(UndertowOptions.ENABLE_HTTP2, listener.getOptionBoolean("HTTP2Enable" ) );
+                    // Otherwise, set it, favoring true
+                    } else {
+                        serverOptions.undertowOptions().set(UndertowOptions.ENABLE_HTTP2, listener.getOptionBoolean("HTTP2Enable" ) || serverOptions.undertowOptions().getMap().get( UndertowOptions.ENABLE_HTTP2 ) );
+                    }
                 }
 
                 serverBuilder.addListener(
@@ -188,12 +196,25 @@ public class ListenerManager {
                     }
                     OptionMap.Builder socketOptions = OptionMap.builder();
 
+                    if (listener.hasOption("HTTP2Enable" ) ) {
+                        LOG.debug("     Setting HTTP/2 enabled: " + listener.getOptionBoolean("HTTP2Enable" ) );
+                        // Undertow ignores this :/
+                        socketOptions.set(UndertowOptions.ENABLE_HTTP2, listener.getOptionBoolean("HTTP2Enable" ) );
+                        // Only this server-wide setting appears to do anything.  If it's not set, set it.
+                        if( serverOptions.undertowOptions().getMap().get( UndertowOptions.ENABLE_HTTP2 )==null ) {
+                            serverOptions.undertowOptions().set(UndertowOptions.ENABLE_HTTP2, listener.getOptionBoolean("HTTP2Enable" ) );
+                        // Otherwise, set it, favoring true
+                        } else {
+                            serverOptions.undertowOptions().set(UndertowOptions.ENABLE_HTTP2, listener.getOptionBoolean("HTTP2Enable" ) || serverOptions.undertowOptions().getMap().get( UndertowOptions.ENABLE_HTTP2 ) );
+                        }
+                    }
+
                     if ( clientCert.hasOption( "mode" ) ) {
                         LOG.debug("     Client Cert Negotiation: " + clientCert.getOptionValue( "mode" ) );
                         socketOptions.set(Options.SSL_CLIENT_AUTH_MODE, SslClientAuthMode.valueOf( clientCert.getOptionValue( "mode" ) ) );
                     }
 
-                    if( clientCert.hasOption( "SSLRenegotiationEnable" ) ) {
+                    if( clientCert.hasOption( "SSLRenegotiationEnable" ) && clientCert.getOptionBoolean( "SSLRenegotiationEnable" ) ) {
                         LOG.warn("     SSL Client cert renegotiation is enabled.  Disabling HTTP/2 and TLS1.3");
                         socketOptions.set(UndertowOptions.ENABLE_HTTP2, false );
                         if( !socketOptions.getMap().contains( Options.SSL_ENABLED_PROTOCOLS ) ) {

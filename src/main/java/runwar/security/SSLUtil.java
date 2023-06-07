@@ -165,7 +165,6 @@ public class SSLUtil
         }
         SSLContext sslContext;
         try {
-            RunwarLogger.SECURITY_LOGGER.debug("     UsingTSL");
             sslContext = SSLContext.getInstance("TLS");
             sslContext.init(keyManagers, trustManagers, null);
         }
