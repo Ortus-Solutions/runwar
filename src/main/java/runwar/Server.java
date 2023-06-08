@@ -132,7 +132,6 @@ public class Server {
             int paths = _classpath.size();
             LOG.debug("  Initializing classloader with " + _classpath.size() + " jar(s)");
             if (paths > 0) {
-                LOG.tracef("    classpath: %s", _classpath);
                 _classLoader = new URLClassLoader(_classpath.toArray(new URL[paths]));
             } else {
                 _classLoader = Thread.currentThread().getContextClassLoader();
@@ -208,9 +207,9 @@ public class Server {
 
         LOG.info(bar);
         LOG.info("Starting Runwar" );
-        LOG.info( "  -Runwar Version: " + getVersion() );
-        LOG.info( "  -Java Version: " + System.getProperty( "java.vm.version", System.getProperty( "java.version", "Unknown" ) ) + " (" + System.getProperty( "java.vendor", "Unknown" ) + ")" );
-        LOG.info( "  -Java Home: " + System.getProperty( "java.home", "Unknown" ) );
+        LOG.info( "  - Runwar Version: " + getVersion() );
+        LOG.info( "  - Java Version: " + System.getProperty( "java.vm.version", System.getProperty( "java.version", "Unknown" ) ) + " (" + System.getProperty( "java.vendor", "Unknown" ) + ")" );
+        LOG.info( "  - Java Home: " + System.getProperty( "java.home", "Unknown" ) );
         LOG.info(bar);
 
         Builder serverBuilder = Undertow.builder();
@@ -408,7 +407,6 @@ public class Server {
         if (serverOptions.trayEnable()) {
             try {
                 tray.hookTray(this);
-                LOG.debug("Hooked system tray");
             } catch (Throwable e) {
                 LOG.error("System tray hook failed", e);
             }
@@ -465,7 +463,7 @@ public class Server {
             LOG.debug( "Undertow Options:" );
         }
         for (Option option : undertowOptionsMap) {
-        	LOG.debug("  -" + option.getName() + " = " + undertowOptionsMap.get(option));
+        	LOG.debug("  - " + option.getName() + " = " + undertowOptionsMap.get(option));
             serverBuilder.setServerOption(option, undertowOptionsMap.get(option));
             serverBuilder.setSocketOption(option, undertowOptionsMap.get(option));
         }
@@ -481,7 +479,7 @@ public class Server {
             LOG.debug( "XNIO Options:" );
         }
         for (Option option : serverXnioOptionsMap) {
-        	LOG.debug("  -" + option.getName() + " = " + serverXnioOptionsMap.get(option));
+        	LOG.debug("  - " + option.getName() + " = " + serverXnioOptionsMap.get(option));
             serverBuilder.setSocketOption(option, serverXnioOptionsMap.get(option));
         }
         if( serverXnioOptionsMap.size() > 0 ) {
@@ -519,24 +517,19 @@ public class Server {
         if (shutDownThread == null) {
             shutDownThread = new Thread() {
                 public void run() {
-                    LOG.debug("  Running shutdown hook");
+                    LOG.trace("Running shutdown hook");
                     try {
                         if (!getServerState().equals(ServerState.STOPPING) && !getServerState().equals(ServerState.STOPPED)) {
-                            LOG.debug("Shutdown hook:stopServer()");
                             stopServer();
                         }
-//                    if(tempWarDir != null) {
-//                        LaunchUtil.deleteRecursive(tempWarDir);
-//                    }
                         if (mainThread.isAlive()) {
-                            LOG.debug("Shutdown hook joining main thread");
+                            LOG.trace("Shutdown hook joining main thread");
                             mainThread.interrupt();
                             mainThread.join(3000);
                         }
                     } catch (Exception e) {
                         e.printStackTrace();
                     }
-                    LOG.debug("Shutdown hook finished");
                 }
             };
             Runtime.getRuntime().addShutdownHook(shutDownThread);
@@ -560,11 +553,9 @@ public class Server {
             default:
                 try {
                     setServerState(ServerState.STOPPING);
-                    LOG.info(bar);
                     String port = Integer.toString(serverOptions.stopPort());
                     String serverName = serverOptions.serverName() != null ? serverOptions.serverName() : "null";
-                    LOG.infof("*** stopping server '%s' (socket %s)", serverName, port);
-                    LOG.info(bar);
+                    LOG.infof("Stopping server '%s'", serverName);
                     if (serverOptions.mariaDB4jEnable()) {
                         mariadb4jManager.stop();
                     }
@@ -604,7 +595,7 @@ public class Server {
                 }
 
                 if (monitor != null) {
-                    LOG.debug("Stopping server monitor");
+                    LOG.trace("Stopping server monitor");
                     StopMonitor stopMonitor = monitor;
                     monitor = null;
                     stopMonitor.stopListening(false);
@@ -614,7 +605,7 @@ public class Server {
                 if (exitCode != 0) {
                     System.exit(exitCode);
                 }
-                LOG.debug("Stopped server");
+                LOG.info("Stopped server");
 
                 break;
         }

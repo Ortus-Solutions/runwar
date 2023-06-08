@@ -81,7 +81,7 @@ public class StopMonitor extends Thread {
             exitCode = 1;
             e.printStackTrace();
         } finally {
-            LOG.debug("Closing server socket");
+            LOG.trace("Closing stop socket");
             try {
                 serverSocket.close();
                 serverSocket = null;

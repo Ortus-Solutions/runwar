@@ -192,7 +192,7 @@ public class SiteDeploymentManager {
     	Boolean cached = siteOptions.cacheServletPaths();
 
         LOG.debugf("  Initialized " + ( cached ? "CACHED " : "" ) + "MappedResourceManager" );
-        LOG.debugf("    Web Root: %s", warFile.getAbsolutePath() );
+        LOG.infof("    Web Root: %s", warFile.getAbsolutePath() );
         if( aliases.size() > 0 ) {
             LOG.debugf("    Aliases: %s", aliases );
         }

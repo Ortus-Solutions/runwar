@@ -396,18 +396,14 @@ public class SSLUtil
             final Certificate certificate = CertificateFactory.getInstance("X.509").generateCertificate(fullStream(file));
             keyStore.setCertificateEntry(alias, certificate);
             String CN = "";
-            try{
-                X500Name x500name = new JcaX509CertificateHolder((X509Certificate) certificate).getSubject();
-                CN =  IETFUtils.valueToString(x500name.getRDNs(BCStyle.CN)[0].getFirst().getValue());
-                RunwarLogger.SECURITY_LOGGER.debug("     Added certificate file:" + file.getAbsolutePath());
-                RunwarLogger.SECURITY_LOGGER.debugf("       %s  certificate, public key [ %s ] CN=%s", certificate.getType(), certificate.getPublicKey().getAlgorithm(), CN);
-            }catch(Exception e){
-                RunwarLogger.SECURITY_LOGGER.debug("The added certificate doesn't have a CN, public key cannot be displayed:" + e.getMessage());
-            }
+            X500Name x500name = new JcaX509CertificateHolder((X509Certificate) certificate).getSubject();
+            CN =  IETFUtils.valueToString(x500name.getRDNs(BCStyle.CN)[0].getFirst().getValue());
+            RunwarLogger.SECURITY_LOGGER.debug("     Added certificate file: " + file.getAbsolutePath());
+            RunwarLogger.SECURITY_LOGGER.tracef("       %s  certificate, public key [ %s ] CN=%s", certificate.getType(), certificate.getPublicKey().getAlgorithm(), CN);
 
         }
         catch (Exception ex) {
-            RunwarLogger.SECURITY_LOGGER.error("Could not load certificate file:" + file.getAbsolutePath() + " " + ex.getMessage());
+            throw new RuntimeException( "Could not load certificate file:" + file.getAbsolutePath(), ex );
         }
     }
 

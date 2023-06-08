@@ -213,7 +213,7 @@ public class RunwarConfigurer {
                 if ( fileName.endsWith( ".jar" ) || fileName.endsWith( ".zip" ) ) {
                     URL url = file.toURI().toURL();
                     classpath.add( url );
-                    LOG.trace( "lib: adding to classpath: " + file.getAbsolutePath() );
+                    LOG.trace( "  Lib: " + file.getAbsolutePath() );
                 }
             }
         }

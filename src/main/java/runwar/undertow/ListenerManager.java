@@ -101,7 +101,7 @@ public class ListenerManager {
             JSONOption HTTPListeners = listeners.g( "http" );
             for( String key : HTTPListeners.getKeys() ) {
                 JSONOption listener = HTTPListeners.g( key );
-                LOG.info("  -Binding HTTP on " + listener.getOptionValue("IP") + ":" + listener.getOptionValue("port") );
+                LOG.info("  - Binding HTTP on " + listener.getOptionValue("IP") + ":" + listener.getOptionValue("port") );
                 OptionMap.Builder socketOptions = OptionMap.builder();
 
                 if (listener.hasOption("HTTP2Enable" ) ) {
@@ -131,7 +131,7 @@ public class ListenerManager {
             JSONOption HTTPSListeners = listeners.g( "ssl" );
             for( String key : HTTPSListeners.getKeys() ) {
                 JSONOption listener = HTTPSListeners.g( key );
-                LOG.info("  -Binding SSL on " + listener.getOptionValue("IP") + ":" + listener.getOptionValue("port") );
+                LOG.info("  - Binding SSL on " + listener.getOptionValue("IP") + ":" + listener.getOptionValue("port") );
 
                 if (serverOptions.sslEccDisable() && cfengine.toLowerCase().equals("adobe")) {
                     LOG.debug("   Disabling com.sun.net.ssl.enableECC");
@@ -149,8 +149,8 @@ public class ListenerManager {
                         sslTruststorePass = clientCert.getOptionValue( "CATrustStorePass" );
                     }
                     // Even if there is a trust store provided above, any certs below will be added in along with the original contents.
-                    if ( clientCert.hasOption( "sslAddCACerts" ) ) {
-                        sslAddCACerts = clientCert.getOptionArray( "sslAddCACerts" ).stream().toArray(String[]::new);
+                    if ( clientCert.hasOption( "CACertFiles" ) ) {
+                        sslAddCACerts = clientCert.getOptionArray( "CACertFiles" ).stream().toArray(String[]::new);
                     }
 
                     JSONArray certs = listener.getOptionArray( "certs" );
@@ -211,7 +211,7 @@ public class ListenerManager {
 
                     if ( clientCert.hasOption( "mode" ) ) {
                         LOG.debug("     Client Cert Negotiation: " + clientCert.getOptionValue( "mode" ) );
-                        socketOptions.set(Options.SSL_CLIENT_AUTH_MODE, SslClientAuthMode.valueOf( clientCert.getOptionValue( "mode" ) ) );
+                        socketOptions.set(Options.SSL_CLIENT_AUTH_MODE, SslClientAuthMode.valueOf( clientCert.getOptionValue( "mode" ).toUpperCase() ) );
                     }
 
                     if( clientCert.hasOption( "SSLRenegotiationEnable" ) && clientCert.getOptionBoolean( "SSLRenegotiationEnable" ) ) {
@@ -242,7 +242,7 @@ public class ListenerManager {
             JSONOption AJPListeners = listeners.g( "ajp" );
             for( String key : AJPListeners.getKeys() ) {
                 JSONOption listener = AJPListeners.g( key );
-                LOG.info("  -Binding AJP on " + listener.getOptionValue("IP") + ":" + listener.getOptionValue("port") );
+                LOG.info("  - Binding AJP on " + listener.getOptionValue("IP") + ":" + listener.getOptionValue("port") );
                 OptionMap.Builder socketOptions = OptionMap.builder();
                 if (serverOptions.undertowOptions().getMap().size() == 0) {
                     // if no options is set, default to the large packet size

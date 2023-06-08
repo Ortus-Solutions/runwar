@@ -90,9 +90,8 @@ public class Tray {
             return;
         }
         try {
-            RunwarLogger.LOG.trace("Initializing tray");
+            RunwarLogger.LOG.debug("Initializing tray");
             systemTray = SystemTray.get();
-            RunwarLogger.LOG.trace("Initialized");
         } catch (java.lang.ExceptionInInitializerError e) {
             RunwarLogger.LOG.debugf("Error initializing tray: %s", e.getMessage());
         }
@@ -343,7 +342,7 @@ public class Tray {
     public static void unhookTray() {
         if (systemTray != null) {
             try {
-                RunwarLogger.LOG.debug("Removing tray");
+                RunwarLogger.LOG.trace("Removing tray");
                 systemTray.shutdown();
                 systemTray = null;
             } catch (Exception e) {
