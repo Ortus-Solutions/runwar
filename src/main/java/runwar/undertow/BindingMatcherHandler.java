@@ -79,6 +79,7 @@ import javax.servlet.http.HttpServletRequest;
 import javax.servlet.ServletRequest;
 import java.util.regex.Matcher;
 import java.util.regex.Pattern;
+import java.util.Optional;
 
 import static io.undertow.servlet.Servlets.defaultContainer;
 import static io.undertow.servlet.Servlets.deployment;
@@ -101,7 +102,7 @@ public class BindingMatcherHandler implements HttpHandler {
     private SiteDeploymentManager siteDeploymentManager;
     private RunwarConfigurer configurer;
     private DeploymentInfo servletBuilder;
-    private Map<String,JSONObject> bindingSiteCache = new ConcurrentHashMap<String,JSONObject>();
+    private Map<String,Optional<JSONObject> > bindingSiteCache = new ConcurrentHashMap<String,Optional<JSONObject>>();
     private final String error404Site;
 
     BindingMatcherHandler( ServerOptions serverOptions, SiteDeploymentManager siteDeploymentManager, RunwarConfigurer configurer, DeploymentInfo servletBuilder) {
@@ -243,15 +244,24 @@ public class BindingMatcherHandler implements HttpHandler {
     private JSONObject findBindingCached( String IP, String port, String hostName ) {
         String cacheBindingKey = IP + ":" + port + ":" + hostName;
         if( bindingSiteCache.containsKey( cacheBindingKey ) ) {
-            return bindingSiteCache.get( cacheBindingKey );
+            Optional<JSONObject> match = bindingSiteCache.get( cacheBindingKey );
+            if( match.isPresent() ) {
+                return match.get();
+            } else {
+                return null;
+            }
         }
         // May be null, but we still want to cache even that
-        JSONObject match = findBinding( IP, port, hostName );
+        Optional<JSONObject> match = Optional.ofNullable( findBinding( IP, port, hostName ) );
         // A little protection to prevent an unlimited number of incoming hostname variations from eating up crazy memory
         if( bindingSiteCache.size() < 10000 ) {
             bindingSiteCache.put( cacheBindingKey, match );
         }
-        return match;
+        if( match.isPresent() ) {
+            return match.get();
+        } else {
+            return null;
+        }
     }
 
     /**
