@@ -165,13 +165,13 @@ public class WebXMLParser {
                     FilterInfo filter = new FilterInfo(filterName,
                             (Class<? extends Filter>) info.getClassLoader().loadClass(className));
                     Match initParams = $(ctx).find("init-param");
-                    CONF_LOG.debugf("Total No. of init-params: %s", initParams.size());
+                    CONF_LOG.debugf("        Total No. of init-params: %s", initParams.size());
                     initParams.each(cctx -> {
                         String pName = $(cctx).find("param-name").text();
                         String pValue = $(cctx).find("param-value").text();
                         filter.addInitParam(pName, pValue);
-                        CONF_LOG.tracef("        init-param: '%s'", pName );
-                        CONF_LOG.tracef("          param-value: '%s'", pValue);
+                        CONF_LOG.tracef("          init-param: '%s'", pName );
+                        CONF_LOG.tracef("            param-value: '%s'", pValue);
                     });
                     if ($(ctx).find("async-supported").size() > 0) {
                         trace("    Async supported: %s", $(ctx).find("async-supported").text());
@@ -193,11 +193,12 @@ public class WebXMLParser {
                 info.getFilterMappings().clear();
             } */
             filterMappings.each(ctx -> {
+
                 String filterName = $(ctx).find("filter-name").text();
                 String urlPattern = $(ctx).find("url-pattern").text();
                 if( urlPattern != null ) {
                     Match dispatchers = $(ctx).find("dispatcher");
-                    if (dispatchers == null) {
+                    if ( dispatchers.isEmpty() ) {
                         CONF_LOG.tracef("      filter-name: %s url-pattern: %s dispatcher: REQUEST", filterName, urlPattern);
                         info.addFilterUrlMapping(filterName, urlPattern, DispatcherType.valueOf("REQUEST"));
                     } else {
@@ -211,7 +212,7 @@ public class WebXMLParser {
                 }
                 String servletName = $(ctx).find("servlet-name").text();
                 if (servletName != null) {
-                    CONF_LOG.tracef("    Adding servlet mapping: %s", servletName);
+                    CONF_LOG.tracef("        Adding servlet mapping: %s", servletName);
                     info.addFilterServletNameMapping(filterName, servletName, DispatcherType.valueOf("REQUEST"));
                 }
             });
