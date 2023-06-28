@@ -95,6 +95,7 @@ public class Server {
 
     private static final ThreadLocal<HttpServerExchange> currentExchange= new ThreadLocal<HttpServerExchange>();
     private static final ThreadLocal<String> currentDeploymentKey= new ThreadLocal<String>();
+    private static HttpHandler rootHandler;
     private volatile static ServerOptions serverOptions;
     private volatile static SiteDeploymentManager siteDeploymentManager;
     private static MariaDB4jManager mariadb4jManager;
@@ -391,7 +392,8 @@ public class Server {
             LOG.info(bar);
         }
 
-        serverBuilder.setHandler( new BindingMatcherHandler( serverOptions, siteDeploymentManager, configurer, servletBuilder ) );
+        rootHandler = new BindingMatcherHandler( serverOptions, siteDeploymentManager, configurer, servletBuilder );
+        serverBuilder.setHandler( rootHandler );
 
         setUndertowOptions(serverBuilder);
         setXnioOptions(serverBuilder);
@@ -848,6 +850,10 @@ public class Server {
 
     public static Thread getMainThread() {
         return mainThread;
+    }
+
+    public static HttpHandler getRootHandler() {
+        return rootHandler;
     }
 
     public static HttpServerExchange getCurrentExchange() {

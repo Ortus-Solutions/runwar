@@ -249,12 +249,34 @@ public class ListenerManager {
                     socketOptions.set(UndertowOptions.MAX_AJP_PACKET_SIZE, 65536);
                 }
 
+                final String AJPPort = listener.getOptionValue("port");
                 serverBuilder.addListener(
                     new ListenerBuilder()
                     .setType( ListenerType.AJP )
                     .setPort( listener.getOptionInt("port") )
                     .setHost( listener.getOptionValue("IP") )
                     .setOverrideSocketOptions( socketOptions.getMap() )
+                    .setRootHandler( new HttpHandler(){
+
+                        @Override
+                        public void handleRequest(final HttpServerExchange exchange) throws Exception {
+
+                            Map<String, String> attrs = exchange.getAttachment(HttpServerExchange.REQUEST_ATTRIBUTES);
+                            if(attrs == null) {
+                                exchange.putAttachment(HttpServerExchange.REQUEST_ATTRIBUTES, attrs = new HashMap<>());
+                            }
+
+                            // Mark this request as coming from this AJP port as Undertow doesn't seem to provide any way to get this info from the exchange later.
+                            attrs.put( "__ajp_port", AJPPort );
+                            Server.getRootHandler().handleRequest( exchange );
+                        }
+
+                        @Override
+                        public String toString() {
+                            return "AJP Identifying Handler";
+                        }
+
+                    } )
                 );
             }
         }
