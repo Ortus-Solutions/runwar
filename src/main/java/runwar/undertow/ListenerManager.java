@@ -146,7 +146,11 @@ public class ListenerManager {
 
                     if ( clientCert.hasOption( "CATrustStoreFile" ) ) {
                         sslTruststore = clientCert.getOptionValue( "CATrustStoreFile" );
-                        sslTruststorePass = clientCert.getOptionValue( "CATrustStorePass" );
+                        if( clientCert.hasOption( "CATrustStorePass" ) && clientCert.getOptionValue( "CATrustStorePass" ) != null ) {
+                            sslTruststorePass = clientCert.getOptionValue( "CATrustStorePass" );
+                        } else {
+                            sslTruststorePass = "";
+                        }
                     }
                     // Even if there is a trust store provided above, any certs below will be added in along with the original contents.
                     if ( clientCert.hasOption( "CACertFiles" ) ) {
