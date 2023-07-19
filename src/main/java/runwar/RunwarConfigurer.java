@@ -52,7 +52,7 @@ public class RunwarConfigurer {
         String cfusionDir = new File(webInfDir,"cfusion").getAbsolutePath().replace('\\', '/');
 
         if (cfengine.equals("adobe") || cfengine.equals("") && new File(cfusionDir).exists()) {
-/*            String cfformDir = new File(webInfDir,"cfform").getAbsolutePath().replace('\\', '/');
+            String cfformDir = new File(webInfDir,"cfform").getAbsolutePath().replace('\\', '/');
 
         	final String cfClasspath = "%s/lib/updates,%s/lib/,%s/lib/axis2,%s/gateway/lib/,%s/../cfform/jars,%s/../flex/jars,%s/lib/oosdk/lib,%s/lib/oosdk/classes".replaceAll("%s", cfusionDir);
             final HashMap<String,String> cfprops = new HashMap<>();
@@ -78,7 +78,7 @@ public class RunwarConfigurer {
                     LOG.tracef("Setting %s = '%s'", k, v);
                 });
             }
-            */
+
             // Hide error messages about MediaLib stuff
             System.setProperty("com.sun.media.jai.disableMediaLib", "true");
             cfengine = "adobe";
