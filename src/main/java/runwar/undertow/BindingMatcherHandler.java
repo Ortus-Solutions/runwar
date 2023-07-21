@@ -197,12 +197,12 @@ public class BindingMatcherHandler implements HttpHandler {
                                 String vDirsSharedKey = exchange.getRequestHeaders().getFirst( "x-vdirs-sharedkey" );
                                 if( vDirsSharedKey == null || vDirsSharedKey.isEmpty() ) {
                                     vDirs = null;
-                                    logOnce( deploymentKey, "NovDirsSharedKey", "warn", "The x-vdirs header was provided, but it is being igonred because no x-vdirs-sharedkey header is present." );
+                                    logOnce( deploymentKey, "NovDirsSharedKey", "warn", "The x-vdirs header was provided, but it is being ignored because no x-vdirs-sharedkey header is present." );
                                 } else {
                                     // If a secret was provided, enforce it
                                     if( !serverOptions.autoCreateContextsSecret().equals( "" ) && !serverOptions.autoCreateContextsSecret().equals( vDirsSharedKey ) ) {
                                         vDirs = null;
-                                        logOnce( deploymentKey, "VDirsSharedKeyNotMatch", "warn", "The x-vdirs header was provided, but it is being igonred because the x-vdirs-sharedkey header [" + vDirsSharedKey + "] doesn't match the auto-create-contexts-secret setting [" + ( serverOptions.autoCreateContextsSecret() == null ? "" : serverOptions.autoCreateContextsSecret() ) + "] for deploymentKey [" + deploymentKey + "]." );
+                                        logOnce( deploymentKey, "VDirsSharedKeyNotMatch", "warn", "The x-vdirs header was provided, but it is being ignored because the x-vdirs-sharedkey header [" + vDirsSharedKey + "] doesn't match the auto-create-contexts-secret setting [" + ( serverOptions.autoCreateContextsSecret() == null ? "" : serverOptions.autoCreateContextsSecret() ) + "] for deploymentKey [" + deploymentKey + "]." );
                                     }
                                 }
                             }

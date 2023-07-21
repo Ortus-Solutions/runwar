@@ -209,6 +209,9 @@ public class SSLUtil
                                 if (cn != null) {
                                     named = true;
                                     RunwarLogger.SECURITY_LOGGER.trace("       Adding SAN SNI host match of [" + cn + "] for cert [" + x509.getSubjectDN().toString() + "]");
+                                    // host must be valid regex, so turn *.foo.com into .*\.foo\.com
+                                    cn = cn.replace(".","\\.");
+                                    cn = cn.replace("*",".*");
                                     sniMatchBuilder.addMatch( cn, sslContext );
                                 }
                             }
