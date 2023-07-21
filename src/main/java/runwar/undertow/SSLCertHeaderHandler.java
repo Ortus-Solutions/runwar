@@ -29,7 +29,7 @@ import runwar.security.SecurityManager;
  *
  * @author Brad Wood
  */
-public class SSLClientCertHeaderHandler implements HttpHandler {
+public class SSLCertHeaderHandler implements HttpHandler {
 
 	private final HttpHandler next;
 	// Adobe will access CGI elements from request attribtues, but Lucee requires an HTTP request header.
@@ -46,10 +46,12 @@ public class SSLClientCertHeaderHandler implements HttpHandler {
 	private static final HttpString CERT_ISSUER = new HttpString("CERT_ISSUER" );
 	private static final HttpString SSL_CLIENT_VERIFY = new HttpString("SSL_CLIENT_VERIFY" );
 	private static final HttpString SSL_SESSION_ID = new HttpString("SSL_SESSION_ID" );
+	private static final HttpString CERT_SERVER_SUBJECT = new HttpString("CERT_SERVER_SUBJECT" );
+	private static final HttpString CERT_SERVER_ISSUER = new HttpString("CERT_SERVER_ISSUER" );
 	private static final HttpString SUBJECT_DN_MAP = new HttpString("javax.servlet.request.X509Certificate.subjectDNMap" );
 	private static final HttpString ISSUER_DN_MAP = new HttpString("javax.servlet.request.X509Certificate.issuerDNMap" );
 
-    public SSLClientCertHeaderHandler(HttpHandler next, Boolean addHTTPHeaders ) {
+    public SSLCertHeaderHandler(HttpHandler next, Boolean addHTTPHeaders ) {
         this.next = next;
 		this.addHTTPHeaders = addHTTPHeaders;
     }
@@ -89,9 +91,23 @@ public class SSLClientCertHeaderHandler implements HttpHandler {
 		// There is SSL session info
 		if(ssl != null) {
 
-			X509Certificate clientCert = getClientCert( ssl );
-
 			setCGIElement( exchange, CERT_KEYSIZE, String.valueOf( ssl.getKeySize() ) );
+
+			// Set details of the server cert so it's in our CGI scope
+            if( ssl.getSSLSession().getLocalCertificates() != null ) {
+				Certificate[] serverCerts = ssl.getSSLSession().getLocalCertificates();
+				if(serverCerts.length > 0 && serverCerts[0] instanceof X509Certificate ) {
+					X509Certificate serverCert = (X509Certificate)serverCerts[0];
+
+					String LDAPSName = SecurityManager.reverseDN( serverCert.getSubjectDN().toString() );
+					setCGIElement( exchange, CERT_SERVER_SUBJECT, LDAPSName );
+
+					String LDAPIName = SecurityManager.reverseDN( serverCert.getIssuerDN().toString() );
+					setCGIElement( exchange, CERT_SERVER_ISSUER, LDAPIName );
+				}
+			}
+
+			X509Certificate clientCert = getClientCert( ssl );
 
 			// A client cert was negotiated
 			if( clientCert != null ) {

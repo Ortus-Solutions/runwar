@@ -53,7 +53,7 @@ import runwar.tray.Tray;
 import runwar.undertow.MappedResourceManager;
 import runwar.undertow.HostResourceManager;
 import runwar.undertow.RequestDebugHandler;
-import runwar.undertow.SSLClientCertHeaderHandler;
+import runwar.undertow.SSLCertHeaderHandler;
 import runwar.undertow.LifecyleHandler;
 import runwar.undertow.WelcomeFileHandler;
 import runwar.util.ClassLoaderUtils;

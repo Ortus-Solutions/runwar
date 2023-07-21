@@ -51,7 +51,7 @@ import runwar.tray.Tray;
 import runwar.undertow.MappedResourceManager;
 import runwar.undertow.HostResourceManager;
 import runwar.undertow.RequestDebugHandler;
-import runwar.undertow.SSLClientCertHeaderHandler;
+import runwar.undertow.SSLCertHeaderHandler;
 import runwar.undertow.LifecyleHandler;
 import runwar.undertow.WelcomeFileHandler;
 import runwar.undertow.SiteDeployment;
@@ -344,7 +344,7 @@ public class Server {
                     @Override
                     public HttpHandler wrap(HttpHandler next) {
                         // Set SSL_CLIENT_ headers if client certs are present
-                        return new SSLClientCertHeaderHandler( next, serverOptions.cfEngineName().toLowerCase().contains( "lucee" ) );
+                        return new SSLCertHeaderHandler( next, serverOptions.cfEngineName().toLowerCase().contains( "lucee" ) );
 
                     }
                 });
