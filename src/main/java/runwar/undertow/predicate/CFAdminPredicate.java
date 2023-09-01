@@ -16,12 +16,12 @@ import io.undertow.server.HttpServerExchange;
  * @author Brad Wood
  */
 public class CFAdminPredicate implements Predicate {
-	
+
     public static final CFAdminPredicate INSTANCE = new CFAdminPredicate();
     private RegularExpressionPredicate regexPredicate;
 
 	public CFAdminPredicate() {
-		this.regexPredicate = new RegularExpressionPredicate("^/(CFIDE/administrator|CFIDE/adminapi|CFIDE/AIR|CFIDE/appdeployment|CFIDE/cfclient|CFIDE/classes|CFIDE/componentutils|CFIDE/debug|CFIDE/images|CFIDE/orm|CFIDE/portlets|CFIDE/scheduler|CFIDE/ServerManager|CFIDE/services|CFIDE/websocket|CFIDE/wizards|lucee/admin)/.*", ExchangeAttributes.relativePath(), true, false);
+		this.regexPredicate = new RegularExpressionPredicate("^[/]+(CFIDE[/]+administrator|CFIDE[/]+adminapi|CFIDE[/]+AIR|CFIDE[/]+appdeployment|CFIDE[/]+cfclient|CFIDE[/]+classes|CFIDE[/]+componentutils|CFIDE[/]+debug|CFIDE[/]+images|CFIDE[/]+orm|CFIDE[/]+portlets|CFIDE[/]+scheduler|CFIDE[/]+ServerManager|CFIDE[/]+services|CFIDE[/]+websocket|CFIDE[/]+wizards|lucee[/]+admin)/.*", ExchangeAttributes.relativePath(), true, false);
     }
 
     @Override
