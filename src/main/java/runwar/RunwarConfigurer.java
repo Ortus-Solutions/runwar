@@ -31,31 +31,32 @@ public class RunwarConfigurer {
 
     private static ServerOptions serverOptions;
     private final Server server;
-    private String[] defaultWelcomeFiles = new String[] { "index.cfm", "index.cfml", "default.cfm", "index.html", "index.htm",
+    private String[] defaultWelcomeFiles = new String[] { "index.cfm", "index.cfml", "default.cfm", "index.html",
+            "index.htm",
             "default.html", "default.htm" };
 
-    private static ClassLoader getClassLoader(){
+    private static ClassLoader getClassLoader() {
         return Server.getClassLoader();
 
     }
 
-    RunwarConfigurer(final Server server){
+    RunwarConfigurer(final Server server) {
         this.server = server;
         serverOptions = server.getServerOptions();
     }
-
 
     void configureServerResourceHandler(DeploymentInfo servletBuilder) {
         File warFile = serverOptions.warFile();
         File webInfDir = serverOptions.webInfDir();
         String cfengine = serverOptions.cfEngineName();
-        String cfusionDir = new File(webInfDir,"cfusion").getAbsolutePath().replace('\\', '/');
+        String cfusionDir = new File(webInfDir, "cfusion").getAbsolutePath().replace('\\', '/');
 
         if (cfengine.equals("adobe") || cfengine.equals("") && new File(cfusionDir).exists()) {
-            String cfformDir = new File(webInfDir,"cfform").getAbsolutePath().replace('\\', '/');
+            String cfformDir = new File(webInfDir, "cfform").getAbsolutePath().replace('\\', '/');
 
-        	final String cfClasspath = "%s/lib/updates,%s/lib/,%s/lib/axis2,%s/gateway/lib/,%s/../cfform/jars,%s/../flex/jars,%s/lib/oosdk/lib,%s/lib/oosdk/classes".replaceAll("%s", cfusionDir);
-            final HashMap<String,String> cfprops = new HashMap<>();
+            final String cfClasspath = "%s/lib/updates,%s/lib/,%s/lib/axis2,%s/gateway/lib/,%s/../cfform/jars,%s/../flex/jars,%s/lib/oosdk/lib,%s/lib/oosdk/classes"
+                    .replaceAll("%s", cfusionDir);
+            final HashMap<String, String> cfprops = new HashMap<>();
 
             cfprops.put("coldfusion.home", cfusionDir);
             cfprops.put("coldfusion.rootDir", cfusionDir);
@@ -85,9 +86,10 @@ public class RunwarConfigurer {
         }
 
         configureServerWar(servletBuilder);
-        if(cfengine.equals("adobe")) {
-            String cfCompilerOutput = (String) servletBuilder.getServletContextAttributes().get("coldfusion.compiler.outputDir");
-            if(cfCompilerOutput == null || cfCompilerOutput.matches("^.?WEB-INF.*?")){
+        if (cfengine.equals("adobe")) {
+            String cfCompilerOutput = (String) servletBuilder.getServletContextAttributes()
+                    .get("coldfusion.compiler.outputDir");
+            if (cfCompilerOutput == null || cfCompilerOutput.matches("^.?WEB-INF.*?")) {
                 // I don't know why, but Adobe needs the absolute path, vs. /WEB-INF/cfclasses
                 // CF will throw errors otherwise.
                 File cfCompilerOutputDir = new File(webInfDir, "/cfclasses").getAbsoluteFile();
@@ -97,19 +99,21 @@ public class RunwarConfigurer {
                     LOG.error(e);
                 }
                 LOG.debug("  Setting coldfusion.compiler.outputDir: '" + cfCompilerOutputDir.getPath() + "'");
-                if( !cfCompilerOutputDir.exists() ) {
-                    if(!cfCompilerOutputDir.mkdir()){
+                if (!cfCompilerOutputDir.exists()) {
+                    if (!cfCompilerOutputDir.mkdir()) {
                         LOG.error("  Unable to create cfclasses dir: '" + cfCompilerOutputDir.getPath() + "'");
                     }
                 }
-                servletBuilder.addServletContextAttribute("coldfusion.compiler.outputDir", cfCompilerOutputDir.getPath());
+                servletBuilder.addServletContextAttribute("coldfusion.compiler.outputDir",
+                        cfCompilerOutputDir.getPath());
             }
         }
 
         serverOptions.getSites().get(0).mimeTypes().forEach((ext, contentType) -> {
             servletBuilder.addMimeMapping(new MimeMapping(ext, contentType));
         });
-        // Only needed until this is complete: https://issues.redhat.com/browse/UNDERTOW-2218
+        // Only needed until this is complete:
+        // https://issues.redhat.com/browse/UNDERTOW-2218
         servletBuilder.addMimeMapping(new MimeMapping("webp", "image/webp"));
     }
 
@@ -122,30 +126,32 @@ public class RunwarConfigurer {
         }
         servletBuilder.setClassLoader(getClassLoader());
 
-        WebXMLParser.parseWebXml(serverOptions.webXmlFile(), servletBuilder, serverOptions.ignoreWebXmlRestMappings(), false, serverOptions.servletRestEnable(), serverOptions);
+        WebXMLParser.parseWebXml(serverOptions.webXmlFile(), servletBuilder, serverOptions.ignoreWebXmlRestMappings(),
+                false, serverOptions.servletRestEnable(), serverOptions);
         File webXMLOverrideFile = serverOptions.webXmlOverrideFile();
-        if(webXMLOverrideFile!=null){
+        if (webXMLOverrideFile != null) {
             LOG.debug("  Using webxml override: '" + webXMLOverrideFile.getAbsolutePath() + "'");
-            WebXMLParser.parseWebXml(webXMLOverrideFile, servletBuilder, serverOptions.ignoreWebXmlRestMappings(), serverOptions.webXmlOverrideForce(), serverOptions.servletRestEnable(), serverOptions);
+            WebXMLParser.parseWebXml(webXMLOverrideFile, servletBuilder, serverOptions.ignoreWebXmlRestMappings(),
+                    serverOptions.webXmlOverrideForce(), serverOptions.servletRestEnable(), serverOptions);
         }
     }
 
     @SuppressWarnings("unchecked")
     private void configureURLRewrite(DeploymentInfo servletBuilder, File webInfDir) throws ClassNotFoundException {
-        if(serverOptions.urlRewriteEnable()) {
+        if (serverOptions.urlRewriteEnable()) {
             LOG.debug("  Enabling Tuckey URL rewriting");
             Class<Filter> rewriteFilter;
             String urlRewriteFile = "runwar/urlrewrite.xml";
-            if(new File(webInfDir,"urlrewrite.xml").exists() && serverOptions.urlRewriteFile() == null){
-                serverOptions.urlRewriteFile(new File(webInfDir,"urlrewrite.xml"));
+            if (new File(webInfDir, "urlrewrite.xml").exists() && serverOptions.urlRewriteFile() == null) {
+                serverOptions.urlRewriteFile(new File(webInfDir, "urlrewrite.xml"));
             }
-            try{
+            try {
                 rewriteFilter = (Class<Filter>) getClassLoader().loadClass("runwar.util.UrlRewriteFilter");
             } catch (java.lang.ClassNotFoundException e) {
                 rewriteFilter = (Class<Filter>) Server.class.getClassLoader().loadClass("runwar.util.UrlRewriteFilter");
             }
-            if(serverOptions.urlRewriteFile() != null) {
-                if(!serverOptions.urlRewriteFile().isFile()) {
+            if (serverOptions.urlRewriteFile() != null) {
+                if (!serverOptions.urlRewriteFile().isFile()) {
                     String message = "The URL rewrite file " + urlRewriteFile + " does not exist!";
                     LOG.error(message);
                     throw new RuntimeException(message);
@@ -155,15 +161,15 @@ public class RunwarConfigurer {
             }
 
             String rewriteFormat = serverOptions.urlRewriteApacheFormat() ? "modRewrite-style" : "XML";
-            LOG.debug(rewriteFormat + " rewrite config file: " + urlRewriteFile);
+            LOG.debug("    " + rewriteFormat + " rewrite config file: " + urlRewriteFile);
             FilterInfo rewriteFilterInfo = new FilterInfo("UrlRewriteFilter", rewriteFilter)
                     .addInitParam("confPath", urlRewriteFile)
                     .addInitParam("statusEnabled", Boolean.toString(serverOptions.debug()))
                     .addInitParam("modRewriteConf", Boolean.toString(serverOptions.urlRewriteApacheFormat()));
-            if(serverOptions.urlRewriteCheckInterval() != null) {
+            if (serverOptions.urlRewriteCheckInterval() != null) {
                 rewriteFilterInfo.addInitParam("confReloadCheckInterval", serverOptions.urlRewriteCheckInterval());
             }
-            if(serverOptions.urlRewriteStatusPath() != null && serverOptions.urlRewriteStatusPath().length() != 0) {
+            if (serverOptions.urlRewriteStatusPath() != null && serverOptions.urlRewriteStatusPath().length() != 0) {
                 rewriteFilterInfo.addInitParam("statusPath", serverOptions.urlRewriteStatusPath());
             }
             rewriteFilterInfo.addInitParam("logLevel", "SLF4J");
@@ -174,12 +180,14 @@ public class RunwarConfigurer {
 
     @SuppressWarnings({ "unchecked" })
     private void configurePathInfoFilter(DeploymentInfo servletBuilder) throws ClassNotFoundException {
-        if(serverOptions.filterPathInfoEnable()) {
+        if (serverOptions.filterPathInfoEnable()) {
             Class<Filter> regexPathInfoFilter;
-            try{
-                regexPathInfoFilter = (Class<Filter>) getClassLoader().loadClass("org.cfmlprojects.regexpathinfofilter.RegexPathInfoFilter");
+            try {
+                regexPathInfoFilter = (Class<Filter>) getClassLoader()
+                        .loadClass("org.cfmlprojects.regexpathinfofilter.RegexPathInfoFilter");
             } catch (java.lang.ClassNotFoundException e) {
-                regexPathInfoFilter = (Class<Filter>) Server.class.getClassLoader().loadClass("org.cfmlprojects.regexpathinfofilter.RegexPathInfoFilter");
+                regexPathInfoFilter = (Class<Filter>) Server.class.getClassLoader()
+                        .loadClass("org.cfmlprojects.regexpathinfofilter.RegexPathInfoFilter");
             }
             servletBuilder.addFilter(new FilterInfo("RegexPathInfoFilter", regexPathInfoFilter));
             servletBuilder.addFilterUrlMapping("RegexPathInfoFilter", "/*", DispatcherType.REQUEST);
@@ -187,39 +195,32 @@ public class RunwarConfigurer {
         }
     }
 
-    static List<URL> getJarList( String libDirs ) throws IOException {
+    static List<URL> getJarList(String libDirs) throws IOException {
         List<URL> classpath = new ArrayList<>();
-        String[] list = libDirs.split( "," );
-        for( String path : list )
-        {
-            if( ".".equals( path ) || "..".equals( path ) )
-            {
+        String[] list = libDirs.split(",");
+        for (String path : list) {
+            if (".".equals(path) || "..".equals(path)) {
                 continue;
             }
 
-            File file = new File( path );
-            if( file.exists() && file.isDirectory() )
-            {
+            File file = new File(path);
+            if (file.exists() && file.isDirectory()) {
                 File fileList[] = file.listFiles();
-                for( File item : fileList )
-                {
+                for (File item : fileList) {
                     String directoryName = item.getAbsolutePath();
-                    classpath.addAll( getJarList( directoryName ) );
+                    classpath.addAll(getJarList(directoryName));
                 }
-            }
-            else if( file.exists() && file.isFile() )
-            {
+            } else if (file.exists() && file.isFile()) {
                 String fileName = file.getAbsolutePath().toLowerCase();
-                if ( fileName.endsWith( ".jar" ) || fileName.endsWith( ".zip" ) ) {
+                if (fileName.endsWith(".jar") || fileName.endsWith(".zip")) {
                     URL url = file.toURI().toURL();
-                    classpath.add( url );
-                    LOG.trace( "  Lib: " + file.getAbsolutePath() );
+                    classpath.add(url);
+                    LOG.trace("  Lib: " + file.getAbsolutePath());
                 }
             }
         }
         return classpath;
     }
-
 
     private void addCacheHandler(final DeploymentInfo servletBuilder) {
         // this handles mime types and adds a simple cache for static files
@@ -233,10 +234,10 @@ public class RunwarConfigurer {
             mimes.addMapping("woff", "application/x-font-woff");
             List<String> suffixList = new ArrayList<>(Arrays.asList(".eot", ".otf", ".ttf", ".woff"));
             // add the default types and any added in web.xml files
-            for(MimeMapping mime : servletBuilder.getMimeMappings()) {
+            for (MimeMapping mime : servletBuilder.getMimeMappings()) {
                 LOG.debug("Adding mime-name: " + mime.getExtension() + " - " + mime.getMimeType());
                 mimes.addMapping(mime.getExtension(), mime.getMimeType());
-                suffixList.add("."+mime.getExtension());
+                suffixList.add("." + mime.getExtension());
             }
             resourceHandler.setMimeMappings(mimes.build());
             String[] suffixes = new String[suffixList.size()];
@@ -262,45 +263,49 @@ public class RunwarConfigurer {
             servletBuilder.setSendCustomReasonPhraseOnError(true);
         }
 
-        if(serverOptions.getSites().get(0).errorPages() != null){
-            for(Integer errorCode : serverOptions.getSites().get(0).errorPages().keySet()) {
+        if (serverOptions.getSites().get(0).errorPages() != null) {
+            for (Integer errorCode : serverOptions.getSites().get(0).errorPages().keySet()) {
                 String location = serverOptions.getSites().get(0).errorPages().get(errorCode);
-                if(errorCode == 1) {
-                    servletBuilder.addErrorPage( new ErrorPage(location));
+                if (errorCode == 1) {
+                    servletBuilder.addErrorPage(new ErrorPage(location));
                 } else {
-                    servletBuilder.addErrorPage( new ErrorPage(location, errorCode));
+                    servletBuilder.addErrorPage(new ErrorPage(location, errorCode));
                 }
             }
         }
 
         // Default list of what the default servlet will serve
-        String allowedExt = "3gp,3gpp,7z,ai,aif,aiff,asf,asx,atom,au,avi,bin,bmp,btm,cco,crt,css,csv,deb,der,dmg,doc,docx,eot,eps,flv,font,gif,hqx,htc,htm,html,ico,img,ini,iso,jad,jng,jnlp,jpeg,jpg,js,json,kar,kml,kmz,m3u8,m4a,m4v,map,mid,midi,mml,mng,mov,mp3,mp4,mpeg,mpeg4,mpg,msi,msm,msp,ogg,otf,pdb,pdf,pem,pl,pm,png,ppt,pptx,prc,ps,psd,ra,rar,rpm,rss,rtf,run,sea,shtml,sit,svg,svgz,swf,tar,tcl,tif,tiff,tk,ts,ttf,txt,wav,wbmp,webm,webp,wmf,wml,wmlc,wmv,woff,woff2,xhtml,xls,xlsx,xml,xpi,xspf,zip,aifc,aac,apk,bak,bk,bz2,cdr,cmx,dat,dtd,eml,fla,gz,gzip,ipa,ia,indd,hey,lz,maf,markdown,md,mkv,mp1,mp2,mpe,odt,ott,odg,odf,ots,pps,pot,pmd,pub,raw,sdd,tsv,xcf,yml,yaml,handlebars,hbs";        // Add any custom additions by our users
-        if( serverOptions.getSites().get(0).defaultServletAllowedExt().length() > 0 ) {
-        	allowedExt += "," + serverOptions.getSites().get(0).defaultServletAllowedExt();
+        // Add any custom additions by our users
+        String allowedExt = "3gp,3gpp,7z,ai,aif,aiff,asf,asx,atom,au,avi,bin,bmp,btm,cco,crt,css,csv,deb,der,dmg,doc,docx,eot,eps,flv,font,gif,hqx,htc,htm,html,ico,img,ini,iso,jad,jng,jnlp,jpeg,jpg,js,json,kar,kml,kmz,m3u8,m4a,m4v,map,mid,midi,mml,mng,mov,mp3,mp4,mpeg,mpeg4,mpg,msi,msm,msp,ogg,otf,pdb,pdf,pem,pl,pm,png,ppt,pptx,prc,ps,psd,ra,rar,rpm,rss,rtf,run,sea,shtml,sit,svg,svgz,swf,tar,tcl,tif,tiff,tk,ts,ttf,txt,wav,wbmp,webm,webp,wmf,wml,wmlc,wmv,woff,woff2,xhtml,xls,xlsx,xml,xpi,xspf,zip,aifc,aac,apk,bak,bk,bz2,cdr,cmx,dat,dtd,eml,fla,gz,gzip,ipa,ia,indd,hey,lz,maf,markdown,md,mkv,mp1,mp2,mpe,odt,ott,odg,odf,ots,pps,pot,pmd,pub,raw,sdd,tsv,xcf,yml,yaml,handlebars,hbs";
+        if (serverOptions.getSites().get(0).defaultServletAllowedExt().length() > 0) {
+            allowedExt += "," + serverOptions.getSites().get(0).defaultServletAllowedExt();
         }
 
         allowedExt = allowedExt.toLowerCase();
         StringBuilder allowedExtBuilder = new StringBuilder();
-        for( String ext : allowedExt.split(",") ) {
-        	expandExtension( ext, allowedExtBuilder );
+        for (String ext : allowedExt.split(",")) {
+            expandExtension(ext, allowedExtBuilder);
         }
         allowedExt = allowedExtBuilder.toString();
-        if( allowedExt.endsWith(",") ) {
-        	allowedExt = allowedExt.substring(0, allowedExt.length()-1);
+        if (allowedExt.endsWith(",")) {
+            allowedExt = allowedExt.substring(0, allowedExt.length() - 1);
         }
 
-        // this prevents us from having to use our own ResourceHandler (directory listing, welcome files, see below) and error handler for now
-        servletBuilder.addServlet( new ServletInfo(io.undertow.servlet.handlers.ServletPathMatches.DEFAULT_SERVLET_NAME, DefaultServlet.class)
-                .addInitParam("directory-listing", Boolean.toString(serverOptions.getSites().get(0).directoryListingEnable()))
+        // this prevents us from having to use our own ResourceHandler (directory
+        // listing, welcome files, see below) and error handler for now
+        servletBuilder.addServlet(new ServletInfo(io.undertow.servlet.handlers.ServletPathMatches.DEFAULT_SERVLET_NAME,
+                DefaultServlet.class)
+                .addInitParam("directory-listing",
+                        Boolean.toString(serverOptions.getSites().get(0).directoryListingEnable()))
                 .addInitParam("default-allowed", "false")
-        		.addInitParam("allowed-extensions", allowedExt)
-        		.addInitParam("allow-post", "true") );
+                .addInitParam("allowed-extensions", allowedExt)
+                .addInitParam("allow-post", "true"));
 
-        List<?> welcomePages =  servletBuilder.getWelcomePages();
-        if(serverOptions.ignoreWebXmlWelcomePages()) {
+        List<?> welcomePages = servletBuilder.getWelcomePages();
+        if (serverOptions.ignoreWebXmlWelcomePages()) {
             LOG.debug("  Ignoring web.xml welcome file, so adding server options welcome files to deployment manager.");
             servletBuilder.addWelcomePages(serverOptions.getSites().get(0).welcomeFiles());
-        } else if(welcomePages.size() == 0){
+        } else if (welcomePages.size() == 0) {
             servletBuilder.addWelcomePages(defaultWelcomeFiles);
         }
 
@@ -308,12 +313,15 @@ public class RunwarConfigurer {
 
     void configureRestMappings(final DeploymentInfo servletBuilder) {
 
-        if(serverOptions.ignoreWebXmlRestMappings() && serverOptions.servletRestEnable()) {
-        	LOG.debug("  Overriding web.xml rest mappings with " + Arrays.toString( serverOptions.servletRestMappings() ) );
+        if (serverOptions.ignoreWebXmlRestMappings() && serverOptions.servletRestEnable()) {
+            LOG.debug(
+                    "  Overriding web.xml rest mappings with " + Arrays.toString(serverOptions.servletRestMappings()));
             for (Map.Entry<String, ServletInfo> stringServletInfoEntry : servletBuilder.getServlets().entrySet()) {
                 ServletInfo restServlet = stringServletInfoEntry.getValue();
-//                LOG.trace("Checking servlet named: " + restServlet.getName() + " to see if it's a REST servlet.");
-                if (restServlet.getName().toLowerCase().equals("restservlet") || restServlet.getName().toLowerCase().equals("cfrestservlet")) {
+                // LOG.trace("Checking servlet named: " + restServlet.getName() + " to see if
+                // it's a REST servlet.");
+                if (restServlet.getName().toLowerCase().equals("restservlet")
+                        || restServlet.getName().toLowerCase().equals("cfrestservlet")) {
                     for (String path : serverOptions.servletRestMappings()) {
                         restServlet.addMapping(path);
                         LOG.debug("  Added rest mapping: " + path + " to " + restServlet.getName());
@@ -329,16 +337,18 @@ public class RunwarConfigurer {
     void expandExtension(String input, StringBuilder allowedExtBuilder) {
         char[] currentCombo = input.toCharArray();
 
-        // Create a bit vector the same length as the input, and set all of the bits to 1
+        // Create a bit vector the same length as the input, and set all of the bits to
+        // 1
         BitSet bv = new BitSet(input.length());
         bv.set(0, currentCombo.length);
 
         // While the bit vector still has some bits set
-        while(!bv.isEmpty()) {
-            // Loop through the array of characters and set each one to uppercase or lowercase,
+        while (!bv.isEmpty()) {
+            // Loop through the array of characters and set each one to uppercase or
+            // lowercase,
             // depending on whether its corresponding bit is set
-            for(int i = 0; i < currentCombo.length; ++i) {
-                if(bv.get(i)) // If the bit is set
+            for (int i = 0; i < currentCombo.length; ++i) {
+                if (bv.get(i)) // If the bit is set
                     currentCombo[i] = Character.toUpperCase(currentCombo[i]);
                 else
                     currentCombo[i] = Character.toLowerCase(currentCombo[i]);
@@ -352,21 +362,21 @@ public class RunwarConfigurer {
             DecrementBitVector(bv, currentCombo.length);
         }
 
-        // Now the bit vector contains all zeroes, which corresponds to all of the letters being lowercase.
+        // Now the bit vector contains all zeroes, which corresponds to all of the
+        // letters being lowercase.
         // Simply append the input as lowercase for the final combination
         allowedExtBuilder.append(input.toLowerCase());
         allowedExtBuilder.append(",");
     }
 
-
     public void DecrementBitVector(BitSet bv, int numberOfBits) {
         int currentBit = numberOfBits - 1;
-        while(currentBit >= 0) {
+        while (currentBit >= 0) {
             bv.flip(currentBit);
 
             // If the bit became a 0 when we flipped it, then we're done.
             // Otherwise we have to continue flipping bits
-            if(!bv.get(currentBit))
+            if (!bv.get(currentBit))
                 break;
             currentBit--;
         }

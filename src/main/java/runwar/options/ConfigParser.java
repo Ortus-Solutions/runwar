@@ -22,8 +22,8 @@ public class ConfigParser {
     private ServerOptions serverOptions;
     private File configFile;
 
-    public ConfigParser(File config){
-        if(!config.exists()) {
+    public ConfigParser(File config) {
+        if (!config.exists()) {
             String message = "Configuration file does not exist: " + config.getAbsolutePath();
             CONF_LOG.error(message);
             throw new RuntimeException(message);
@@ -34,8 +34,7 @@ public class ConfigParser {
         parseOptions();
     }
 
-
-    public ServerOptions getServerOptions(){
+    public ServerOptions getServerOptions() {
         return serverOptions;
     }
 
@@ -52,7 +51,6 @@ public class ConfigParser {
 
         JSONOption serverConfig = new JSONOption(jsonConfig);
 
-
         if (serverConfig.hasOption("debug")) {
             boolean debug = serverConfig.getOptionBoolean("debug");
             serverOptions.debug(debug);
@@ -61,11 +59,11 @@ public class ConfigParser {
             }
         }
 
-        if (serverConfig.hasOption("trace") && serverConfig.getOptionBoolean("trace") ) {
+        if (serverConfig.hasOption("trace") && serverConfig.getOptionBoolean("trace")) {
             serverOptions.logLevel("trace");
         }
 
-        if (serverConfig.hasOption("RunwarAppenderLayout") ) {
+        if (serverConfig.hasOption("RunwarAppenderLayout")) {
             serverOptions.consoleLayout(serverConfig.getOptionValue("RunwarAppenderLayout"));
         }
 
@@ -74,11 +72,11 @@ public class ConfigParser {
         }
 
         /*
-        CommandBox never passes this, always defaults
-        if (serverConfig.hasOption(line, Keys.LOGBASENAME)) {
-            serverOptions.logFileName(line.getOptionValue(Keys.LOGBASENAME));
-        }
-        */
+         * CommandBox never passes this, always defaults
+         * if (serverConfig.hasOption(line, Keys.LOGBASENAME)) {
+         * serverOptions.logFileName(line.getOptionValue(Keys.LOGBASENAME));
+         * }
+         */
 
         if (serverConfig.hasOption("logDir")) {
             serverOptions.logDir(serverConfig.getOptionValue("logDir"));
@@ -92,11 +90,11 @@ public class ConfigParser {
 
         LoggerFactory.configure(serverOptions);
 
-        if (serverConfig.hasOption("listeners") ) {
+        if (serverConfig.hasOption("listeners")) {
             serverOptions.listeners(serverConfig.g("listeners"));
         }
 
-        if (serverConfig.hasOption("bindings") ) {
+        if (serverConfig.hasOption("bindings")) {
             serverOptions.bindings(serverConfig.getOptionObject("bindings"));
         }
 
@@ -112,11 +110,12 @@ public class ConfigParser {
             serverOptions.launchTimeout(((Number) serverConfig.getParsedOptionValue("startTimeout")).intValue() * 1000);
         }
         /*
-        CommandBox never passes this
-        if (serverConfig.hasOption(Keys.PASSWORD)) {
-            serverOptions.stopPassword(serverConfig.getOptionValue(Keys.PASSWORD).toCharArray());
-        }
-        */
+         * CommandBox never passes this
+         * if (serverConfig.hasOption(Keys.PASSWORD)) {
+         * serverOptions.stopPassword(serverConfig.getOptionValue(Keys.PASSWORD).
+         * toCharArray());
+         * }
+         */
         if (serverConfig.hasOption("stopsocket")) {
             serverOptions.stopPort(((Number) serverConfig.getParsedOptionValue("stopsocket")).intValue());
         }
@@ -149,8 +148,9 @@ public class ConfigParser {
             serverOptions.contextPath(serverConfig.getOptionValue("contextPath"));
         }
 
-        if (serverConfig.hasOption("rewritesEnable") && serverConfig.hasOption("rewritesConfig") && serverConfig.getOptionValue("rewritesConfig").length()>0 ) {
-            serverOptions.urlRewriteEnable(serverConfig.getOptionBoolean("rewritesEnable"));
+        if (serverConfig.hasOption("tuckeyRewritesEnable") && serverConfig.hasOption("rewritesConfig")
+                && serverConfig.getOptionValue("rewritesConfig").length() > 0) {
+            serverOptions.urlRewriteEnable(serverConfig.getOptionBoolean("tuckeyRewritesEnable"));
             serverOptions.urlRewriteFile(getFile(serverConfig.getOptionValue("rewritesConfig")));
 
             if (serverConfig.hasOption("rewritesConfigReloadSeconds")) {
@@ -161,7 +161,6 @@ public class ConfigParser {
                 serverOptions.urlRewriteStatusPath(serverConfig.getOptionValue("rewritesStatusPath"));
             }
         }
-
 
         if (serverConfig.hasOption("openBrowser")) {
             serverOptions.openbrowser(serverConfig.getOptionBoolean("openBrowser"));
@@ -235,7 +234,6 @@ public class ConfigParser {
             serverOptions.mariaDB4jImportSQLFile(new File(serverConfig.getOptionValue("MARIADB4JIMPORT")));
         }
 
-
         if (serverConfig.hasOption("restMappings")) {
             serverOptions.servletRestMappings(serverConfig.getOptionValue("restMappings"));
             // If rest mappings are provided, then it's enabled!
@@ -281,24 +279,22 @@ public class ConfigParser {
         }
 
         if (serverConfig.hasOption("runwarUndertowOptions")) {
-           serverOptions.undertowOptions(serverConfig.getOptionObject("runwarUndertowOptions"));
+            serverOptions.undertowOptions(serverConfig.getOptionObject("runwarUndertowOptions"));
         }
 
-
-
         ///////////////////////////////////////////////////////////////////////////////////////////
-        //                              SITE SPECIFIC SETTING                                    //
+        // SITE SPECIFIC SETTING //
         ///////////////////////////////////////////////////////////////////////////////////////////
 
-        JSONObject sites = serverConfig.getOptionObject( "sites" );
-        for ( Map.Entry<String, Object> entry : sites.entrySet() ) {
+        JSONObject sites = serverConfig.getOptionObject("sites");
+        for (Map.Entry<String, Object> entry : sites.entrySet()) {
 
             String siteName = entry.getKey();
-            JSONOption siteConfig = new JSONOption( (JSONObject)entry.getValue() );
+            JSONOption siteConfig = new JSONOption((JSONObject) entry.getValue());
 
-            SiteOptions site = new SiteOptions().siteName( siteName );
+            SiteOptions site = new SiteOptions().siteName(siteName);
 
-            site.webroot(getFile( siteConfig.getOptionValue("webroot")));
+            site.webroot(getFile(siteConfig.getOptionValue("webroot")));
 
             if (siteConfig.hasOption("servletPassPredicate")) {
                 site.servletPassPredicate(siteConfig.getOptionValue("servletPassPredicate"));
@@ -368,12 +364,12 @@ public class ConfigParser {
             if (siteConfig.hasOption("clientCertEnable")) {
                 site.clientCertEnable(siteConfig.getOptionBoolean("clientCertEnable"));
 
-                if( site.clientCertEnable() ) {
+                if (site.clientCertEnable()) {
                     if (siteConfig.hasOption("clientCertSubjectDNs")) {
-                       site.clientCertSubjectDNs(siteConfig.getOptionArray("clientCertSubjectDNs"));
+                        site.clientCertSubjectDNs(siteConfig.getOptionArray("clientCertSubjectDNs"));
                     }
                     if (siteConfig.hasOption("clientCertIssuerDNs")) {
-                     site.clientCertIssuerDNs(siteConfig.getOptionArray("clientCertIssuerDNs"));
+                        site.clientCertIssuerDNs(siteConfig.getOptionArray("clientCertIssuerDNs"));
                     }
                 }
             }
@@ -408,11 +404,11 @@ public class ConfigParser {
             }
 
             if (siteConfig.hasOption("mimeTypes")) {
-             site.mimeTypes(siteConfig.getOptionObject("mimeTypes"));
+                site.mimeTypes(siteConfig.getOptionObject("mimeTypes"));
             }
 
             if (siteConfig.hasOption("aliases")) {
-             site.aliases(siteConfig.getOptionObject("aliases"));
+                site.aliases(siteConfig.getOptionObject("aliases"));
             }
 
             if (siteConfig.hasOption("allowedExt")) {
@@ -425,13 +421,13 @@ public class ConfigParser {
 
             if (siteConfig.hasOption("fileCacheEnable")) {
                 // causing issues...
-                //site.cacheServletPaths(siteConfig.getOptionBoolean("fileCacheEnable"));
+                // site.cacheServletPaths(siteConfig.getOptionBoolean("fileCacheEnable"));
             }
-            /* Commmand has no setting for this
-            if (siteConfig.hasOption("RESOURCEMANAGERFILESYSTEMWATCHER")) {
-                site.resourceManagerFileSystemWatcher(siteConfig.getOptionBoolean("RESOURCEMANAGERFILESYSTEMWATCHER"));
+
+            if (siteConfig.hasOption("fileCacheFileSystemWatcherEnable")) {
+                site.resourceManagerFileSystemWatcher(siteConfig.getOptionBoolean("fileCacheFileSystemWatcherEnable"));
             }
-            */
+
             if (siteConfig.hasOption("fileCacheTotalSizeMB")) {
                 site.fileCacheTotalSizeMB(Integer.valueOf(siteConfig.getOptionValue("fileCacheTotalSizeMB")));
             }
@@ -452,13 +448,18 @@ public class ConfigParser {
             }
 
             // Related info:
-            // Undertow transferMinSize is set at the resourceManager level, and described as "Size to use direct FS to network transfer (if supported by OS/JDK) instead of read/write"
-            // Undertow uses Java's FileChannel.transferTo() method which (depending on the OS) can greatly optimize sending of files by having the kernel directly
-            // transfer the bytes from the file to the socket without Java needing to have an intermediate buffer in memory.
-            // The feature is called "send file" in programs like Apache, and can cause issues as detailed here:
+            // Undertow transferMinSize is set at the resourceManager level, and described
+            // as "Size to use direct FS to network transfer (if supported by OS/JDK)
+            // instead of read/write"
+            // Undertow uses Java's FileChannel.transferTo() method which (depending on the
+            // OS) can greatly optimize sending of files by having the kernel directly
+            // transfer the bytes from the file to the socket without Java needing to have
+            // an intermediate buffer in memory.
+            // The feature is called "send file" in programs like Apache, and can cause
+            // issues as detailed here:
             // https://issues.redhat.com/browse/UNDERTOW-584
             if (siteConfig.hasOption("sendFileMinSizeKB")) {
-                site.transferMinSize(Long.valueOf(siteConfig.getOptionValue("transferMinSize"))*1024);
+                site.transferMinSize(Long.valueOf(siteConfig.getOptionValue("transferMinSize")) * 1024);
             }
 
             if (siteConfig.hasOption("GZipEnable")) {
@@ -476,11 +477,10 @@ public class ConfigParser {
                 site.proxyPeerAddressEnable(siteConfig.getOptionBoolean("useProxyForwardedIP"));
             }
 
-            serverOptions.addSite( site );
+            serverOptions.addSite(site);
         }
 
     }
-
 
     static File getFile(String path) {
         File file = new File(path);
@@ -504,9 +504,9 @@ public class ConfigParser {
         public ArrayList<String> getOptions() {
             Iterator<String> keys = jsonConfig.keySet().iterator();
             ArrayList<String> options = new ArrayList<String>();
-            while(keys.hasNext()) {
+            while (keys.hasNext()) {
                 String key = keys.next();
-                options.add(key+"="+jsonConfig.get(key).toString());
+                options.add(key + "=" + jsonConfig.get(key).toString());
             }
             return options;
         }
@@ -517,39 +517,39 @@ public class ConfigParser {
 
         public String getOptionValue(String key) {
             key = getKeyNoCase(key);
-            if(hasOption(key)){
-              return jsonConfig.get(key).toString();
+            if (hasOption(key)) {
+                return jsonConfig.get(key).toString();
             }
             return null;
         }
 
         public Boolean getOptionBoolean(String key) {
             key = getKeyNoCase(key);
-            if(hasOption(key)){
-              return Boolean.valueOf( jsonConfig.get(key).toString() );
+            if (hasOption(key)) {
+                return Boolean.valueOf(jsonConfig.get(key).toString());
             }
             return null;
         }
 
         public Integer getOptionInt(String key) {
             key = getKeyNoCase(key);
-            if(hasOption(key)){
-              return Integer.valueOf( jsonConfig.get(key).toString() );
+            if (hasOption(key)) {
+                return Integer.valueOf(jsonConfig.get(key).toString());
             }
             return null;
         }
 
         public File getOptionFile(String key) {
             key = getKeyNoCase(key);
-            if(hasOption(key)){
-              return getFile( jsonConfig.get(key).toString() );
+            if (hasOption(key)) {
+                return getFile(jsonConfig.get(key).toString());
             }
             return null;
         }
 
         public JSONOption g(String key) {
             key = getKeyNoCase(key);
-          return new JSONOption((JSONObject) jsonConfig.get(key));
+            return new JSONOption((JSONObject) jsonConfig.get(key));
         }
 
         public JSONObject get(String key) {
@@ -562,7 +562,7 @@ public class ConfigParser {
         }
 
         public void put(String key, String value) {
-            jsonConfig.put(key,value);
+            jsonConfig.put(key, value);
         }
 
         public JSONArray getOptionArray(String key) {
@@ -571,22 +571,22 @@ public class ConfigParser {
         }
 
         public String getKeyNoCase(String dirtyKey) {
-            if(dirtyKey == null)
+            if (dirtyKey == null)
                 return dirtyKey;
 
-            if( jsonConfig.containsKey( dirtyKey ) )
+            if (jsonConfig.containsKey(dirtyKey))
                 return dirtyKey;
 
             String result = jsonConfig.keySet().stream()
                     .filter(map -> dirtyKey.toLowerCase().equals(map.toLowerCase()))
-                    .map(map->map)
+                    .map(map -> map)
                     .collect(Collectors.joining());
             return result.length() > 0 ? result : dirtyKey;
         }
 
         public boolean hasOption(String key) {
             key = getKeyNoCase(key);
-            if(key == null)
+            if (key == null)
                 return false;
             return jsonConfig.containsKey(key) && jsonConfig.get(key).toString().length() > 0;
         }
