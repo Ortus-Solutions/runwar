@@ -1,27 +1,13 @@
 package runwar.undertow;
 
-import static runwar.logging.RunwarLogger.LOG;
-
-import java.io.File;
 import java.io.IOException;
-import java.nio.file.Paths;
-import java.util.Arrays;
-import java.util.Collections;
-import java.util.Date;
-import java.util.HashMap;
-import java.util.HashSet;
 import java.util.List;
-import java.util.Map;
-import java.util.Set;
 
 import io.undertow.server.HttpHandler;
 import io.undertow.server.HttpServerExchange;
-import io.undertow.util.Headers;
-import io.undertow.util.StatusCodes;
-import io.undertow.util.CanonicalPathUtils;
 import io.undertow.server.handlers.resource.Resource;
 import io.undertow.server.handlers.resource.ResourceManager;
-import runwar.logging.RunwarLogger;
+import io.undertow.util.CanonicalPathUtils;
 
 public class WelcomeFileHandler implements HttpHandler {
 
@@ -38,10 +24,15 @@ public class WelcomeFileHandler implements HttpHandler {
     @Override
     public void handleRequest(final HttpServerExchange exchange) throws Exception {
         Resource resource = resourceManager.getResource(canonicalize(exchange.getRelativePath()));
-        if( resource != null && resource.isDirectory() ) {
+        if (resource != null && resource.isDirectory()) {
             Resource indexResource = getIndexFiles(exchange, resourceManager, resource.getPath(), welcomeFiles);
             if (indexResource != null) {
-                exchange.setRelativePath( indexResource.getPath() );
+                String newPath = indexResource.getPath();
+                // ensure leading slash
+                if (!newPath.startsWith("/")) {
+                    newPath = "/" + newPath;
+                }
+                exchange.setRelativePath(newPath);
             }
         }
 
@@ -49,8 +40,9 @@ public class WelcomeFileHandler implements HttpHandler {
 
     }
 
-    private Resource getIndexFiles(HttpServerExchange exchange, ResourceManager resourceManager, final String base, List<String> possible) throws IOException {
-        if( possible == null ) {
+    private Resource getIndexFiles(HttpServerExchange exchange, ResourceManager resourceManager, final String base,
+            List<String> possible) throws IOException {
+        if (possible == null) {
             return null;
         }
         String realBase;
@@ -60,7 +52,7 @@ public class WelcomeFileHandler implements HttpHandler {
             realBase = base + "/";
         }
         for (String possibility : possible) {
-            Resource index = resourceManager.getResource( canonicalize(realBase + possibility));
+            Resource index = resourceManager.getResource(canonicalize(realBase + possibility));
             if (index != null) {
                 return index;
             }
