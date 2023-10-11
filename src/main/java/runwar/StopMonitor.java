@@ -1,19 +1,15 @@
 package runwar;
 
-import runwar.options.ServerOptions;
-import runwar.Server;
+import static runwar.logging.RunwarLogger.LOG;
 
 import java.io.BufferedReader;
 import java.io.IOException;
 import java.io.InputStreamReader;
 import java.io.OutputStream;
-import java.net.InetAddress;
 import java.net.ServerSocket;
 import java.net.Socket;
-import java.net.SocketException;
 
-import static runwar.logging.RunwarLogger.LOG;
-
+import runwar.options.ServerOptions;
 
 public class StopMonitor extends Thread {
 
@@ -42,15 +38,18 @@ public class StopMonitor extends Thread {
             listening = true;
             LOG.info("Starting 'stop' listener thread - Host: 127.0.0.1 - Socket: " + serverOptions.stopPort());
             while (listening) {
-                if (Server.getServerState() == Server.ServerState.STOPPED || Server.getServerState() == Server.ServerState.STOPPING) {
+                if (Server.getServerState() == Server.ServerState.STOPPED
+                        || Server.getServerState() == Server.ServerState.STOPPING) {
                     listening = false;
                 }
                 final Socket clientSocket = serverSocket.accept();
                 int r, i = 0;
                 BufferedReader reader = new BufferedReader(new InputStreamReader(clientSocket.getInputStream()));
                 try {
+                    boolean receivedInput = false;
                     while (listening && (r = reader.read()) != -1) {
                         char ch = (char) r;
+                        receivedInput = true;
                         if (stoppassword.length > i && ch == stoppassword[i]) {
                             i++;
                         } else {
@@ -61,7 +60,11 @@ public class StopMonitor extends Thread {
                         listening = false;
                     } else {
                         if (listening) {
-                            LOG.warn("Incorrect password used when trying to stop server.");
+                            // Ignore connections that simplky disconnect without sending any data. This is
+                            // probablky just a check to see if the serverr is online
+                            if (receivedInput) {
+                                LOG.warn("Incorrect password used when trying to stop server.");
+                            }
                         } else {
                             LOG.debug("Stopped listening for stop password.");
                         }
