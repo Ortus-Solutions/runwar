@@ -1,25 +1,24 @@
 package runwar.options;
 
-import io.undertow.UndertowOptions;
-import net.minidev.json.JSONArray;
-import net.minidev.json.JSONObject;
-import net.minidev.json.parser.JSONParser;
-import org.xnio.OptionMap;
-import org.xnio.Options;
-import runwar.Server;
-import runwar.Server.Mode;
-import runwar.options.SiteOptions;
-import runwar.options.ConfigParser.JSONOption;
+import static runwar.util.Reflection.setOptionMapValue;
 
 import java.io.File;
 import java.net.MalformedURLException;
-import java.net.URL;
-import java.nio.file.Path;
 import java.nio.file.Paths;
-import java.util.*;
-import java.util.stream.Stream;
+import java.util.ArrayList;
+import java.util.HashMap;
+import java.util.List;
+import java.util.Map;
+import java.util.Set;
 
-import static runwar.util.Reflection.setOptionMapValue;
+import org.xnio.OptionMap;
+import org.xnio.Options;
+
+import io.undertow.UndertowOptions;
+import net.minidev.json.JSONArray;
+import net.minidev.json.JSONObject;
+import runwar.Server;
+import runwar.options.ConfigParser.JSONOption;
 
 public class ServerOptions {
 
@@ -29,12 +28,13 @@ public class ServerOptions {
 
     private boolean debug = false, openbrowser = false, enableURLRewrite = false;
 
-    private String pidFile, openbrowserURL,  logFileBaseName="server", logSuffix="txt", libDirs = null;
+    private String pidFile, openbrowserURL, logFileBaseName = "server", logSuffix = "txt", libDirs = null;
 
-                                // 50 secs
+    // 50 secs
     private int launchTimeout = 50 * 1000, socketNumber = 8779;
 
-    private File workingDir, warFile, webInfDir, webXmlFile, webXmlOverrideFile, logDir, urlRewriteFile, urlRewriteLog, trayConfig;
+    private File workingDir, warFile, webInfDir, webXmlFile, webXmlOverrideFile, logDir, urlRewriteFile, urlRewriteLog,
+            trayConfig;
 
     private String iconImage = null;
 
@@ -90,15 +90,15 @@ public class ServerOptions {
 
     public String logPattern = "[%-5p] %c: %m%n";
 
-    private Boolean autoCreateContexts= false;
+    private Boolean autoCreateContexts = false;
 
-    private String autoCreateContextsSecret="";
+    private String autoCreateContextsSecret = "";
 
-    private Integer autoCreateContextsMax=200;
+    private Integer autoCreateContextsMax = 200;
 
-    private Boolean autoCreateContextsVDirs=false;
+    private Boolean autoCreateContextsVDirs = false;
 
-    private String consoleLayout="PatternLayout";
+    private String consoleLayout = "PatternLayout";
 
     private Map<String, Object> consoleLayoutOptions = new HashMap<String, Object>();
 
@@ -116,19 +116,19 @@ public class ServerOptions {
 
     private OptionMap.Builder undertowOptions = OptionMap.builder();
 
-    public String toJson(Set<String> set){
+    public String toJson(Set<String> set) {
         JSONArray jsonArray = new JSONArray();
         jsonArray.addAll(set);
         return jsonArray.toJSONString();
     }
 
-    public String toJson(Map<?,?> map){
-        final Map<String,String> finalMap = new HashMap<>();
+    public String toJson(Map<?, ?> map) {
+        final Map<String, String> finalMap = new HashMap<>();
         map.forEach((o, o2) -> {
-            if(o instanceof Integer){
-                finalMap.put(Integer.toString((Integer) o),(String)o2);
+            if (o instanceof Integer) {
+                finalMap.put(Integer.toString((Integer) o), (String) o2);
             } else {
-                finalMap.put((String)o,(String)o2);
+                finalMap.put((String) o, (String) o2);
             }
         });
         return new JSONObject(finalMap).toJSONString();
@@ -138,9 +138,9 @@ public class ServerOptions {
         return this.sites;
     }
 
-    public ServerOptions addSite( SiteOptions site ) {
-        site.setServerOptions( this );
-        this.sites.add( site );
+    public ServerOptions addSite(SiteOptions site) {
+        site.setServerOptions(this);
+        this.sites.add(site);
         return this;
     }
 
@@ -165,7 +165,7 @@ public class ServerOptions {
      * @see runwar.options.ServerOptions#serverName()
      */
     public String serverName() {
-        if(serverName == null){
+        if (serverName == null) {
             serverName = Paths.get(".").toFile().getAbsoluteFile().getParentFile().getName();
             assert serverName.length() > 3;
         }
@@ -256,7 +256,8 @@ public class ServerOptions {
      * @see runwar.options.ServerOptions#urlRewriteApacheFormat()
      */
     public boolean urlRewriteApacheFormat() {
-        return urlRewriteFile() == null ? false : urlRewriteFile().getPath().endsWith(".htaccess") || urlRewriteFile().getPath().endsWith(".conf");
+        return urlRewriteFile() == null ? false
+                : urlRewriteFile().getPath().endsWith(".htaccess") || urlRewriteFile().getPath().endsWith(".conf");
     }
 
     /**
@@ -306,7 +307,7 @@ public class ServerOptions {
 
     /**
      * @see
-     * runwar.options.ServerOptions#urlRewriteCheckInterval(java.lang.String)
+     *      runwar.options.ServerOptions#urlRewriteCheckInterval(java.lang.String)
      */
     public ServerOptions urlRewriteCheckInterval(String interval) {
         this.urlRewriteCheckInterval = interval;
@@ -322,7 +323,7 @@ public class ServerOptions {
 
     /**
      * @see
-     * runwar.options.ServerOptions#urlRewriteStatusPath(java.lang.String)
+     *      runwar.options.ServerOptions#urlRewriteStatusPath(java.lang.String)
      */
     public ServerOptions urlRewriteStatusPath(String path) {
         if (!path.startsWith("/")) {
@@ -495,7 +496,6 @@ public class ServerOptions {
         return this;
     }
 
-
     /**
      * @see runwar.options.ServerOptions#launchTimeout()
      */
@@ -563,7 +563,7 @@ public class ServerOptions {
      * @see runwar.options.ServerOptions#workingDir()
      */
     public File workingDir() {
-        return workingDir != null ? workingDir: Paths.get(".").toFile().getAbsoluteFile();
+        return workingDir != null ? workingDir : Paths.get(".").toFile().getAbsoluteFile();
     }
 
     /**
@@ -593,10 +593,11 @@ public class ServerOptions {
      * @see runwar.options.ServerOptions#webInfDir()
      */
     public File webInfDir() {
-        if(webInfDir == null) {
-            if (webXmlFile != null && (webXmlFile.getParentFile().getName().equalsIgnoreCase("WEB-INF") || new File(webXmlFile.getParentFile(), "lib").exists())) {
+        if (webInfDir == null) {
+            if (webXmlFile != null && (webXmlFile.getParentFile().getName().equalsIgnoreCase("WEB-INF")
+                    || new File(webXmlFile.getParentFile(), "lib").exists())) {
                 webInfDir = webXmlFile.getParentFile();
-            } else if(warFile() != null && warFile.exists() && warFile.isDirectory()) {
+            } else if (warFile() != null && warFile.exists() && warFile.isDirectory()) {
                 webInfDir = new File(warFile, "WEB-INF");
             }
         }
@@ -615,8 +616,8 @@ public class ServerOptions {
      * @see runwar.options.ServerOptions#webXmlFile()
      */
     public File webXmlFile() {
-        if(webXmlFile == null && webInfDir() != null) {
-            webXmlFile(new File(webInfDir(),"web.xml"));
+        if (webXmlFile == null && webInfDir() != null) {
+            webXmlFile(new File(webInfDir(), "web.xml"));
         }
         return webXmlFile;
     }
@@ -631,7 +632,7 @@ public class ServerOptions {
     /**
      * @see runwar.options.ServerOptions#webXmlOverrideFile()
      */
-    public File webXmlOverrideFile(){
+    public File webXmlOverrideFile() {
         return webXmlOverrideFile;
     }
 
@@ -705,7 +706,7 @@ public class ServerOptions {
 
     /**
      * @see
-     * runwar.options.ServerOptions#trayConfig(net.minidev.json.JSONArray)
+     *      runwar.options.ServerOptions#trayConfig(net.minidev.json.JSONArray)
      */
     public ServerOptions trayConfig(JSONArray trayConfig) {
         this.trayConfigJSON = trayConfig;
@@ -735,7 +736,7 @@ public class ServerOptions {
         return browser;
     }
 
-    public ServerOptions browser(String browser){
+    public ServerOptions browser(String browser) {
         this.browser = browser;
         return this;
     }
@@ -745,7 +746,7 @@ public class ServerOptions {
         return this;
     }
 
-     /**
+    /**
      * @see runwar.options.ServerOptions#dockEnable()
      */
     public boolean dockEnable() {
@@ -769,7 +770,7 @@ public class ServerOptions {
 
     /**
      * @see
-     * runwar.options.ServerOptions#cfmlServletConfigWebDir(java.lang.String)
+     *      runwar.options.ServerOptions#cfmlServletConfigWebDir(java.lang.String)
      */
     public ServerOptions cfmlServletConfigWebDir(String cfmlServletConfigWebDir) {
         this.cfmlServletConfigWebDir = cfmlServletConfigWebDir;
@@ -787,19 +788,18 @@ public class ServerOptions {
 
     /**
      * @see
-     * runwar.options.ServerOptions#cfmlServletConfigServerDir(java.lang.String)
+     *      runwar.options.ServerOptions#cfmlServletConfigServerDir(java.lang.String)
      */
     public ServerOptions cfmlServletConfigServerDir(String cfmlServletConfigServerDir) {
         this.cfmlServletConfigServerDir = cfmlServletConfigServerDir;
         return this;
     }
 
-
     /**
      * @see runwar.options.ServerOptions#warUriString()
      */
     public String warUriString() {
-        if(warFile() == null)
+        if (warFile() == null)
             return "";
         try {
             return warFile().toURI().toURL().toString();
@@ -828,9 +828,14 @@ public class ServerOptions {
      * @see runwar.options.ServerOptions#cfEngineName(java.lang.String)
      */
     public ServerOptions cfEngineName(String cfengineName) {
-        if (cfengineName.toLowerCase().equals("lucee") || cfengineName.toLowerCase().equals("adobe")
-                || cfengineName.toLowerCase().equals("railo") || cfengineName.toLowerCase().equals("")) {
-            this.cfengineName = cfengineName.toLowerCase();
+        if (cfengineName.toLowerCase().contains("lucee")) {
+            this.cfengineName = "lucee";
+        } else if (cfengineName.toLowerCase().contains("adobe")) {
+            this.cfengineName = "adobe";
+        } else if (cfengineName.toLowerCase().contains("railo")) {
+            this.cfengineName = "railo";
+        } else if (cfengineName.equals("")) {
+            this.cfengineName = "";
         } else {
             throw new RuntimeException(
                     "Unknown engine type: " + cfengineName + ", must be one of: lucee, adobe, railo");
@@ -842,9 +847,11 @@ public class ServerOptions {
      * @see runwar.options.ServerOptions#cfEngineName()
      */
     public String cfEngineName() {
-        if(cfengineName.isEmpty() && webInfDir() != null && webInfDir().exists() && new File(webInfDir(),"cfusion").exists()) {
+        if (cfengineName.isEmpty() && webInfDir() != null && webInfDir().exists()
+                && new File(webInfDir(), "cfusion").exists()) {
             cfengineName = "adobe";
-        } else if(cfengineName.isEmpty() && webInfDir() != null && webInfDir().exists() && new File(webInfDir(),"lucee").exists()) {
+        } else if (cfengineName.isEmpty() && webInfDir() != null && webInfDir().exists()
+                && new File(webInfDir(), "lucee").exists()) {
             cfengineName = "lucee";
         }
         return cfengineName;
@@ -897,7 +904,7 @@ public class ServerOptions {
 
     /**
      * @see
-     * runwar.options.ServerOptions#servletRestMappings(java.lang.String)
+     *      runwar.options.ServerOptions#servletRestMappings(java.lang.String)
      */
     public ServerOptions servletRestMappings(String mappings) {
         return servletRestMappings(mappings.split(","));
@@ -905,7 +912,7 @@ public class ServerOptions {
 
     /**
      * @see
-     * runwar.options.ServerOptions#servletRestMappings(java.lang.String[])
+     *      runwar.options.ServerOptions#servletRestMappings(java.lang.String[])
      */
     public ServerOptions servletRestMappings(String[] mappings) {
         this.servletRestMappings = mappings;
@@ -994,7 +1001,7 @@ public class ServerOptions {
      * @see runwar.options.ServerOptions#cookieHttpOnly(boolean)
      */
     public ServerOptions cookieHttpOnly(boolean enable) {
-        this.cookieHttpOnly= enable;
+        this.cookieHttpOnly = enable;
         return this;
     }
 
@@ -1049,8 +1056,6 @@ public class ServerOptions {
         return servletRestMappings() != null && servletRestMappings().length > 0;
     }
 
-
-
     /*
      * @see runwar.options.ServerOptions#autoCreateContexts()
      */
@@ -1062,7 +1067,7 @@ public class ServerOptions {
      * @see runwar.options.ServerOptions#autoCreateContexts(boolean)
      */
     public ServerOptions autoCreateContexts(Boolean autoCreateContexts) {
-    	this.autoCreateContexts = autoCreateContexts;
+        this.autoCreateContexts = autoCreateContexts;
         return this;
     }
 
@@ -1077,10 +1082,9 @@ public class ServerOptions {
      * @see runwar.options.ServerOptions#autoCreateContextsSecret(String)
      */
     public ServerOptions autoCreateContextsSecret(String autoCreateContextsSecret) {
-    	this.autoCreateContextsSecret = autoCreateContextsSecret;
+        this.autoCreateContextsSecret = autoCreateContextsSecret;
         return this;
     }
-
 
     /*
      * @see runwar.options.ServerOptions#autoCreateContextsVDirs()
@@ -1093,7 +1097,7 @@ public class ServerOptions {
      * @see runwar.options.ServerOptions#autoCreateContextsVDirs(boolean)
      */
     public ServerOptions autoCreateContextsVDirs(Boolean autoCreateContextsVDirs) {
-    	this.autoCreateContextsVDirs = autoCreateContextsVDirs;
+        this.autoCreateContextsVDirs = autoCreateContextsVDirs;
         return this;
     }
 
@@ -1108,17 +1112,16 @@ public class ServerOptions {
      * @see runwar.options.ServerOptions#autoCreateContextsMax(Integer)
      */
     public ServerOptions autoCreateContextsMax(Integer autoCreateContextsMax) {
-    	this.autoCreateContextsMax = autoCreateContextsMax;
+        this.autoCreateContextsMax = autoCreateContextsMax;
         return this;
     }
-
 
     /**
      * @see runwar.options.ServerOptions#xnioOptions(java.lang.String)
      */
     public ServerOptions xnioOptions(JSONObject options) {
-        for( String key : options.keySet() ) {
-            setOptionMapValue(serverXnioOptions, Options.class, key.trim(), (String)options.get( key ) );
+        for (String key : options.keySet()) {
+            setOptionMapValue(serverXnioOptions, Options.class, key.trim(), (String) options.get(key));
         }
         return this;
     }
@@ -1138,13 +1141,12 @@ public class ServerOptions {
         return this.serverXnioOptions;
     }
 
-
     /**
      * @see runwar.options.ServerOptions#xnioOptions(java.lang.String)
      */
     public ServerOptions undertowOptions(JSONObject options) {
-        for( String key : options.keySet() ) {
-            setOptionMapValue(undertowOptions, UndertowOptions.class, key.trim(), (String)options.get( key ) );
+        for (String key : options.keySet()) {
+            setOptionMapValue(undertowOptions, UndertowOptions.class, key.trim(), (String) options.get(key));
         }
         return this;
     }
@@ -1167,8 +1169,8 @@ public class ServerOptions {
     }
 
     public Map<String, Object> consoleLayoutOptions() {
-        if( consoleLayout().equals( "PatternLayout" ) && !this.consoleLayoutOptions.containsKey( "pattern" ) ) {
-            this.consoleLayoutOptions.put( "pattern", getLogPattern() );
+        if (consoleLayout().equals("PatternLayout") && !this.consoleLayoutOptions.containsKey("pattern")) {
+            this.consoleLayoutOptions.put("pattern", getLogPattern());
         }
         return this.consoleLayoutOptions;
     }
