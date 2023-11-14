@@ -39,6 +39,7 @@ import io.undertow.websockets.jsr.WebSocketDeploymentInfo;
 import net.minidev.json.JSONArray;
 import net.minidev.json.JSONObject;
 import runwar.options.ConfigParser.JSONOption;
+import org.xnio.Option;
 import org.xnio.*;
 import runwar.logging.LoggerFactory;
 import runwar.logging.LoggerPrintStream;
@@ -88,13 +89,13 @@ import static runwar.logging.RunwarLogger.MAPPER_LOG;
 
 import runwar.util.Utils;
 
-@SuppressWarnings( "deprecation" )
+@SuppressWarnings("deprecation")
 public class Server {
 
     public static String processName = "Starting Server...";
 
-    private static final ThreadLocal<HttpServerExchange> currentExchange= new ThreadLocal<HttpServerExchange>();
-    private static final ThreadLocal<String> currentDeploymentKey= new ThreadLocal<String>();
+    private static final ThreadLocal<HttpServerExchange> currentExchange = new ThreadLocal<HttpServerExchange>();
+    private static final ThreadLocal<String> currentDeploymentKey = new ThreadLocal<String>();
     private static HttpHandler rootHandler;
     private volatile static ServerOptions serverOptions;
     private volatile static SiteDeploymentManager siteDeploymentManager;
@@ -117,7 +118,7 @@ public class Server {
     private static final Thread mainThread = Thread.currentThread();
 
     private Tray tray;
-    //private FusionReactor fusionReactor;
+    // private FusionReactor fusionReactor;
 
     public Server() {
     }
@@ -165,8 +166,8 @@ public class Server {
     }
 
     public synchronized void startServer(final String[] args) throws Exception {
-        throw new RuntimeException( "Is this used?" );
-        //startServer(CommandLineHandler.parseArguments(args));
+        throw new RuntimeException("Is this used?");
+        // startServer(CommandLineHandler.parseArguments(args));
     }
 
     public synchronized void restartServer() throws Exception {
@@ -188,7 +189,7 @@ public class Server {
 
     public synchronized void startServer(final ServerOptions options) throws Exception {
         serverOptions = options;
-        //LoggerFactory.configure(serverOptions);
+        // LoggerFactory.configure(serverOptions);
         // redirect out and err to context logger
         hookSystemStreams();
 
@@ -207,27 +208,30 @@ public class Server {
         RunwarConfigurer configurer = new RunwarConfigurer(this);
 
         LOG.info(bar);
-        LOG.info("Starting Runwar" );
-        LOG.info( "  - Runwar Version: " + getVersion() );
-        LOG.info( "  - Java Version: " + System.getProperty( "java.vm.version", System.getProperty( "java.version", "Unknown" ) ) + " (" + System.getProperty( "java.vendor", "Unknown" ) + ")" );
-        LOG.info( "  - Java Home: " + System.getProperty( "java.home", "Unknown" ) );
+        LOG.info("Starting Runwar");
+        LOG.info("  - Runwar Version: " + getVersion());
+        LOG.info("  - Java Version: "
+                + System.getProperty("java.vm.version", System.getProperty("java.version", "Unknown")) + " ("
+                + System.getProperty("java.vendor", "Unknown") + ")");
+        LOG.info("  - Java Home: " + System.getProperty("java.home", "Unknown"));
         LOG.info(bar);
 
-        Builder serverBuilder = Undertow.builder();
+        Undertow.Builder serverBuilder = Undertow.builder();
 
         // Add all HTTP/SSL/AJP listeners
-        ListenerManager.configureListeners( serverBuilder, serverOptions );
+        ListenerManager.configureListeners(serverBuilder, serverOptions);
         LOG.debug(bar);
-    	LOG.debug("Undertow Server:");
+        LOG.debug("Undertow Server:");
 
         // Compile and regex hostname patterns
-        if( serverOptions.getSites().size() > 1 ) {
+        if (serverOptions.getSites().size() > 1) {
             JSONObject bindings = serverOptions.bindings();
-            for( String key : bindings.keySet() ) {
-                if( key.endsWith( ":regex:" ) ) {
-                    for( Object binding : (JSONArray)bindings.get( key ) ) {
-                        JSONObject bindingInfo = (JSONObject)binding;
-                        bindingInfo.put( "pattern", Pattern.compile( ((String)bindingInfo.get( "regexMatch" )).toLowerCase() ) );
+            for (String key : bindings.keySet()) {
+                if (key.endsWith(":regex:")) {
+                    for (Object binding : (JSONArray) bindings.get(key)) {
+                        JSONObject bindingInfo = (JSONObject) binding;
+                        bindingInfo.put("pattern",
+                                Pattern.compile(((String) bindingInfo.get("regexMatch")).toLowerCase()));
                     }
                 }
             }
@@ -241,7 +245,8 @@ public class Server {
         File webXmlFile = serverOptions.webXmlFile();
 
         String libDirs = serverOptions.libDirs();
-        // If this folder is a proper war, add its WEB-INF/lib folder to the passed libDirs
+        // If this folder is a proper war, add its WEB-INF/lib folder to the passed
+        // libDirs
         if (warFile.isDirectory() && webXmlFile != null && webXmlFile.exists()) {
             if (libDirs == null) {
                 libDirs = "";
@@ -258,14 +263,14 @@ public class Server {
         }
 
         if (serverOptions.mariaDB4jImportSQLFile() != null) {
-        	LOG.debug("  Importing sql file: " + serverOptions.mariaDB4jImportSQLFile().toURI().toURL());
+            LOG.debug("  Importing sql file: " + serverOptions.mariaDB4jImportSQLFile().toURI().toURL());
             cp.add(serverOptions.mariaDB4jImportSQLFile().toURI().toURL());
         }
         cp.addAll(getClassesList(new File(webinf, "/classes")));
         initClassLoader(cp);
 
         // redirect out and err to context logger
-        //hookSystemStreams();
+        // hookSystemStreams();
         String osName = System.getProperties().getProperty("os.name");
         String iconPNG = System.getProperty("cfml.server.trayicon");
         if (iconPNG != null && iconPNG.length() > 0) {
@@ -296,21 +301,21 @@ public class Server {
                 System.setProperty("apple.awt.UIElement", "true");
             }
         }
-    	LOG.debug("  WAR root:" + warFile.getAbsolutePath());
-        LOG.debug("  Servlet Context: " + contextPath );
+        LOG.debug("  WAR root:" + warFile.getAbsolutePath());
+        LOG.debug("  Servlet Context: " + contextPath);
         LOG.debug("  Log Directory: " + serverOptions.logDir().getAbsolutePath());
-        if ( serverOptions.directBuffers() != null ) {
+        if (serverOptions.directBuffers() != null) {
             LOG.debug("  Direct Buffers: " + serverOptions.directBuffers());
             serverBuilder.setDirectBuffers(serverOptions.directBuffers());
         }
-        if ( serverOptions.bufferSize() != 0 ) {
+        if (serverOptions.bufferSize() != 0) {
             LOG.debug("  Buffer Size: " + serverOptions.bufferSize());
             serverBuilder.setBufferSize(serverOptions.bufferSize());
         }
         addShutDownHook();
 
         if (serverOptions.workerThreads() != 0) {
-        	LOG.debug("  Worker threads (Max requests): " + serverOptions.workerThreads());
+            LOG.debug("  Worker threads (Max requests): " + serverOptions.workerThreads());
             serverBuilder.setWorkerThreads(serverOptions.workerThreads());
         }
 
@@ -344,7 +349,8 @@ public class Server {
                     @Override
                     public HttpHandler wrap(HttpHandler next) {
                         // Set SSL_CLIENT_ headers if client certs are present
-                        return new SSLCertHeaderHandler( next, serverOptions.cfEngineName().toLowerCase().contains( "lucee" ) );
+                        return new SSLCertHeaderHandler(next,
+                                serverOptions.cfEngineName().toLowerCase().contains("lucee"));
 
                     }
                 });
@@ -367,7 +373,7 @@ public class Server {
             if (pidFile != null && pidFile.length() > 0) {
                 File file = new File(pidFile);
                 file.deleteOnExit();
-                LOG.debug("  PID file: " +  file.toString() );
+                LOG.debug("  PID file: " + file.toString());
                 try (PrintWriter writer = new PrintWriter(file)) {
                     writer.print(PID);
                 }
@@ -377,23 +383,25 @@ public class Server {
         }
 
         LOG.info(bar);
-        siteDeploymentManager = new SiteDeploymentManager( serverOptions );
-        if( serverOptions.getSites().size() == 1 ) {
+        siteDeploymentManager = new SiteDeploymentManager(serverOptions);
+        if (serverOptions.getSites().size() == 1) {
             // Create default context
-            siteDeploymentManager.createSiteDeployment( servletBuilder, serverOptions.getSites().get(0).webroot(), configurer, SiteDeployment.DEFAULT, null, serverOptions.getSites().get(0) );
+            siteDeploymentManager.createSiteDeployment(servletBuilder, serverOptions.getSites().get(0).webroot(),
+                    configurer, SiteDeployment.DEFAULT, null, serverOptions.getSites().get(0));
             LOG.debug(bar);
         } else {
-            for( SiteOptions siteOptions : serverOptions.getSites() ) {
-                siteDeploymentManager.createSiteDeployment( servletBuilder, siteOptions.webroot(), configurer, siteOptions.siteName(), null, siteOptions );
+            for (SiteOptions siteOptions : serverOptions.getSites()) {
+                siteDeploymentManager.createSiteDeployment(servletBuilder, siteOptions.webroot(), configurer,
+                        siteOptions.siteName(), null, siteOptions);
                 LOG.debug(bar);
             }
         }
-        if( !serverOptions.debug() ) {
+        if (!serverOptions.debug()) {
             LOG.info(bar);
         }
 
-        rootHandler = new BindingMatcherHandler( serverOptions, siteDeploymentManager, configurer, servletBuilder );
-        serverBuilder.setHandler( rootHandler );
+        rootHandler = new BindingMatcherHandler(serverOptions, siteDeploymentManager, configurer, servletBuilder);
+        serverBuilder.setHandler(rootHandler);
 
         setUndertowOptions(serverBuilder);
         setXnioOptions(serverBuilder);
@@ -402,7 +410,7 @@ public class Server {
 
         // start the stop monitor thread
         assert monitor == null;
-        monitor = new StopMonitor(stoppassword,serverOptions);
+        monitor = new StopMonitor(stoppassword, serverOptions);
         monitor.start();
         tray = new Tray();
 
@@ -421,9 +429,11 @@ public class Server {
             new Server(3);
         }
 
-        String msg = "Server is up - stop-port:" + serverOptions.stopPort() + " PID:" + PID + " version " + getVersion();
+        String msg = "Server is up - stop-port:" + serverOptions.stopPort() + " PID:" + PID + " version "
+                + getVersion();
         LOG.info(msg);
-        // if the status line output would be suppressed due to logging levels, send it to sysout
+        // if the status line output would be suppressed due to logging levels, send it
+        // to sysout
         if (serverOptions.logLevel().equalsIgnoreCase("WARN") || serverOptions.logLevel().equalsIgnoreCase("ERROR")) {
             System.out.println(msg);
         }
@@ -432,12 +442,12 @@ public class Server {
         }
         setServerState(ServerState.STARTED);
         if (serverOptions.mariaDB4jEnable()) {
-        	LOG.debug("MariaDB support enable");
+            LOG.debug("MariaDB support enable");
             mariadb4jManager = new MariaDB4jManager(_classLoader);
             try {
                 mariadb4jManager.start(serverOptions.mariaDB4jPort(), serverOptions.mariaDB4jBaseDir(),
                         serverOptions.mariaDB4jDataDir(), serverOptions.mariaDB4jImportSQLFile());
-        } catch (Exception dbStartException) {
+            } catch (Exception dbStartException) {
                 LOG.error("Could not start MariaDB4j", dbStartException);
             }
         } else {
@@ -448,7 +458,8 @@ public class Server {
             undertow.start();
 
         } catch (Exception any) {
-            if (any.getCause() instanceof java.net.SocketException && any.getCause().getMessage().equals("Permission denied")) {
+            if (any.getCause() instanceof java.net.SocketException
+                    && any.getCause().getMessage().equals("Permission denied")) {
                 System.err.println("You need to be root or Administrator to bind to a port below 1024!");
             } else {
                 any.printStackTrace();
@@ -459,38 +470,39 @@ public class Server {
     }
 
     @SuppressWarnings("unchecked")
-    private void setUndertowOptions(Builder serverBuilder) {
-		OptionMap undertowOptionsMap = serverOptions.undertowOptions().getMap();
-        if( undertowOptionsMap.size() > 0 ) {
-            LOG.debug( "Undertow Options:" );
+    private void setUndertowOptions(Undertow.Builder serverBuilder) {
+        OptionMap undertowOptionsMap = serverOptions.undertowOptions().getMap();
+        if (undertowOptionsMap.size() > 0) {
+            LOG.debug("Undertow Options:");
         }
         for (Option option : undertowOptionsMap) {
-        	LOG.debug("  - " + option.getName() + " = " + undertowOptionsMap.get(option));
+            LOG.debug("  - " + option.getName() + " = " + undertowOptionsMap.get(option));
             serverBuilder.setServerOption(option, undertowOptionsMap.get(option));
             serverBuilder.setSocketOption(option, undertowOptionsMap.get(option));
         }
-        if( undertowOptionsMap.size() > 0 ) {
-            LOG.debug( bar );
+        if (undertowOptionsMap.size() > 0) {
+            LOG.debug(bar);
         }
     }
 
     @SuppressWarnings("unchecked")
-    private void setXnioOptions(Builder serverBuilder) {
+    private void setXnioOptions(Undertow.Builder serverBuilder) {
         OptionMap serverXnioOptionsMap = serverOptions.xnioOptions().getMap();
-        if( serverXnioOptionsMap.size() > 0 ) {
-            LOG.debug( "XNIO Options:" );
+        if (serverXnioOptionsMap.size() > 0) {
+            LOG.debug("XNIO Options:");
         }
         for (Option option : serverXnioOptionsMap) {
-        	LOG.debug("  - " + option.getName() + " = " + serverXnioOptionsMap.get(option));
+            LOG.debug("  - " + option.getName() + " = " + serverXnioOptionsMap.get(option));
             serverBuilder.setSocketOption(option, serverXnioOptionsMap.get(option));
         }
-        if( serverXnioOptionsMap.size() > 0 ) {
-            LOG.debug( bar );
+        if (serverXnioOptionsMap.size() > 0) {
+            LOG.debug(bar);
         }
     }
 
     public static String fullExchangePath(HttpServerExchange exchange) {
-        return exchange.getRequestURL() + (exchange.getQueryString().length() > 0 ? "?" + exchange.getQueryString() : "");
+        return exchange.getRequestURL()
+                + (exchange.getQueryString().length() > 0 ? "?" + exchange.getQueryString() : "");
     }
 
     private synchronized void hookSystemStreams() {
@@ -521,7 +533,8 @@ public class Server {
                 public void run() {
                     LOG.trace("Running shutdown hook");
                     try {
-                        if (!getServerState().equals(ServerState.STOPPING) && !getServerState().equals(ServerState.STOPPED)) {
+                        if (!getServerState().equals(ServerState.STOPPING)
+                                && !getServerState().equals(ServerState.STOPPED)) {
                             stopServer();
                         }
                         if (mainThread.isAlive()) {
@@ -563,14 +576,15 @@ public class Server {
                     }
                     if (siteDeploymentManager.getDeployments() != null) {
                         try {
-                        	 for ( Map.Entry<String,SiteDeployment> deployment : siteDeploymentManager.getDeployments().entrySet() ) {
-                        		 deployment.getValue().stop();
-                        	 }
+                            for (Map.Entry<String, SiteDeployment> deployment : siteDeploymentManager.getDeployments()
+                                    .entrySet()) {
+                                deployment.getValue().stop();
+                            }
 
                             if (undertow != null) {
                                 undertow.stop();
                             }
-                            //                Thread.sleep(1000);
+                            // Thread.sleep(1000);
                         } catch (Exception notRunning) {
                             LOG.error("*** server did not appear to be running", notRunning);
                             LOG.info(bar);
@@ -587,12 +601,14 @@ public class Server {
                 }
 
                 tray.unhookTray();
-                if (System.getProperty("runwar.listloggers") != null && Boolean.parseBoolean(System.getProperty("runwar.listloggers"))) {
+                if (System.getProperty("runwar.listloggers") != null
+                        && Boolean.parseBoolean(System.getProperty("runwar.listloggers"))) {
                     LoggerFactory.listLoggers();
                 }
                 unhookSystemStreams();
 
-                if (System.getProperty("runwar.classlist") != null && Boolean.parseBoolean(System.getProperty("runwar.classlist"))) {
+                if (System.getProperty("runwar.classlist") != null
+                        && Boolean.parseBoolean(System.getProperty("runwar.classlist"))) {
                     ClassLoaderUtils.listAllClasses(serverOptions.logDir() + "/classlist.txt");
                 }
 
@@ -613,6 +629,7 @@ public class Server {
         }
 
     }
+
     public static File getThisJarLocation() {
         return LaunchUtil.getJarDir(Server.class);
     }
@@ -636,23 +653,25 @@ public class Server {
     }
 
     public static String getRealHost(String host) {
-    	return getInetAddress(host).getHostAddress();
+        return getInetAddress(host).getHostAddress();
     }
 
     public static InetAddress getInetAddress(String host) {
         try {
             return InetAddress.getByName(host);
         } catch (UnknownHostException e) {
-        	if( host.toLowerCase().endsWith( ".localhost" ) ) {
-    			// It's possible to have "fake" hosts such as mytest.localhost which aren't in DNS
-    			// or your hosts file.  Browsers will resolve them to localhost, but the call above
-    			// will fail with a UnknownHostException since they aren't real
+            if (host.toLowerCase().endsWith(".localhost")) {
+                // It's possible to have "fake" hosts such as mytest.localhost which aren't in
+                // DNS
+                // or your hosts file. Browsers will resolve them to localhost, but the call
+                // above
+                // will fail with a UnknownHostException since they aren't real
                 try {
-                	return InetAddress.getByName( "127.0.0.1" );
+                    return InetAddress.getByName("127.0.0.1");
                 } catch (UnknownHostException e2) {
-                	throw new RuntimeException("Error getting inet address for " + host);
+                    throw new RuntimeException("Error getting inet address for " + host);
                 }
-        	}
+            }
             throw new RuntimeException("Error getting inet address for " + host);
         }
     }
@@ -669,7 +688,8 @@ public class Server {
             LOG.debug("dynamically loaded CFML servlet from runwar child classloader");
         } catch (java.lang.ClassNotFoundException devnul) {
             try {
-                cfmlServlet = (Class<Servlet>) Server.class.getClassLoader().loadClass(cfengine + ".loader.servlet.CFMLServlet");
+                cfmlServlet = (Class<Servlet>) Server.class.getClassLoader()
+                        .loadClass(cfengine + ".loader.servlet.CFMLServlet");
                 LOG.debug("dynamically loaded CFML servlet from runwar classloader");
             } catch (java.lang.ClassNotFoundException e) {
                 LOG.trace("No CFML servlet found in class loader hierarchy");
@@ -685,7 +705,8 @@ public class Server {
             restServletClass = (Class<Servlet>) _classLoader.loadClass(cfengine + ".loader.servlet.RestServlet");
         } catch (java.lang.ClassNotFoundException e) {
             try {
-                restServletClass = (Class<Servlet>) Server.class.getClassLoader().loadClass(cfengine + ".loader.servlet.RestServlet");
+                restServletClass = (Class<Servlet>) Server.class.getClassLoader()
+                        .loadClass(cfengine + ".loader.servlet.RestServlet");
             } catch (ClassNotFoundException e1) {
                 e1.printStackTrace();
             }
@@ -725,7 +746,8 @@ public class Server {
     }
 
     public boolean serverWentDown() {
-        return serverWentDown(serverOptions.launchTimeout(), 3000, getInetAddress("127.0.0.1"), serverOptions.stopPort());
+        return serverWentDown(serverOptions.launchTimeout(), 3000, getInetAddress("127.0.0.1"),
+                serverOptions.stopPort());
     }
 
     public static boolean serverWentDown(int timeout, long sleepTime, InetAddress server, int port) {
@@ -808,7 +830,7 @@ public class Server {
             String protocol = "http";
             String host = "127.0.0.1";
             String openbrowserURL = serverOptions.openbrowserURL();
-            if( openbrowserURL == null ) {
+            if (openbrowserURL == null) {
                 LOG.warn("Open Browser URL is empty, ignoring...");
                 return;
             }
@@ -857,19 +879,23 @@ public class Server {
     }
 
     public static HttpServerExchange getCurrentExchange() {
-    	return currentExchange.get();
+        return currentExchange.get();
     }
 
-    public static void setCurrentExchange( HttpServerExchange exchange ) {
-    	currentExchange.set( exchange );
+    public static void setCurrentExchange(HttpServerExchange exchange) {
+        currentExchange.set(exchange);
     }
 
     public static String getCurrentDeploymentKey() {
-    	return currentDeploymentKey.get();
+        return currentDeploymentKey.get();
     }
 
-    public static void setCurrentDeploymentKey( String deploymentKey ) {
-    	currentDeploymentKey.set( deploymentKey );
+    public static void setCurrentDeploymentKey(String deploymentKey) {
+        currentDeploymentKey.set(deploymentKey);
+    }
+
+    public static SiteDeploymentManager getSiteDeploymentManager() {
+        return siteDeploymentManager;
     }
 
     public static class ServerState {
@@ -891,5 +917,3 @@ public class Server {
     }
 
 }
-
-

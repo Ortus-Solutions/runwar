@@ -45,6 +45,7 @@ public class SiteDeployment {
 
     private final HttpHandler siteInitialHandler;
     private final HttpHandler servletInitialHandler;
+    private final metricsHandler siteMetricsHandler;
     private final DeploymentManager deploymentManager;
     private SecurityManager securityManager;
     private final ResourceManager resourceManager;
@@ -280,7 +281,8 @@ public class SiteDeployment {
         }
 
         if (siteOptions.metricsEnable()) {
-            httpHandler = new MetricsHandler(httpHandler);
+            this.siteMetricsHandler = new MetricsHandler(httpHandler);
+            httpHandler = this.siteMetricsHandler;
         }
 
         return new LifecyleHandler(httpHandler, serverOptions, siteOptions);
@@ -339,6 +341,10 @@ public class SiteDeployment {
 
     public SiteOptions getSiteOptions() {
         return siteOptions;
+    }
+
+    public MetricsHandler getSiteMetricsHandler() {
+        return siteMetricsHandler;
     }
 
     public void stop() {
