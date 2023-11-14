@@ -46,7 +46,7 @@ public class SiteDeployment {
 
     private final HttpHandler siteInitialHandler;
     private final HttpHandler servletInitialHandler;
-    private final metricsHandler siteMetricsHandler;
+    private metricsHandler siteMetricsHandler;
     private final DeploymentManager deploymentManager;
     private SecurityManager securityManager;
     private final ResourceManager resourceManager;
