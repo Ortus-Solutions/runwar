@@ -1,30 +1,19 @@
 package runwar.options;
 
-import io.undertow.UndertowOptions;
+import java.io.File;
+import java.nio.file.Paths;
+import java.util.HashMap;
+import java.util.Map;
+
 import net.minidev.json.JSONArray;
 import net.minidev.json.JSONObject;
-import net.minidev.json.parser.JSONParser;
-import org.xnio.OptionMap;
-import org.xnio.Options;
-import runwar.Server;
-import runwar.Server.Mode;
 import runwar.options.ServerOptions;
-
-import java.io.File;
-import java.net.MalformedURLException;
-import java.net.URL;
-import java.nio.file.Path;
-import java.nio.file.Paths;
-import java.util.*;
-import java.util.stream.Stream;
-
-import static runwar.util.Reflection.setOptionMapValue;
 
 public class SiteOptions {
 
     private ServerOptions serverOptions;
 
-    private String host = "127.0.0.1", logAccessBaseFileName="access", cfmlDirs, siteName="default";
+    private String host = "127.0.0.1", logAccessBaseFileName = "access", cfmlDirs, siteName = "default";
 
     private int portNumber = 8088, ajpPort = 8009, sslPort = 1443;
 
@@ -74,19 +63,21 @@ public class SiteOptions {
 
     private boolean enableBasicAuth = false;
 
+    private boolean enableMetrics = false;
+
     private String authPredicate = null;
 
     private boolean proxyPeerAddressEnable = false;
 
     private boolean http2enable = false;
 
-    private Boolean caseSensitiveWebServer= null;
+    private Boolean caseSensitiveWebServer = null;
 
-    private Boolean resourceManagerLogging= false;
+    private Boolean resourceManagerLogging = false;
 
-    private Boolean resourceManagerFileSystemWatcher= false;
+    private Boolean resourceManagerFileSystemWatcher = false;
 
-    private Boolean cacheServletPaths= false;
+    private Boolean cacheServletPaths = false;
 
     private Integer fileCacheTotalSizeMB = 50; // 50MB cache (up to 10 buffers)
 
@@ -97,7 +88,6 @@ public class SiteOptions {
     private final Map<String, String> mimeTypes = new HashMap<String, String>();
 
     private String servletPassPredicate = "regex( '^/(.+?\\.cf[cm])(/.*)?$' )";
-
 
     public ServerOptions getServerOptions() {
         return serverOptions;
@@ -180,17 +170,17 @@ public class SiteOptions {
         return this;
     }
 
-    public Map<String,String> aliases() {
+    public Map<String, String> aliases() {
         return aliases;
     }
 
     public SiteOptions aliases(JSONObject aliases) {
-        for( String virtual : aliases.keySet() ) {
-            String path = aliases.get( virtual ).toString();
-            path = Paths.get( path.endsWith("/") ? path : path + '/' ).normalize().toAbsolutePath().toString();
+        for (String virtual : aliases.keySet()) {
+            String path = aliases.get(virtual).toString();
+            path = Paths.get(path.endsWith("/") ? path : path + '/').normalize().toAbsolutePath().toString();
             virtual = virtual.startsWith("/") ? virtual : "/" + virtual;
             virtual = virtual.endsWith("/") ? virtual.substring(0, virtual.length() - 1) : virtual;
-            this.aliases.put( virtual.toLowerCase(), path );
+            this.aliases.put(virtual.toLowerCase(), path);
         }
         return this;
     }
@@ -198,19 +188,19 @@ public class SiteOptions {
     public SiteOptions mimeTypes(JSONObject mimeTypes) {
         HashMap<String, String> mimes = new HashMap<String, String>();
 
-        for( String key : mimeTypes.keySet() ) {
-            mimes.put( key, mimeTypes.get( key ).toString() );
+        for (String key : mimeTypes.keySet()) {
+            mimes.put(key, mimeTypes.get(key).toString());
         }
 
         return mimeTypes(mimes);
     }
 
-    public SiteOptions mimeTypes(Map<String,String> mimeTypes) {
+    public SiteOptions mimeTypes(Map<String, String> mimeTypes) {
         this.mimeTypes.putAll(mimeTypes);
         return this;
     }
 
-    public Map<String,String> mimeTypes() {
+    public Map<String, String> mimeTypes() {
         return this.mimeTypes;
     }
 
@@ -234,7 +224,7 @@ public class SiteOptions {
     }
 
     public File logAccessDir() {
-        if(this.logAccessDir == null)
+        if (this.logAccessDir == null)
             return serverOptions.logDir();
         return this.logAccessDir;
     }
@@ -286,7 +276,7 @@ public class SiteOptions {
 
     public String[] welcomeFiles() {
         // Default to the server-wide welcome files found in the web.xml
-        if( welcomeFiles == null || welcomeFiles.length == 0 ) {
+        if (welcomeFiles == null || welcomeFiles.length == 0) {
             return serverOptions.servletWelcomeFiles();
         }
         return welcomeFiles;
@@ -303,7 +293,7 @@ public class SiteOptions {
     }
 
     public File sslCertificate() {
-        if(sslCertificate != null && !sslCertificate.exists() ){
+        if (sslCertificate != null && !sslCertificate.exists()) {
             throw new IllegalArgumentException("Certificate file does not exist: " + sslCertificate.getAbsolutePath());
         }
         return this.sslCertificate;
@@ -318,48 +308,48 @@ public class SiteOptions {
         return this.clientCertNegotiation;
     }
 
-    public SiteOptions securityRealm(String securityRealm){
+    public SiteOptions securityRealm(String securityRealm) {
         this.securityRealm = securityRealm;
         return this;
     }
 
-    public String securityRealm(){
+    public String securityRealm() {
         return this.securityRealm;
     }
 
-    public SiteOptions clientCertEnable(Boolean clientCertEnable){
+    public SiteOptions clientCertEnable(Boolean clientCertEnable) {
         this.clientCertEnable = clientCertEnable;
         return this;
     }
 
-    public Boolean clientCertEnable(){
+    public Boolean clientCertEnable() {
         return this.clientCertEnable;
     }
 
-    public SiteOptions clientCertTrustHeaders(Boolean clientCertTrustHeaders){
+    public SiteOptions clientCertTrustHeaders(Boolean clientCertTrustHeaders) {
         this.clientCertTrustHeaders = clientCertTrustHeaders;
         return this;
     }
 
-    public Boolean clientCertTrustHeaders(){
+    public Boolean clientCertTrustHeaders() {
         return this.clientCertTrustHeaders;
     }
 
-    public SiteOptions clientCertSubjectDNs(JSONArray clientCertSubjectDNs){
+    public SiteOptions clientCertSubjectDNs(JSONArray clientCertSubjectDNs) {
         this.clientCertSubjectDNs = clientCertSubjectDNs;
         return this;
     }
 
-    public JSONArray clientCertSubjectDNs(){
+    public JSONArray clientCertSubjectDNs() {
         return this.clientCertSubjectDNs;
     }
 
-    public SiteOptions clientCertIssuerDNs(JSONArray clientCertIssuerDNs){
-    	this.clientCertIssuerDNs = clientCertIssuerDNs;
+    public SiteOptions clientCertIssuerDNs(JSONArray clientCertIssuerDNs) {
+        this.clientCertIssuerDNs = clientCertIssuerDNs;
         return this;
     }
 
-    public JSONArray clientCertIssuerDNs(){
+    public JSONArray clientCertIssuerDNs() {
         return this.clientCertIssuerDNs;
     }
 
@@ -382,7 +372,7 @@ public class SiteOptions {
     }
 
     public SiteOptions transferMinSize(Long minSize) {
-        if( minSize == -1L ) {
+        if (minSize == -1L) {
             // Effectivley turns it off
             this.transferMinSize = Long.MAX_VALUE;
         }
@@ -393,7 +383,6 @@ public class SiteOptions {
     public Long transferMinSize() {
         return this.transferMinSize;
     }
-
 
     public SiteOptions gzipEnable(boolean enable) {
         this.gzipEnable = enable;
@@ -408,7 +397,6 @@ public class SiteOptions {
         return this.gzipPredicate;
     }
 
-
     public SiteOptions gzipPredicate(String gzipPredicate) {
         this.gzipPredicate = gzipPredicate;
         return this;
@@ -422,15 +410,16 @@ public class SiteOptions {
         this.servletPassPredicate = servletPassPredicate;
         return this;
     }
+
     public SiteOptions errorPages(JSONObject errorpages) {
         this.errorPages = new HashMap<Integer, String>();
 
-        for( String key : errorpages.keySet() ) {
+        for (String key : errorpages.keySet()) {
             String strCode = key.toString().trim();
-            Integer code = strCode.toLowerCase() == "default" ? 1 : Integer.parseInt( strCode );
-            String location = errorpages.get( key ).toString();
+            Integer code = strCode.toLowerCase() == "default" ? 1 : Integer.parseInt(strCode);
+            String location = errorpages.get(key).toString();
             location = location.startsWith("/") ? location : "/" + location;
-            this.errorPages.put( code, location );
+            this.errorPages.put(code, location);
         }
         return this;
     }
@@ -453,6 +442,15 @@ public class SiteOptions {
         return this.enableBasicAuth;
     }
 
+    public SiteOptions metricsEnable(boolean enable) {
+        this.enableMetrics = enable;
+        return this;
+    }
+
+    public boolean metricsEnable() {
+        return this.enableMetrics;
+    }
+
     public SiteOptions authPredicate(String predicate) {
         this.authPredicate = predicate;
         return this;
@@ -465,8 +463,8 @@ public class SiteOptions {
     public SiteOptions basicAuth(JSONObject userPasswordList) {
         HashMap<String, String> ups = new HashMap<String, String>();
 
-        for( String key : userPasswordList.keySet() ) {
-            ups.put( key, userPasswordList.get( key ).toString() );
+        for (String key : userPasswordList.keySet()) {
+            ups.put(key, userPasswordList.get(key).toString());
         }
 
         return basicAuth(ups);
@@ -544,7 +542,7 @@ public class SiteOptions {
     }
 
     public SiteOptions defaultServletAllowedExt(String defaultServletAllowedExt) {
-    	this.defaultServletAllowedExt = defaultServletAllowedExt;
+        this.defaultServletAllowedExt = defaultServletAllowedExt;
         return this;
     }
 
@@ -553,7 +551,7 @@ public class SiteOptions {
     }
 
     public SiteOptions resourceManagerLogging(Boolean resourceManagerLogging) {
-    	this.resourceManagerLogging = resourceManagerLogging;
+        this.resourceManagerLogging = resourceManagerLogging;
         return this;
     }
 
@@ -562,7 +560,7 @@ public class SiteOptions {
     }
 
     public SiteOptions resourceManagerFileSystemWatcher(Boolean resourceManagerFileSystemWatcher) {
-    	this.resourceManagerFileSystemWatcher = resourceManagerFileSystemWatcher;
+        this.resourceManagerFileSystemWatcher = resourceManagerFileSystemWatcher;
         return this;
     }
 
@@ -571,7 +569,7 @@ public class SiteOptions {
     }
 
     public SiteOptions cacheServletPaths(Boolean cacheServletPaths) {
-    	this.cacheServletPaths = cacheServletPaths;
+        this.cacheServletPaths = cacheServletPaths;
         return this;
     }
 
@@ -580,7 +578,7 @@ public class SiteOptions {
     }
 
     public SiteOptions fileCacheTotalSizeMB(Integer fileCacheTotalSizeMB) {
-    	this.fileCacheTotalSizeMB = fileCacheTotalSizeMB;
+        this.fileCacheTotalSizeMB = fileCacheTotalSizeMB;
         return this;
     }
 
@@ -589,7 +587,7 @@ public class SiteOptions {
     }
 
     public SiteOptions fileCacheMaxFileSizeKB(Integer fileCacheMaxFileSizeKB) {
-    	this.fileCacheMaxFileSizeKB = fileCacheMaxFileSizeKB;
+        this.fileCacheMaxFileSizeKB = fileCacheMaxFileSizeKB;
         return this;
     }
 
@@ -598,12 +596,8 @@ public class SiteOptions {
     }
 
     public SiteOptions caseSensitiveWebServer(Boolean caseSensitiveWebServer) {
-    	this.caseSensitiveWebServer = caseSensitiveWebServer;
+        this.caseSensitiveWebServer = caseSensitiveWebServer;
         return this;
     }
-
-
-
-
 
 }
