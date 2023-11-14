@@ -33,6 +33,7 @@ import io.undertow.util.CanonicalPathUtils;
 import io.undertow.util.Headers;
 import io.undertow.util.HttpString;
 import io.undertow.util.MimeMappings;
+import io.undertow.server.handlers.MetricsHandler;
 import runwar.Server;
 import runwar.logging.RunwarAccessLogReceiver;
 import runwar.options.ServerOptions;
