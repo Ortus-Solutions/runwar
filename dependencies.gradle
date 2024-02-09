@@ -10,11 +10,12 @@ configurations {
 }
 
 ext {
-    undertowVersion = '2.2.25.Final'
+    undertowVersion = '2.2.28.Final'
     urlRewriteVersion = '5.0.2-SNAPSHOT'
     proguardVersion = '6.0.2'
     systemTrayVersion = '3.17'
     //systemTrayVersion = '4.2'
+    // TODO: There is a 2.x version we need to test
     jbossJspApiVersion = '1.0.3'
     mavenRepo = "${System.getProperty("user.home")}/cfdistro/artifacts/"
 }
@@ -47,10 +48,11 @@ task jbossJspJar(type: ShadowJar) {
 dependencies {
     // undertow
     compile group: 'io.undertow', name: 'undertow-websockets-jsr', version: project.undertowVersion
-    compile group: 'org.jboss.spec.javax.servlet.jsp', name: 'jboss-jsp-api_2.3_spec', version: '2.0.0.Final'
+    compile group: 'org.jboss.spec.javax.servlet.jsp', name: 'jboss-jsp-api_2.3_spec', version: '2.0.1.Final'
 
 
-    compile("org.jboss.spec.javax.el:jboss-el-api_3.0_spec:1.0.2.Final")
+    // TODO: There is a 2.x version to test
+    compile("org.jboss.spec.javax.el:jboss-el-api_3.0_spec:1.0.13.Final")
 
     compile("io.undertow:undertow-servlet:${project.undertowVersion}") {
         exclude group: 'org.jboss.spec.javax.annotation', module: 'jboss-annotations-api_1.2_spec'
@@ -74,12 +76,13 @@ dependencies {
     /*  SLF4J: Failed to load class "org.slf4j.impl.StaticLoggerBinder".
         SLF4J: Defaulting to no-operation (NOP) logger implementation
         SLF4J: See http://www.slf4j.org/codes.html#StaticLoggerBinder for further details. */
-    compile("org.apache.logging.log4j:log4j-slf4j-impl:2.20.0")
+    compile("org.apache.logging.log4j:log4j-slf4j-impl:2.22.1")
     // This is the newer version which is required for SystemTray's logging to work.
-    compile("org.apache.logging.log4j:log4j-slf4j2-impl:2.20.0")
-    compile("org.apache.logging.log4j:log4j-core:2.20.0")
-    compile("org.apache.logging.log4j:log4j-layout-template-json:2.20.0")
-    compile("org.jboss.logging:jboss-logging:3.4.3.Final")
+    compile("org.apache.logging.log4j:log4j-slf4j2-impl:2.22.1")
+    compile("org.apache.logging.log4j:log4j-core:2.22.1")
+    compile("org.apache.logging.log4j:log4j-layout-template-json:2.22.1")
+    // TODO: DO NOT UPGRADE PAST 3.4.0 UNTIL JAVA 8 SUPPORT IS DROPPED
+    compile("org.jboss.logging:jboss-logging:3.4.0.Final")
     compile("org.jboss.logging:jboss-logging-annotations:2.2.1.Final")
 
     // forked version of tuckey for now
@@ -91,13 +94,14 @@ dependencies {
     // regexpathinfofilter lets us handle *.cfm/* paths
     compile("org.cfmlprojects:regexpathinfofilter:1.0.3")
 
-    compile("net.java.dev.jna:jna:4.3.0")
-    compile("net.java.dev.jna:jna-platform:4.3.0")
+    // TODO: Test new 5.x version.  Used by SystemTray, I think
+    compile("net.java.dev.jna:jna:4.5.2")
+    compile("net.java.dev.jna:jna-platform:4.5.2")
 
     // ssl
-    compile("org.bouncycastle:bcpkix-jdk15on:1.57")
+    compile("org.bouncycastle:bcpkix-jdk15on:1.70")
     // ansi colors for logging system output
-    compile("com.jcabi:jcabi-log:0.18.1") { transitive = false }
+    compile("com.jcabi:jcabi-log:0.24.1") { transitive = false }
 
     // tests
     testCompile("org.apache.httpcomponents:httpclient:4.5.12")
