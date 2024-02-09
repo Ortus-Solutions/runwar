@@ -2,11 +2,13 @@ package runwar.undertow;
 
 import static org.joox.JOOX.$;
 import static runwar.logging.RunwarLogger.CONF_LOG;
+import runwar.options.ServerOptions;
 
 import java.io.File;
 import java.util.EventListener;
 import java.util.HashMap;
 import java.util.Map;
+import java.util.Arrays;
 import java.util.regex.Pattern;
 
 import javax.servlet.DispatcherType;
@@ -29,15 +31,13 @@ public class WebXMLParser {
      * @param webxml web.xml file
      * @param info DeploymentInfo
      * @param ignoreRestMappings rest mappings
-     * @param ignoreWelcomePages ignore welcome pages or not
      */
     @SuppressWarnings("unchecked")
-    public static void parseWebXml(File webxml, DeploymentInfo info, boolean ignoreWelcomePages, boolean ignoreRestMappings, boolean overrideEnabled, boolean servletRestEnable) {
-        CONF_LOG.infof("Parsing '%s'", webxml.getPath());
-        CONF_LOG.debugf("Overriding previous web.xml '%s'", overrideEnabled?"True":"False");
+    public static void parseWebXml(File webxml, DeploymentInfo info, boolean ignoreRestMappings, boolean overrideEnabled, boolean servletRestEnable, ServerOptions serverOptions) {
+        CONF_LOG.debugf("  Parsing '%s'", webxml.getPath());
 
         if (!webxml.exists() || !webxml.canRead()) {
-            CONF_LOG.error("Error reading web.xml! exists:" + webxml.exists() + "readable:" + webxml.canRead());
+            CONF_LOG.error("    Error reading web.xml! exists:" + webxml.exists() + "readable:" + webxml.canRead());
         }
         try {
             DocumentBuilderFactory docBuilderFactory = DocumentBuilderFactory.newInstance();
@@ -51,35 +51,33 @@ public class WebXMLParser {
             Document doc = docBuilder.parse(webxml);
             doc.getDocumentElement().normalize();
 
-            trace("Root element of the doc is %s", doc.getDocumentElement().getNodeName());
-
             String displayName = $(doc).find("display-name").text();
             if (displayName != null) {
                 info.setDisplayName(displayName);
             }
 
             Match contextParams = $(doc).find("context-param");
-            trace("Total No. of context-params: %s", contextParams.size());
+            trace("    Total No. of context-params: %s", contextParams.size());
 
             contextParams.each(ctx -> {
                 String pName = getRequired(ctx,"param-name");
                 String pValue = getRequired(ctx,"param-value");
                 info.addServletContextAttribute(pName, pValue);
                 info.addInitParameter(pName, pValue);
-                CONF_LOG.tracef("context param: '%s' = '%s'", pName, pValue);
+                CONF_LOG.tracef("      context param: '%s' = '%s'", pName, pValue);
             });
 
             //do listeners
             Match listeners = $(doc).find("listener");
             int sizeListeners = listeners.size();
-            trace("Total No. of listeners: %s", sizeListeners);
+            trace("    Total No. of listeners: %s", sizeListeners);
             if ( overrideEnabled && sizeListeners > 0 ) {
-                trace("Removing %s listener(s) from deployment due to web.xml override", info.getListeners().size());
+                trace("    Removing %s listener(s) from deployment due to web.xml override", info.getListeners().size());
                 info.getListeners().clear();
             }
             listeners.each(ctx -> {
                 String pName = getRequired(ctx,"listener-class");
-                CONF_LOG.tracef("Listener: %s", pName);
+                CONF_LOG.tracef("    Listener: %s", pName);
                 ListenerInfo listener;
                 try {
                     listener = new ListenerInfo(
@@ -93,18 +91,16 @@ public class WebXMLParser {
             //do servlets
             Match servlets = $(doc).find("servlet");
             int sizeServlets = servlets.size();
-            trace("Total No. of servlets: %s", sizeServlets);
+            trace("    Total No. of servlets: %s", sizeServlets);
             if ( overrideEnabled && sizeServlets > 0 ) {
-                trace("Removing %s servlet(s) from deployment due to web.xml override", info.getServlets().size());
+                trace("    Removing %s servlet(s) from deployment due to web.xml override", info.getServlets().size());
                 info.getServlets().clear();
             }
             servlets.each(servletElement -> {
                 String servletName = getRequired(servletElement, "servlet-name");
                 String servletClassName = getRequired(servletElement, "servlet-class");
                 String loadOnStartup = get(servletElement, "load-on-startup");
-                CONF_LOG.tracef("servlet-name: %s, servlet-class: %s", servletName, servletClassName);
-                CONF_LOG.tracef("Adding servlet: ***** %s: %s *****", servletName,
-                        servletClassName);
+                CONF_LOG.tracef("      servlet-name: %s, servlet-class: %s", servletName, servletClassName);
                 Class<?> servletClass;
                 try {
                     servletClass = info.getClassLoader().loadClass(servletClassName);
@@ -116,39 +112,35 @@ public class WebXMLParser {
                 ServletInfo servlet = new ServletInfo(servletName, (Class<? extends Servlet>) servletClass);
                 servlet.setRequireWelcomeFileMapping(true);
                 if (loadOnStartup != null) {
-                    trace("Load on startup: %s", loadOnStartup);
                     servlet.setLoadOnStartup(Integer.valueOf(loadOnStartup));
                 }
                 Match initParams = $(servletElement).find("init-param");
-                CONF_LOG.debugf("Total No. of %s init-params: %s", servletName, initParams.size());
+                CONF_LOG.tracef("        Total No. of init-params: %s", initParams.size());
                 initParams.each(initParamElement -> {
                     String pName = getRequired(initParamElement, "param-name");
                     String pValue = getRequired(initParamElement, "param-value");
-                    CONF_LOG.tracef("%s init-param: param-name: '%s'  param-value: '%s'", servletName, pName, pValue);
+                    CONF_LOG.tracef("          init-param: '%s'", pName);
+                    CONF_LOG.tracef("            param-value: '%s'", pValue);
                     servlet.addInitParam(pName, pValue);
                 });
                 info.addServlet(servlet);
             });
 
             Match servletMappings = $(doc).find("servlet-mapping");
-            trace("Total No. of servlet-mappings: %s", servletMappings.size());
+            trace("    Total No. of servlet-mappings: %s", servletMappings.size());
             servletMappings.each(mappingElement -> {
                 String servletName = getRequired(mappingElement, "servlet-name");
                 ServletInfo servlet = info.getServlets().get(servletName);
                 if (servlet == null) {
-                    CONF_LOG.errorf("No servlet found for servlet-mapping: %s", servletName);
+                    CONF_LOG.errorf("    No servlet found for servlet-mapping: %s", servletName);
                 } else {
                     Match urlPatterns = $(mappingElement).find("url-pattern");
                     urlPatterns.each(urlPatternElement -> {
                         String urlPattern = $(urlPatternElement).text();
-
-
-
                         if ( isREST( servletName ) && ( ignoreRestMappings || !servletRestEnable ) ) {
-                            CONF_LOG.tracef("Skipping mapping servlet-name: %s, url-partern: %s", servletName, urlPattern);
+                            CONF_LOG.tracef("      Skipping mapping servlet-name: %s, url-partern: %s", servletName, urlPattern);
                         } else {
-                            CONF_LOG.tracef("mapping servlet-name: %s, url-pattern: %s", servletName, urlPattern);
-                            trace( "does mapping exist already %s", servlet.getMappings().contains( urlPattern ) );
+                            CONF_LOG.tracef("      Mapping servlet-name: %s, url-pattern: %s", servletName, urlPattern);
                             if( !servlet.getMappings().contains( urlPattern ) ){
                                 servlet.addMapping(urlPattern);
                             }
@@ -160,28 +152,29 @@ public class WebXMLParser {
             // do filters
             Match filters = $(doc).find("filter");
             int sizeFilters = filters.size();
-            trace("Total No. of filters: %s", sizeFilters);
+            trace("    Total No. of filters: %s", sizeFilters);
             if ( overrideEnabled && sizeFilters > 0 ) {
-                trace("Removing %s filter(s) from deployment due to web.xml override", info.getFilters().size());
+                trace("    Removing %s filter(s) from deployment due to web.xml override", info.getFilters().size());
                 info.getFilters().clear();
             }
             filters.each(ctx -> {
                 String filterName = $(ctx).find("filter-name").text();
                 String className = $(ctx).find("filter-class").text();
-                CONF_LOG.tracef("filter-name: %s, filter-class: %s", filterName, className);
+                CONF_LOG.tracef("      filter-name: %s, filter-class: %s", filterName, className);
                 try {
                     FilterInfo filter = new FilterInfo(filterName,
                             (Class<? extends Filter>) info.getClassLoader().loadClass(className));
                     Match initParams = $(ctx).find("init-param");
-                    CONF_LOG.debugf("Total No. of %s init-params: %s", filterName, initParams.size());
+                    CONF_LOG.debugf("        Total No. of init-params: %s", initParams.size());
                     initParams.each(cctx -> {
                         String pName = $(cctx).find("param-name").text();
                         String pValue = $(cctx).find("param-value").text();
                         filter.addInitParam(pName, pValue);
-                        CONF_LOG.tracef("%s init-param: param-name: '%s'  param-value: '%s'", filterName, pName, pValue);
+                        CONF_LOG.tracef("          init-param: '%s'", pName );
+                        CONF_LOG.tracef("            param-value: '%s'", pValue);
                     });
                     if ($(ctx).find("async-supported").size() > 0) {
-                        trace("Async supported: %s", $(ctx).find("async-supported").text());
+                        trace("    Async supported: %s", $(ctx).find("async-supported").text());
                         filter.setAsyncSupported(Boolean.valueOf($(ctx).find("async-supported").text()));
                     }
                     info.addFilter(filter);
@@ -193,24 +186,25 @@ public class WebXMLParser {
             // do filter mappings
             Match filterMappings = $(doc).find("filter-mapping");
             int sizeFilterMappings = filterMappings.size();
-            trace("Total No. of filters-mappings: %s", sizeFilterMappings);
+            trace("    Total No. of filters-mappings: %s", sizeFilterMappings);
             //TODO: waiting for UNDERTOW-1930: https://github.com/undertow-io/undertow/pull/1212
             /* if ( overrideEnabled && sizeFilterMappings > 0 ) {
                 trace("Removing %s filter mapping(s) from deployment due to web.xml override", info.getFilterMappings().size());
                 info.getFilterMappings().clear();
             } */
             filterMappings.each(ctx -> {
+
                 String filterName = $(ctx).find("filter-name").text();
                 String urlPattern = $(ctx).find("url-pattern").text();
                 if( urlPattern != null ) {
                     Match dispatchers = $(ctx).find("dispatcher");
-                    if (dispatchers == null) {
-                        CONF_LOG.debugf("filter-name: %s url-pattern: %s dispatcher: REQUEST", filterName, urlPattern);
+                    if ( dispatchers.isEmpty() ) {
+                        CONF_LOG.tracef("      filter-name: %s url-pattern: %s dispatcher: REQUEST", filterName, urlPattern);
                         info.addFilterUrlMapping(filterName, urlPattern, DispatcherType.valueOf("REQUEST"));
                     } else {
                         dispatchers.each(dCtx -> {
                             String dispatcher = $(dCtx).text();
-                            CONF_LOG.debugf("filter-name: %s url-pattern: %s dispatcher: %s", filterName, urlPattern,
+                            CONF_LOG.tracef("      filter-name: %s url-pattern: %s dispatcher: %s", filterName, urlPattern,
                                     dispatcher);
                             info.addFilterUrlMapping(filterName, urlPattern, DispatcherType.valueOf(dispatcher));
                         });
@@ -218,50 +212,49 @@ public class WebXMLParser {
                 }
                 String servletName = $(ctx).find("servlet-name").text();
                 if (servletName != null) {
-                    CONF_LOG.debugf("Adding servlet mapping: %s", servletName);
+                    CONF_LOG.tracef("        Adding servlet mapping: %s", servletName);
                     info.addFilterServletNameMapping(filterName, servletName, DispatcherType.valueOf("REQUEST"));
                 }
             });
 
             // do welcome files
-            if (ignoreWelcomePages) {
-                CONF_LOG.info("Ignoring any welcome pages in web.xml");
-            } else {
-                Match welcomeFileList = $(doc).find("welcome-file-list");
-                int sizeWelcomeFiles = welcomeFileList.find("welcome-file").size();
-                trace("Total No. of welcome files: %s", sizeWelcomeFiles);
-                if ( overrideEnabled && sizeWelcomeFiles > 0 ) {
-                    trace("Removing %s welcome page(s) from deployment due to web.xml override", info.getWelcomePages().size());
-                    info.getWelcomePages().clear();
-                }
-                welcomeFileList.find("welcome-file").each(welcomeFileElement -> {
-                    String welcomeFile = $(welcomeFileElement).text();
-                    CONF_LOG.debugf("welcome-file: %s", welcomeFile);
-                    info.addWelcomePage(welcomeFile);
-                });
+            Match welcomeFileList = $(doc).find("welcome-file-list");
+            int sizeWelcomeFiles = welcomeFileList.find("welcome-file").size();
+            trace("    Total No. of welcome files: %s", sizeWelcomeFiles);
+            if ( overrideEnabled && sizeWelcomeFiles > 0 ) {
+                trace("    Removing %s welcome page(s) from deployment due to web.xml override", info.getWelcomePages().size());
+                info.getWelcomePages().clear();
             }
+            welcomeFileList.find("welcome-file").each(welcomeFileElement -> {
+                String welcomeFile = $(welcomeFileElement).text();
+                CONF_LOG.tracef("      welcome-file: %s", welcomeFile);
+                info.addWelcomePage(welcomeFile);
+            });
+            serverOptions.servletWelcomeFiles( info.getWelcomePages().toArray(new String[info.getWelcomePages().size()]) );
+
+
 
             // do mime mappings
             Match mimeMappings = $(doc).find("mime-mapping");
             int sizeMimeMapping = mimeMappings.size();
-            trace("Total No. of mime-mappings: %s", sizeMimeMapping);
+            trace("    Total No. of mime-mappings: %s", sizeMimeMapping);
             if ( overrideEnabled && sizeMimeMapping > 0 ) {
-                trace("Removing %s mime mapping(s) from deployment due to web.xml override", info.getMimeMappings().size());
+                trace("    Removing %s mime mapping(s) from deployment due to web.xml override", info.getMimeMappings().size());
                 info.getMimeMappings().clear();
             }
             mimeMappings.each(ctx -> {
                 String extension = $(ctx).find("extension").text();
                 String mimeType = $(ctx).find("mime-type").text();
-                CONF_LOG.tracef("extension: %s, mime-type: %s", extension, mimeType);
+                CONF_LOG.tracef("      Extension: %s, mime-type: %s", extension, mimeType);
                 info.addMimeMapping(new MimeMapping(extension, mimeType));
             });
 
             // do error pages
             Match errorPages = $(doc).find("error-page");
             int sizeErrorPages = errorPages.size();
-            trace("Total No. of error-pages: %s", sizeErrorPages);
+            trace("    Total No. of error-pages: %s", sizeErrorPages);
             if ( overrideEnabled && sizeErrorPages > 0 ) {
-                trace("Removing %s error page(s) from deployment due to web.xml override", info.getErrorPages().size());
+                trace("    Removing %s error page(s) from deployment due to web.xml override", info.getErrorPages().size());
                 info.getErrorPages().clear();
             }
             errorPages.each(ctx -> {
@@ -269,18 +262,18 @@ public class WebXMLParser {
                 String errorCode = $(ctx).find("error-code").text();
                 String exceptionType = $(ctx).find("exception-type").text();
                 if (errorCode != null && exceptionType != null) {
-                    CONF_LOG.errorf("Cannot specify both error-code and exception-type, using exception-type: %s",
+                    CONF_LOG.errorf("    Cannot specify both error-code and exception-type, using exception-type: %s",
                             exceptionType);
                     errorCode = null;
                 }
                 if (errorCode == null && exceptionType == null) {
-                    CONF_LOG.tracef("default error-page location: %s", location);
+                    CONF_LOG.tracef("    Default error-page location: %s", location);
                     info.addErrorPage(new ErrorPage(location));
                 } else if (errorCode != null) {
-                    CONF_LOG.tracef("error-code: %s - location: %s", location, errorCode);
+                    CONF_LOG.tracef("    error-code: %s - location: %s", location, errorCode);
                     info.addErrorPage(new ErrorPage(location, Integer.parseInt(errorCode)));
                 } else {
-                    CONF_LOG.tracef("exception-type: %s - location: %s", location, exceptionType);
+                    CONF_LOG.tracef("    exception-type: %s - location: %s", location, exceptionType);
                     try {
                         info.addErrorPage(new ErrorPage(location,
                                 (Class<? extends Throwable>) info.getClassLoader().loadClass(exceptionType)));
@@ -292,18 +285,18 @@ public class WebXMLParser {
 
             // do session configuration
             Match sessionConfigElement = $(doc).find("session-config");
-            trace("Total No. of cookie config elements: %s", sessionConfigElement.find("cookie-config").size());
+            trace("    Total No. of cookie config elements: %s", sessionConfigElement.find("cookie-config").size());
             sessionConfigElement.find("cookie-config").each(welcomeFileElement -> {
                 String httpOnly = $(welcomeFileElement).find("http-only").text();
                 String secure = $(welcomeFileElement).find("secure").text();
                 info.getServletSessionConfig().setHttpOnly(Boolean.valueOf(httpOnly));
                 info.getServletSessionConfig().setSecure(Boolean.valueOf(secure));
-                CONF_LOG.debugf("http-only: %s", Boolean.valueOf(httpOnly).toString());
-                CONF_LOG.debugf("secure: %s", Boolean.valueOf(secure).toString());
+                CONF_LOG.debugf("      http-only: %s", Boolean.valueOf(httpOnly).toString());
+                CONF_LOG.debugf("      secure: %s", Boolean.valueOf(secure).toString());
             });
 
         } catch (Exception e) {
-            CONF_LOG.error("Error reading web.xml", e);
+            CONF_LOG.error("    Error reading web.xml", e);
             throw new RuntimeException(e);
         }
     }

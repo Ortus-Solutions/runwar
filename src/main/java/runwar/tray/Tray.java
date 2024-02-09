@@ -38,17 +38,15 @@ import net.minidev.json.JSONObject;
 import net.minidev.json.JSONValue;
 import runwar.LaunchUtil;
 import runwar.Server;
-import runwar.Service;
 import runwar.Start;
 import runwar.gui.JsonForm;
 import runwar.logging.RunwarLogger;
 import runwar.options.ServerOptions;
-import runwar.options.ServerOptionsImpl;
+import runwar.options.ServerOptions;
 import runwar.util.Utils;
 import javax.swing.JFileChooser;
 import javax.swing.JFrame;
 import runwar.gui.SubmitActionlistioner;
-import runwar.util.dae.OSType;
 
 import java.lang.reflect.Method;
 import static runwar.util.Reflection.invoke;
@@ -92,9 +90,8 @@ public class Tray {
             return;
         }
         try {
-            RunwarLogger.LOG.trace("Initializing tray");
+            RunwarLogger.LOG.debug("Initializing tray");
             systemTray = SystemTray.get();
-            RunwarLogger.LOG.trace("Initialized");
         } catch (java.lang.ExceptionInInitializerError e) {
             RunwarLogger.LOG.debugf("Error initializing tray: %s", e.getMessage());
         }
@@ -106,14 +103,14 @@ public class Tray {
 
         ServerOptions serverOptions = server.getServerOptions();
         String iconImage = serverOptions.iconImage();
-        String host = serverOptions.host();
-        int portNumber = serverOptions.httpPort();
+       // String host = serverOptions.host();
+      //  int portNumber = serverOptions.getSites().get(0).httpPort();
         final int stopSocket = serverOptions.stopPort();
         String processName = serverOptions.processName();
         String PID = server.getPID();
         String warpath = serverOptions.warUriString();
 
-        final String statusText = processName + " server on " + host + ":" + portNumber + " PID:" + PID;
+        final String statusText = processName + " PID:" + PID;
 
         variableMap = new HashMap<String, String>();
         variableMap.put("defaultTitle", statusText);
@@ -121,14 +118,14 @@ public class Tray {
         variableMap.put("logDir", warpath);
         variableMap.put("app.logDir", warpath);
         variableMap.put("web.webroot", warpath);
-        variableMap.put("runwar.port", Integer.toString(portNumber));
-        variableMap.put("web.http.port", Integer.toString(portNumber));
-        variableMap.put("web.ajp.port", Integer.toString(portNumber));
+      //  variableMap.put("runwar.port", Integer.toString(portNumber));
+       // variableMap.put("web.http.port", Integer.toString(portNumber));
+       // variableMap.put("web.ajp.port", Integer.toString(portNumber));
         variableMap.put("runwar.processName", processName);
         variableMap.put("processName", processName);
         variableMap.put("runwar.PID", PID);
-        variableMap.put("runwar.host", host);
-        variableMap.put("web.host", host);
+       // variableMap.put("runwar.host", host);
+       // variableMap.put("web.host", host);
         variableMap.put("runwar.stopsocket", Integer.toString(stopSocket));
 
         String trayConfigJSON;
@@ -224,7 +221,6 @@ public class Tray {
                     menuItem.setShortcut('v');
                 } else if (action.equalsIgnoreCase("openbrowser")) {
                     String url = Utils.getIgnoreCase(itemInfo, "url").toString();
-                    url = checkAndFixUrl(url, server.getServerOptions());
                     menuItem = new MenuItem(label, is, new OpenBrowserAction(url, server.getServerOptions().browser()));
                     menuItem.setShortcut('o');
                 } else if (action.equalsIgnoreCase("openfilesystem")) {
@@ -269,25 +265,6 @@ public class Tray {
                 e.printStackTrace();
             }
         }
-    }
-
-    public String checkAndFixUrl(String url, ServerOptions serverOptions){
-        if(!url.startsWith("http")){
-            if(url.startsWith("/")){
-                if(!serverOptions.sslEnable()){
-                    url = "http://" + serverOptions.host() + ":" +serverOptions.httpPort() + url;
-                }else{
-                    url = "https://" + serverOptions.host() + ":" + serverOptions.sslPort() + url;
-                }
-            }else{
-                if(!serverOptions.sslEnable()){
-                    url = "http://" + serverOptions.host() + ":" +serverOptions.httpPort() + "/" + url;
-                }else{
-                    url = "https://" + serverOptions.host() + ":" + serverOptions.sslPort() + "/" + url;
-                }
-            }
-        }
-        return url;
     }
 
     public static JSONObject getTrayConfig(String jsonText, String defaultTitle, HashMap<String, String> variableMap) {
@@ -365,7 +342,7 @@ public class Tray {
     public static void unhookTray() {
         if (systemTray != null) {
             try {
-                RunwarLogger.LOG.debug("Removing tray");
+                RunwarLogger.LOG.trace("Removing tray");
                 systemTray.shutdown();
                 systemTray = null;
             } catch (Exception e) {
@@ -378,7 +355,6 @@ public class Tray {
         Image image = null;
         if (iconImage != null && iconImage.length() != 0) {
             iconImage = iconImage.replaceAll("(^\")|(\"$)", "");
-            RunwarLogger.LOG.trace("trying to load icon: " + iconImage);
             if (iconImage.contains("!")) {
                 String[] zip = iconImage.split("!");
                 try {
@@ -423,7 +399,6 @@ public class Tray {
     public static void setIconImage(String iconImage) {
         if (iconImage != null && iconImage.length() != 0) {
             iconImage = iconImage.replaceAll("(^\")|(\"$)", "");
-            RunwarLogger.LOG.trace("trying to load icon: " + iconImage);
             if (iconImage.contains("!")) {
                 String[] zip = iconImage.split("!");
                 try {
@@ -462,7 +437,6 @@ public class Tray {
     public static InputStream getImageInputStream(String iconImage) {
         if (iconImage != null && iconImage.length() != 0) {
             iconImage = iconImage.replaceAll("(^\")|(\"$)", "");
-            RunwarLogger.LOG.trace("trying to load icon: " + iconImage);
             if (iconImage.contains("!")) {
                 String[] zip = iconImage.split("!");
                 try {
@@ -737,89 +711,6 @@ public class Tray {
             }
         }
     }
-
-    private static class ServerOptionsJsonAction implements ActionListener {
-
-        ServerOptionsImpl serverOptions;
-
-        ServerOptionsJsonAction(ServerOptions serverOptions) {
-            this.serverOptions = (ServerOptionsImpl) serverOptions;
-        }
-
-        @Override
-        public void actionPerformed(ActionEvent e) {
-            RunwarLogger.LOG.info("ServerOptionsJsonAction ------");
-//            showDialog(serverOptions.toJson());
-        }
-    }
-
-    private static class ToggleOnBootAction implements ActionListener {
-
-        ServerOptionsImpl serverOptions;
-
-        ToggleOnBootAction(ServerOptions serverOptions) {
-            this.serverOptions = (ServerOptionsImpl) serverOptions;
-        }
-
-        @Override
-        public void actionPerformed(ActionEvent e) {
-            RunwarLogger.LOG.info("ToggleOnBootAction ------");
-            Service service = new Service(serverOptions);
-            HashMap<String, String> values = new HashMap<>();
-            service.commands().forEach(command
-                    -> values.put(command.name, command.osCommand(OSType.host()))
-            );
-            SubmitActionlistioner onSubmit = new SubmitActionlistioner() {
-                public void actionPerformed(ActionEvent e) {
-                    RunwarLogger.LOG.info(getForm().getFieldValue("start"));
-                    RunwarLogger.LOG.info(getForm().getFieldValue("startForeground"));
-                    RunwarLogger.LOG.info(getForm().getFieldValue("stop"));
-                    try {
-                        //service.generateServiceScripts();
-                    } catch (Exception e1) {
-                        e1.printStackTrace();
-                    }
-                }
-            };
-            JsonForm.renderFormJson("runwar/form/service.form.json", values, variableMap, onSubmit);
-        }
-    }
-
-    private static class ServerOptionsSaveAction implements ActionListener {
-
-        ServerOptionsImpl serverOptions;
-
-        ServerOptionsSaveAction(ServerOptions serverOptions) {
-            this.serverOptions = (ServerOptionsImpl) serverOptions;
-        }
-
-        @Override
-        public void actionPerformed(ActionEvent e) {
-            RunwarLogger.LOG.info("ServerOptionsSaveAction ------");
-            File path = new File(serverOptions.workingDir(), "server.json");
-            final JFileChooser fc = new JFileChooser(path);
-            JPanel jPanel = new JPanel(new BorderLayout());
-            fc.setDialogTitle("Save current options to server.json");
-            fc.setName("server.json");
-            fc.setSelectedFile(path);
-            fc.setAcceptAllFileFilterUsed(true);
-            fc.setFileFilter(new javax.swing.filechooser.FileFilter() {
-                @Override
-                public boolean accept(File file) {
-                    return file.getName().toLowerCase().endsWith(".json") || file.getName().toLowerCase().endsWith(".txt");
-                }
-
-                @Override
-                public String getDescription() {
-                    return "JSON file";
-                }
-            });
-            fc.showSaveDialog(jPanel);
-
-            //showDialog(serverOptions.toJson());
-        }
-    }
-/////
 
     private static class OpenBrowserAction implements ActionListener {
 

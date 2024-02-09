@@ -3,8 +3,9 @@ package runwar;
 import java.io.OutputStream;
 import java.net.InetAddress;
 import java.net.Socket;
+import java.io.File;
+import runwar.options.ConfigParser;
 
-import runwar.options.CommandLineHandler;
 import runwar.options.ServerOptions;
 
 public class Stop {
@@ -14,15 +15,20 @@ public class Stop {
     }
 
     public static void stopServer(String[] args, boolean andExit) throws Exception {
-        stopServer(CommandLineHandler.parseArguments(args), andExit);
+        ServerOptions serverOptions;
+        if(args.length == 1 ) {
+            serverOptions = new ConfigParser(new File(args[0])).getServerOptions();
+        } else {
+            throw new RuntimeException( "Runwar must be called with a valid path to the serverinfo.json file as the only arg" );
+        }
+        stopServer(serverOptions, andExit);
     }
-    
+
     public static void stopServer(ServerOptions serverOptions, boolean andExit) throws Exception {
         int socketNumber = serverOptions.stopPort();
-        String host = serverOptions.host();
         char[] stoppassword = serverOptions.stopPassword();
         try {
-            InetAddress addr = Server.getInetAddress(host);
+            InetAddress addr = Server.getInetAddress("127.0.0.1");
             Socket s = new Socket(addr, socketNumber);
             OutputStream out = s.getOutputStream();
             System.out.println("**** sending stop request to socket " + addr.getHostAddress() + ":" + socketNumber);

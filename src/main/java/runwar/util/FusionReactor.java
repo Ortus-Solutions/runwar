@@ -44,7 +44,7 @@ public class FusionReactor {
 
     public void setFusionReactorInfo(String transactionName, String transactionApplicationName) {
         if (!hasFusionReactor) {
-            RunwarLogger.CONTEXT_LOG.warn("Trying to set FusionReactor options without fusion reactor in the class path");
+            RunwarLogger.LOG.warn("Trying to set FusionReactor options without fusion reactor in the class path");
             return;
         }
         try {

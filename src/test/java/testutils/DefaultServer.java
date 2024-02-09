@@ -8,7 +8,7 @@ import org.junit.jupiter.api.extension.*;
 import runwar.Server;
 import runwar.logging.LoggerFactory;
 import runwar.options.ServerOptions;
-import runwar.options.ServerOptionsImpl;
+import runwar.options.ServerOptions;
 import runwar.security.SSLUtil;
 import runwar.server.AbstractServerTest;
 
@@ -93,11 +93,11 @@ public class DefaultServer implements BeforeEachCallback, AfterEachCallback, Bef
         server = null;
     }
 
-    public static synchronized ServerOptionsImpl getServerOptions() {
+    public static synchronized ServerOptions getServerOptions() {
         if(serverOptions == null){
             serverOptions = AbstractServerTest.getDefaultServerOptions();
         }
-        return (ServerOptionsImpl) serverOptions.debug(true).background(false);
+        return serverOptions.debug(true).background(false);
     }
 
     public static synchronized ServerOptions resetServerOptions() {

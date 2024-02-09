@@ -1,7 +1,7 @@
 package runwar.logging;
 
 import runwar.options.ServerOptions;
-import runwar.options.ServerOptionsImpl;
+import runwar.options.ServerOptions;
 
 import java.util.ArrayList;
 import java.util.Enumeration;
@@ -167,7 +167,7 @@ public class LoggerFactory {
         LoggerConfig RUNWAR_CONTEXT = new LoggerConfig( "runwar.context", level, false );
         loggers.add(RUNWAR_CONTEXT);
 
-        LoggerConfig RUNWAR_CONFIG = new LoggerConfig( "runwar.config", Level.INFO, false );
+        LoggerConfig RUNWAR_CONFIG = new LoggerConfig( "runwar.config", level, false );
         loggers.add(RUNWAR_CONFIG);
 
         LoggerConfig RUNWAR_SECURITY = new LoggerConfig( "runwar.security", Level.WARN, false );
@@ -185,9 +185,7 @@ public class LoggerFactory {
 
         if (serverOptions.debug() || !logLevel.equalsIgnoreCase("info")) {
 
-            if( serverOptions.resourceManagerLogging() ) {
-                RUNWAR_REQUEST.setLevel(level);
-            }
+            RUNWAR_REQUEST.setLevel(level);
 
             if (logLevel.equalsIgnoreCase("trace")) {
                 DORKBOX_LOG.setLevel(level);

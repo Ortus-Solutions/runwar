@@ -32,7 +32,6 @@ import java.util.TimerTask;
 import java.util.jar.JarEntry;
 import java.util.jar.JarInputStream;
 import java.util.jar.JarOutputStream;
-import java.util.jar.Pack200;
 import java.util.zip.GZIPInputStream;
 
 import dorkbox.notify.Notify;
@@ -236,48 +235,6 @@ public class LaunchUtil {
         }
     }
 
-    public static void relaunchAsBackgroundProcess(ServerOptions serverOptions, boolean andExit) {
-        serverOptions.background(false);
-        relaunchAsBackgroundProcess(serverOptions.launchTimeout(), serverOptions.commandLineArgs(),
-                serverOptions.jvmArgs(), serverOptions.processName(), andExit);
-    }
-
-    public static void relaunchAsBackgroundProcess(int timeout, String[] args, List<String> jvmArgs, String processName) {
-        relaunchAsBackgroundProcess(timeout, args, jvmArgs, processName, true);
-    }
-
-    public static void relaunchAsBackgroundProcess(int timeout, String[] args, List<String> jvmArgs, String processName, boolean andExit) {
-        try {
-            if (relaunching) {
-                return;
-            }
-            relaunching = true;
-            LoggerFactory.initialize();
-            List<String> cmdarray = new ArrayList<String>();
-            cmdarray.add(getJreExecutable().toString());
-            List<String> VMArgs = jvmArgs != null ? jvmArgs : getCurrentVMArgs();
-            for (String arg : VMArgs) {
-                cmdarray.add(arg);
-            }
-            cmdarray.add("-cp");
-            cmdarray.add( System.getProperty("java.class.path") );
-            cmdarray.add( "runwar.Start" );
-
-            for (String propertyName : replicateProps) {
-                String property = System.getProperty(propertyName);
-                if (property != null) {
-                    cmdarray.add("-D" + propertyName + "=" + property);
-                }
-            }
-            for (String arg : args) {
-                cmdarray.add(arg);
-            }
-            launch(cmdarray, timeout, andExit);
-        } catch (Exception e) {
-            throw new RuntimeException(e);
-        }
-    }
-
     private static void appendToBuffer(List<String> resultBuffer, StringBuffer buf) {
         if (buf.length() > 0) {
             resultBuffer.add(buf.toString());
@@ -466,7 +423,7 @@ public class LaunchUtil {
     public static String getResourceAsString(String path) {
         InputStream streamPath = LaunchUtil.class.getClassLoader().getResourceAsStream(path);
         if (streamPath == null) {
-            return null;
+            throw new RuntimeException( "Cannot load resource: " + path );
         }
         return readStream(streamPath);
     }
@@ -511,11 +468,6 @@ public class LaunchUtil {
                 }
                 FileOutputStream fileOutStream = new FileOutputStream(f);
                 writeStreamTo(jis, fileOutStream, 8 * KB);
-                if (f.getPath().endsWith("pack.gz")) {
-                    unpack(f);
-                    fileOutStream.close();
-                    f.delete();
-                }
                 fileOutStream.close();
             }
 
@@ -545,48 +497,6 @@ public class LaunchUtil {
                     previous.delete();
                 } catch (Exception e) {
                     System.err.println("Could not delete previous lib: " + previous.getAbsolutePath());
-                }
-            }
-        }
-    }
-
-    public static void unpack(File inFile) {
-        JarOutputStream out = null;
-        InputStream in = null;
-        String inName = inFile.getPath();
-        String outName;
-
-        if (inName.endsWith(".pack.gz")) {
-            outName = inName.substring(0, inName.length() - 8);
-        } else if (inName.endsWith(".pack")) {
-            outName = inName.substring(0, inName.length() - 5);
-        } else {
-            outName = inName + ".unpacked";
-        }
-        try {
-            Pack200.Unpacker unpacker = Pack200.newUnpacker();
-            out = new JarOutputStream(new FileOutputStream(outName));
-            in = new FileInputStream(inName);
-            if (inName.endsWith(".gz")) {
-                in = new GZIPInputStream(in);
-            }
-            unpacker.unpack(in, out);
-        } catch (IOException ex) {
-            ex.printStackTrace();
-        } finally {
-            if (in != null) {
-                try {
-                    in.close();
-                } catch (IOException ex) {
-                    System.err.println("Error closing file: " + ex.getMessage());
-                }
-            }
-            if (out != null) {
-                try {
-                    out.flush();
-                    out.close();
-                } catch (IOException ex) {
-                    System.err.println("Error closing file: " + ex.getMessage());
                 }
             }
         }
