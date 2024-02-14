@@ -1,21 +1,21 @@
 package runwar.options;
 
+import static runwar.logging.RunwarLogger.CONF_LOG;
+
+import java.io.File;
+import java.io.IOException;
+import java.util.ArrayList;
+import java.util.Iterator;
+import java.util.Map;
+import java.util.Set;
+import java.util.stream.Collectors;
+
 import net.minidev.json.JSONArray;
 import net.minidev.json.JSONObject;
 import net.minidev.json.JSONValue;
 import net.minidev.json.parser.ParseException;
 import runwar.LaunchUtil;
-import runwar.Server;
-import runwar.logging.RunwarLogger;
 import runwar.logging.LoggerFactory;
-
-import java.io.File;
-import java.io.IOException;
-import java.net.MalformedURLException;
-import java.util.*;
-import java.util.stream.Collectors;
-
-import static runwar.logging.RunwarLogger.CONF_LOG;
 
 public class ConfigParser {
 
@@ -311,46 +311,6 @@ public class ConfigParser {
             if (siteConfig.hasOption("resourceManagerLogging")) {
                 site.resourceManagerLogging(siteConfig.getOptionBoolean("resourceManagerLogging"));
             }
-            if (siteConfig.hasOption("host")) {
-                site.host(siteConfig.getOptionValue("host"));
-            }
-
-            if (siteConfig.hasOption("HTTPEnable")) {
-                site.httpEnable(siteConfig.getOptionBoolean("HTTPEnable"));
-            }
-            if (siteConfig.hasOption("port")) {
-                site.httpPort(((Number) siteConfig.getParsedOptionValue("port")).intValue());
-            }
-            if (siteConfig.hasOption("HTTP2Enable")) {
-                site.http2Enable(siteConfig.getOptionBoolean("HTTP2Enable"));
-            }
-            if (siteConfig.hasOption("AJPEnable")) {
-                site.ajpEnable(siteConfig.getOptionBoolean("AJPEnable"));
-            }
-            if (siteConfig.hasOption("AJPPort")) {
-                site.ajpPort(((Number) siteConfig.getParsedOptionValue("AJPPort")).intValue());
-            }
-            if (siteConfig.hasOption("SSLEnable")) {
-                site.sslEnable(siteConfig.getOptionBoolean("SSLEnable"));
-                if (!siteConfig.hasOption("sessionCookieSecure")) {
-                    serverOptions.secureCookies(true);
-                }
-            }
-            if (siteConfig.hasOption("SSLPort")) {
-                site.sslPort(((Number) siteConfig.getParsedOptionValue("SSLPort")).intValue());
-            }
-
-            if (siteConfig.hasOption("SSLCertFile")) {
-                File certFile = getFile(siteConfig.getOptionValue("SSLCertFile"));
-                site.sslCertificate(certFile);
-            }
-            if (siteConfig.hasOption("SSLKeyFile")) {
-                File keyFile = getFile(siteConfig.getOptionValue("SSLKeyFile"));
-                site.sslKey(keyFile);
-            }
-            if (siteConfig.hasOption("SSLKeyPass")) {
-                site.sslKeyPass(siteConfig.getOptionValue("SSLKeyPass").toCharArray());
-            }
 
             if (siteConfig.hasOption("clientCertMode")) {
                 site.clientCertNegotiation(siteConfig.getOptionValue("clientCertMode"));
@@ -364,13 +324,11 @@ public class ConfigParser {
             if (siteConfig.hasOption("clientCertEnable")) {
                 site.clientCertEnable(siteConfig.getOptionBoolean("clientCertEnable"));
 
-                if (site.clientCertEnable()) {
-                    if (siteConfig.hasOption("clientCertSubjectDNs")) {
-                        site.clientCertSubjectDNs(siteConfig.getOptionArray("clientCertSubjectDNs"));
-                    }
-                    if (siteConfig.hasOption("clientCertIssuerDNs")) {
-                        site.clientCertIssuerDNs(siteConfig.getOptionArray("clientCertIssuerDNs"));
-                    }
+                if (siteConfig.hasOption("clientCertSubjectDNs")) {
+                    site.clientCertSubjectDNs(siteConfig.getOptionArray("clientCertSubjectDNs"));
+                }
+                if (siteConfig.hasOption("clientCertIssuerDNs")) {
+                    site.clientCertIssuerDNs(siteConfig.getOptionArray("clientCertIssuerDNs"));
                 }
             }
 

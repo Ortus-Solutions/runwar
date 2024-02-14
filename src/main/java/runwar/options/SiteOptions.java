@@ -7,7 +7,6 @@ import java.util.Map;
 
 import net.minidev.json.JSONArray;
 import net.minidev.json.JSONObject;
-import runwar.options.ServerOptions;
 
 public class SiteOptions {
 
@@ -287,18 +286,6 @@ public class SiteOptions {
         return this;
     }
 
-    public SiteOptions sslCertificate(File file) {
-        this.sslCertificate = file;
-        return this;
-    }
-
-    public File sslCertificate() {
-        if (sslCertificate != null && !sslCertificate.exists()) {
-            throw new IllegalArgumentException("Certificate file does not exist: " + sslCertificate.getAbsolutePath());
-        }
-        return this.sslCertificate;
-    }
-
     public SiteOptions clientCertNegotiation(String clientCertNegotiation) {
         this.clientCertNegotiation = clientCertNegotiation.toUpperCase();
         return this;
@@ -351,24 +338,6 @@ public class SiteOptions {
 
     public JSONArray clientCertIssuerDNs() {
         return this.clientCertIssuerDNs;
-    }
-
-    public SiteOptions sslKey(File file) {
-        this.sslKey = file;
-        return this;
-    }
-
-    public File sslKey() {
-        return this.sslKey;
-    }
-
-    public SiteOptions sslKeyPass(char[] pass) {
-        this.sslKeyPass = pass;
-        return this;
-    }
-
-    public char[] sslKeyPass() {
-        return this.sslKeyPass;
     }
 
     public SiteOptions transferMinSize(Long minSize) {
