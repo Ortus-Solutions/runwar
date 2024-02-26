@@ -385,7 +385,7 @@ public class SiteOptions {
 
         for (String key : errorpages.keySet()) {
             String strCode = key.toString().trim();
-            Integer code = strCode.toLowerCase() == "default" ? 1 : Integer.parseInt(strCode);
+            Integer code = strCode.toLowerCase().equals("default") ? 1 : Integer.parseInt(strCode);
             String location = errorpages.get(key).toString();
             location = location.startsWith("/") ? location : "/" + location;
             this.errorPages.put(code, location);
