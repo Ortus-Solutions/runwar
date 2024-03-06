@@ -420,7 +420,7 @@ public class ConfigParser {
             // issues as detailed here:
             // https://issues.redhat.com/browse/UNDERTOW-584
             if (siteConfig.hasOption("sendFileMinSizeKB")) {
-                site.transferMinSize(Long.valueOf(siteConfig.getOptionValue("transferMinSize")) * 1024);
+                site.transferMinSize(Long.valueOf(siteConfig.getOptionValue("sendFileMinSizeKB")) * 1024);
             }
 
             if (siteConfig.hasOption("GZipEnable")) {
