@@ -13,6 +13,7 @@ import java.lang.management.ManagementFactory;
 import java.net.ConnectException;
 import java.net.InetAddress;
 import java.net.InetSocketAddress;
+import java.lang.reflect.Method;
 import java.net.ServerSocket;
 import java.net.Socket;
 import java.net.SocketException;
@@ -32,8 +33,6 @@ import javax.servlet.Servlet;
 
 import org.xnio.Option;
 import org.xnio.OptionMap;
-
-import com.apple.eawt.Application;
 
 import io.undertow.Undertow;
 import io.undertow.server.DefaultByteBufferPool;
@@ -259,7 +258,11 @@ public class Server {
                 System.setProperty("apple.laf.useScreenMenuBar", "true");
                 System.setProperty("-Xdock:name", processName);
                 try {
-                    Application.getApplication().setDockIconImage(dockIcon);
+                    Class<?> appClass = Class.forName("com.apple.eawt.Application");
+                    Method getAppMethod = appClass.getMethod("getApplication");
+                    Object appInstance = getAppMethod.invoke(null);
+                    Method dockMethod = appInstance.getClass().getMethod("setDockIconImage", java.awt.Image.class);
+                    dockMethod.invoke(appInstance, dockIcon);
                 } catch (Exception e) {
                     LOG.warn("  Error setting dock icon image", e);
                 }
