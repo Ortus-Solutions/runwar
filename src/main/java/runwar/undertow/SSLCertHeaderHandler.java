@@ -94,7 +94,7 @@ public class SSLCertHeaderHandler implements HttpHandler {
 			setCGIElement( exchange, CERT_KEYSIZE, String.valueOf( ssl.getKeySize() ) );
 
 			// Set details of the server cert so it's in our CGI scope
-            if( ssl.getSSLSession().getLocalCertificates() != null ) {
+            if( ssl.getSSLSession() != null && ssl.getSSLSession().getLocalCertificates() != null ) {
 				Certificate[] serverCerts = ssl.getSSLSession().getLocalCertificates();
 				if(serverCerts.length > 0 && serverCerts[0] instanceof X509Certificate ) {
 					X509Certificate serverCert = (X509Certificate)serverCerts[0];
