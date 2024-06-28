@@ -43,7 +43,7 @@ jobs:
       run: java -version
 
     - name: Configure Gradle to use the setup JDK
-      run: echo "org.gradle.java.home=$JAVA_HOME" >> $GITHUB_WORKSPACE/gradle.properties
+      run: echo "org.gradle.java.home=$JAVA_HOME" >> ~/gradle.properties
 
     # Do the build
     - name: Build with Gradle
