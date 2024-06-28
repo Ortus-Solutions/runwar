@@ -8,6 +8,8 @@ import io.undertow.server.HttpServerExchange;
 import io.undertow.server.handlers.resource.Resource;
 import io.undertow.server.handlers.resource.ResourceManager;
 import io.undertow.util.CanonicalPathUtils;
+import io.undertow.util.RedirectBuilder;
+import io.undertow.util.StatusCodes;
 
 public class WelcomeFileHandler implements HttpHandler {
 
@@ -24,7 +26,7 @@ public class WelcomeFileHandler implements HttpHandler {
     @Override
     public void handleRequest(final HttpServerExchange exchange) throws Exception {
         Resource resource = resourceManager.getResource(canonicalize(exchange.getRelativePath()));
-        if (resource != null && resource.isDirectory()) {
+        if (resource != null && resource.isDirectory() && exchange.getRelativePath().endsWith("/")) {
             Resource indexResource = getIndexFiles(exchange, resourceManager, resource.getPath(), welcomeFiles);
             if (indexResource != null) {
                 String newPath = indexResource.getPath();
