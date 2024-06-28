@@ -35,18 +35,6 @@ jobs:
       with:
         java-version: '11'
         distribution: 'temurin'
-
-    - name: Print JAVA_HOME
-      run: echo $JAVA_HOME
-
-    - name: Check Java version
-      run: java -version
-
-    - name: Configure Gradle to use the setup JDK
-      run: mkdir ~/.gradle/ && echo "org.gradle.java.home=$JAVA_HOME" >> ~/.gradle/gradle.properties
-    
-    - name: Print Gradle properties
-      run: cat ~/.gradle/gradle.properties
   
     - name: Create symlink to Java home
       run: |
