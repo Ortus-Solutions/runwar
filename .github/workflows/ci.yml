@@ -41,7 +41,10 @@ jobs:
 
     - name: Check Java version
       run: java -version
-  
+
+    - name: Configure Gradle to use the setup JDK
+      run: echo "org.gradle.java.home=$JAVA_HOME" >> $GITHUB_WORKSPACE/gradle.properties
+
     # Do the build
     - name: Build with Gradle
       run: ./gradlew --refresh-dependencies
