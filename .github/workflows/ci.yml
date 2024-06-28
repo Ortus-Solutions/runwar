@@ -36,6 +36,12 @@ jobs:
         java-version: '11'
         distribution: 'temurin'
 
+    - name: Print JAVA_HOME
+      run: echo $JAVA_HOME
+
+    - name: Check Java version
+      run: java -version
+  
     # Do the build
     - name: Build with Gradle
       run: ./gradlew --refresh-dependencies
