@@ -86,7 +86,7 @@ public class SiteOptions {
 
     private final Map<String, String> mimeTypes = new HashMap<String, String>();
 
-    private String servletPassPredicate = "regex( '^/(.+?\\.cf[cm])(/.*)?$' )";
+    private String servletPassPredicate = "regex( '^/(.+?\\.cf[cms])(/.*)?$' ) or regex( '^/(.+?\\.bx[sm]{0,1})(/.*)?$' )";
 
     public ServerOptions getServerOptions() {
         return serverOptions;
