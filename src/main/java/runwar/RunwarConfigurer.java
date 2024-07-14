@@ -1,5 +1,21 @@
 package runwar;
 
+import static io.undertow.Handlers.predicate;
+import static runwar.logging.RunwarLogger.LOG;
+
+import java.io.File;
+import java.io.IOException;
+import java.net.URL;
+import java.util.ArrayList;
+import java.util.BitSet;
+import java.util.HashMap;
+import java.util.List;
+import java.util.Map;
+import java.util.Arrays;
+
+import javax.servlet.DispatcherType;
+import javax.servlet.Filter;
+
 import io.undertow.predicate.Predicates;
 import io.undertow.server.handlers.cache.CacheHandler;
 import io.undertow.server.handlers.cache.DirectBufferCache;
@@ -8,24 +24,7 @@ import io.undertow.servlet.api.*;
 import io.undertow.servlet.handlers.DefaultServlet;
 import io.undertow.util.MimeMappings;
 import runwar.options.ServerOptions;
-import runwar.security.SelfSignedCertificate;
 import runwar.undertow.WebXMLParser;
-
-import javax.servlet.DispatcherType;
-import javax.servlet.Filter;
-import javax.servlet.Servlet;
-import java.io.File;
-import java.io.IOException;
-import java.net.URL;
-import java.nio.file.Path;
-import java.nio.file.Paths;
-import java.security.GeneralSecurityException;
-import java.util.*;
-import java.util.BitSet;
-
-import static io.undertow.Handlers.predicate;
-import static io.undertow.servlet.Servlets.servlet;
-import static runwar.logging.RunwarLogger.LOG;
 
 public class RunwarConfigurer {
 
@@ -189,7 +188,9 @@ public class RunwarConfigurer {
                 regexPathInfoFilter = (Class<Filter>) Server.class.getClassLoader()
                         .loadClass("org.cfmlprojects.regexpathinfofilter.RegexPathInfoFilter");
             }
-            servletBuilder.addFilter(new FilterInfo("RegexPathInfoFilter", regexPathInfoFilter));
+            FilterInfo filterInfo = new FilterInfo("RegexPathInfoFilter", regexPathInfoFilter);
+            filterInfo.addInitParam("regex", "^(/.+?\\.cf[cm]|/.+?\\.bx[sm])(/.*)");
+            servletBuilder.addFilter(filterInfo);
             servletBuilder.addFilterUrlMapping("RegexPathInfoFilter", "/*", DispatcherType.REQUEST);
             servletBuilder.addFilterUrlMapping("RegexPathInfoFilter", "/*", DispatcherType.FORWARD);
         }

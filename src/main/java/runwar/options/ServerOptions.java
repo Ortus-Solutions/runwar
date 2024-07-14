@@ -834,6 +834,8 @@ public class ServerOptions {
             this.cfengineName = "adobe";
         } else if (cfengineName.toLowerCase().contains("railo")) {
             this.cfengineName = "railo";
+        } else if (cfengineName.toLowerCase().contains("boxlang")) {
+            this.cfengineName = "boxlang";
         } else if (cfengineName.equals("")) {
             this.cfengineName = "";
         } else {
