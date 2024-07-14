@@ -18,6 +18,7 @@
 
 package runwar.undertow.predicate;
 
+import io.undertow.UndertowLogger;
 import io.undertow.attribute.ExchangeAttribute;
 import io.undertow.attribute.ExchangeAttributes;
 import io.undertow.predicate.Predicate;
@@ -25,6 +26,7 @@ import io.undertow.predicate.PredicateBuilder;
 import io.undertow.server.HttpServerExchange;
 import io.undertow.server.handlers.resource.Resource;
 import io.undertow.server.handlers.resource.ResourceManager;
+import io.undertow.UndertowLogger;
 
 import java.io.IOException;
 import java.util.Collections;
@@ -37,11 +39,18 @@ import runwar.undertow.SiteDeploymentManager;
 
 /**
  * Predicate that returns true if the given location corresponds to a directory.
- * This is a copy of the servlet version, but uses a resource manager attached to the exchange
+ * This is a copy of the servlet version, but uses a resource manager attached
+ * to the exchange
  *
  * @author Stuart Douglas, Brad Wood
  */
 public class IsDirectoryPredicate implements Predicate {
+
+    private static final boolean traceEnabled;
+
+    static {
+        traceEnabled = UndertowLogger.PREDICATE_LOGGER.isTraceEnabled();
+    }
 
     private final ExchangeAttribute location;
 
@@ -54,14 +63,22 @@ public class IsDirectoryPredicate implements Predicate {
         String location = this.location.readAttribute(exchange);
 
         SiteDeployment deployment = exchange.getAttachment(SiteDeploymentManager.SITE_DEPLOYMENT_KEY);
-        if(deployment == null) {
-           throw new RuntimeException( "is-directory predicate could not access the site deployment on this exchange" );
+        if (deployment == null) {
+            throw new RuntimeException("is-directory predicate could not access the site deployment on this exchange");
         }
         ResourceManager manager = deployment.getResourceManager();
         try {
             Resource resource = manager.getResource(location);
-            if(resource == null) {
+            if (resource == null) {
+                if (traceEnabled) {
+                    UndertowLogger.PREDICATE_LOGGER.tracef(
+                            "is-directory check of [%s] returned [null], so directory does not exist.", location);
+                }
                 return false;
+            }
+            if (traceEnabled) {
+                UndertowLogger.PREDICATE_LOGGER.tracef("is-directory check of [%s] returned %s.", location,
+                        resource.isDirectory());
             }
             return resource.isDirectory();
         } catch (IOException e) {
@@ -101,7 +118,7 @@ public class IsDirectoryPredicate implements Predicate {
         @Override
         public Predicate build(final Map<String, Object> config) {
             ExchangeAttribute value = (ExchangeAttribute) config.get("value");
-            if(value == null) {
+            if (value == null) {
                 value = ExchangeAttributes.relativePath();
             }
             return new IsDirectoryPredicate(value);
