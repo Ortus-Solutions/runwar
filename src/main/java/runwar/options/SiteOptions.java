@@ -12,11 +12,12 @@ public class SiteOptions {
 
     private ServerOptions serverOptions;
 
-    private String host = "127.0.0.1", logAccessBaseFileName = "access", cfmlDirs, siteName = "default";
+    private String host = "127.0.0.1", logAccessBaseFileName = "access", cfmlDirs, siteName = "default",
+            webSocketURI = "/ws", webSocketListener = "/WebSocket.cfc";
 
     private int portNumber = 8088, ajpPort = 8009, sslPort = 1443;
 
-    private boolean enableAJP = false, enableSSL = false, enableHTTP = true;
+    private boolean enableAJP = false, enableSSL = false, enableHTTP = true, webSocketEnable = false;
 
     private boolean directoryListingEnable = true, logAccessEnable = false;
 
@@ -94,6 +95,33 @@ public class SiteOptions {
 
     public SiteOptions setServerOptions(ServerOptions serverOptions) {
         this.serverOptions = serverOptions;
+        return this;
+    }
+
+    public String webSocketURI() {
+        return webSocketURI;
+    }
+
+    public SiteOptions webSocketURI(String webSocketURI) {
+        this.webSocketURI = webSocketURI;
+        return this;
+    }
+
+    public String webSocketListener() {
+        return webSocketListener;
+    }
+
+    public SiteOptions webSocketListener(String webSocketListener) {
+        this.webSocketListener = webSocketListener;
+        return this;
+    }
+
+    public boolean webSocketEnable() {
+        return webSocketEnable;
+    }
+
+    public SiteOptions webSocketEnable(boolean webSocketEnable) {
+        this.webSocketEnable = webSocketEnable;
         return this;
     }
 

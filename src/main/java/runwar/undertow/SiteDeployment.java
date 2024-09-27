@@ -32,6 +32,7 @@ import io.undertow.util.AttachmentKey;
 import io.undertow.util.HeaderValues;
 import io.undertow.server.handlers.resource.Resource;
 import io.undertow.util.Headers;
+import io.undertow.server.HttpHandler;
 import io.undertow.util.HttpString;
 import io.undertow.util.MimeMappings;
 import io.undertow.io.Sender;
@@ -91,6 +92,7 @@ public class SiteDeployment {
 
     private final HttpHandler siteInitialHandler;
     private final HttpHandler servletInitialHandler;
+    private WebsocketHandler websocketHandler;
     private MetricsHandler siteMetricsHandler;
     private final DeploymentManager deploymentManager;
     private SecurityManager securityManager;
@@ -331,8 +333,15 @@ public class SiteDeployment {
             httpHandler = this.siteMetricsHandler;
         }
 
-        return new LifecyleHandler(httpHandler, serverOptions, siteOptions);
+        httpHandler = new LifecyleHandler(httpHandler, serverOptions, siteOptions);
 
+        if (siteOptions.webSocketEnable()) {
+            LOG.info("  WebSocket Server started");
+            httpHandler = new WebsocketHandler(httpHandler, serverOptions, siteOptions);
+            this.websocketHandler = (WebsocketHandler) httpHandler;
+        }
+
+        return httpHandler;
     }
 
     public void processRequest(HttpServerExchange exchange) throws Exception {
@@ -391,6 +400,10 @@ public class SiteDeployment {
 
     public MetricsHandler getSiteMetricsHandler() {
         return siteMetricsHandler;
+    }
+
+    public WebsocketHandler getWebsocketHandler() {
+        return websocketHandler;
     }
 
     public void stop() {

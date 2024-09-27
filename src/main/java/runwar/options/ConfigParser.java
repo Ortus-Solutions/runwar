@@ -296,6 +296,26 @@ public class ConfigParser {
 
             site.webroot(getFile(siteConfig.getOptionValue("webroot")));
 
+            if (siteConfig.hasOption("webSocketEnable")) {
+                site.webSocketEnable(siteConfig.getOptionBoolean("webSocketEnable"));
+            }
+
+            if (siteConfig.hasOption("webSocketURI")) {
+                String webSocketURI = siteConfig.getOptionValue("webSocketURI");
+                if (!webSocketURI.startsWith("/")) {
+                    webSocketURI = "/" + webSocketURI;
+                }
+                site.webSocketURI(webSocketURI);
+            }
+
+            if (siteConfig.hasOption("webSocketListener")) {
+                String webSocketListener = siteConfig.getOptionValue("webSocketListener");
+                if (!webSocketListener.startsWith("/")) {
+                    webSocketListener = "/" + webSocketListener;
+                }
+                site.webSocketListener(webSocketListener);
+            }
+
             if (siteConfig.hasOption("servletPassPredicate")) {
                 site.servletPassPredicate(siteConfig.getOptionValue("servletPassPredicate"));
             }
