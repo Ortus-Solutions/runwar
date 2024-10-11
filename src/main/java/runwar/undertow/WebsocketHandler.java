@@ -53,7 +53,13 @@ public class WebsocketHandler extends PathHandler {
         this.next = next;
         this.serverOptions = serverOptions;
         this.siteOptions = siteOptions;
+
+        Set<Handshake> handshakes = new HashSet<>();
+        handshakes.add(new Hybi13Handshake(Set.of("v12.stomp", "v11.stomp", "v10.stomp"), false));
+        handshakes.add(new Hybi08Handshake(Set.of("v12.stomp", "v11.stomp", "v10.stomp"), false));
+        handshakes.add(new Hybi07Handshake(Set.of("v12.stomp", "v11.stomp", "v10.stomp"), false));
         this.webSocketProtocolHandshakeHandler = new WebSocketProtocolHandshakeHandler(
+                handshakes,
                 new WebSocketConnectionCallback() {
                     @Override
                     public void onConnect(WebSocketHttpExchange WSexchange, WebSocketChannel channel) {
@@ -88,7 +94,11 @@ public class WebsocketHandler extends PathHandler {
         if (channel == null || !channel.isOpen()) {
             return;
         }
-        WebSockets.sendText(message, channel, null);
+        // I'm not clear if Undertow handles this, but just to be safe only send one
+        // message to a channel at once to avoid threading issues
+        synchronized (channel) {
+            WebSockets.sendText(message, channel, null);
+        }
     }
 
     public void broadcastMessage(String message) {
