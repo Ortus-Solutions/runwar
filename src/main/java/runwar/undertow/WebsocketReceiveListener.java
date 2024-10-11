@@ -163,9 +163,9 @@ public class WebsocketReceiveListener extends AbstractReceiveListener {
             newExchange.setSourceAddress(this.initialExchange.getSourceAddress());
             newExchange.setDestinationAddress(this.initialExchange.getDestinationAddress());
 
-            exchange.setRequestPath(newUri);
-            exchange.setRelativePath(newUri);
-            exchange.setQueryString(qs);
+            newExchange.setRequestPath(newUri);
+            newExchange.setRelativePath(newUri);
+            newExchange.setQueryString(qs);
 
             // This sets the requestpath, relativepath, querystring, and parses the query
             // parameters
