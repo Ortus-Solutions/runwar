@@ -137,7 +137,8 @@ public class WebsocketReceiveListener extends AbstractReceiveListener {
             return;
         }
         try {
-            String newUri = siteOptions.webSocketListener() + "?method=onProcess&WSMethod=" + method;
+            String newUri = siteOptions.webSocketListener();
+            String qs = "?method=onProcess&WSMethod=" + method;
 
             final DefaultByteBufferPool bufferPool = new DefaultByteBufferPool(false, 1024, 0, 0);
             MockServerConnection connection = new MockServerConnection(bufferPool, initialExchange);
@@ -162,12 +163,9 @@ public class WebsocketReceiveListener extends AbstractReceiveListener {
             newExchange.setSourceAddress(this.initialExchange.getSourceAddress());
             newExchange.setDestinationAddress(this.initialExchange.getDestinationAddress());
 
-            final StringBuilder sb = new StringBuilder();
-            try {
-                Connectors.setExchangeRequestPath(newExchange, newUri, sb);
-            } catch (ParameterLimitException e) {
-                e.printStackTrace();
-            }
+            exchange.setRequestPath(newUri);
+            exchange.setRelativePath(newUri);
+            exchange.setQueryString(qs);
 
             // This sets the requestpath, relativepath, querystring, and parses the query
             // parameters
