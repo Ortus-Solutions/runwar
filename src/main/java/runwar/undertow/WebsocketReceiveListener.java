@@ -165,7 +165,7 @@ public class WebsocketReceiveListener extends AbstractReceiveListener {
             final StringBuilder sb = new StringBuilder();
             try {
                 Connectors.setExchangeRequestPath(newExchange, newUri, sb);
-            } catch (ParameterLimitException | BadRequestException e) {
+            } catch (ParameterLimitException e) {
                 e.printStackTrace();
             }
 
