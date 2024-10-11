@@ -175,6 +175,8 @@ public class WebsocketReceiveListener extends AbstractReceiveListener {
                     this.initialExchange.getRequestScheme() + "://" + this.initialExchange.getHostAndPort() + newUri,
                     true);
 
+            final String currentDeployKey = Server.getCurrentDeploymentKey();
+
             // Call the handler for the new URI
             HttpHandler exchangeSetter = new HttpHandler() {
 
