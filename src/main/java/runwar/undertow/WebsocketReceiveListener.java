@@ -69,7 +69,7 @@ import io.undertow.websockets.core.StreamSinkFrameChannel;
 public class WebsocketReceiveListener extends AbstractReceiveListener {
     public static final AttachmentKey<List<Object>> WEBSOCKET_REQUEST_DETAILS = AttachmentKey.create(List.class);
 
-    private HttpServerExchange exchange;
+    private HttpServerExchange initialExchange;
     private HttpHandler next;
     private ServerOptions serverOptions;
     private SiteOptions siteOptions;
