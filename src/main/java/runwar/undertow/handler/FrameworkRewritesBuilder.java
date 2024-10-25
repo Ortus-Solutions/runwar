@@ -28,15 +28,15 @@ public class FrameworkRewritesBuilder implements HandlerBuilder {
     }
 
     public Map<String, Class<?>> parameters() {
-            return Collections.emptyMap();
+        return Collections.emptyMap();
     }
 
     public Set<String> requiredParameters() {
-            return Collections.emptySet();
+        return Collections.emptySet();
     }
 
     public String defaultParameter() {
-            return null;
+        return null;
     }
 
     public HandlerWrapper build(final Map<String, Object> config) {
@@ -45,12 +45,13 @@ public class FrameworkRewritesBuilder implements HandlerBuilder {
             @Override
             public HttpHandler wrap(HttpHandler toWrap) {
                 List<PredicatedHandler> ph = PredicatedHandlersParser.parse(
-                "not regex-nocase('^/(flex2gateway|flashservices/gateway|messagebroker|lucee|rest|cfide|CFIDE|cfformgateway|jrunscripts|cf_scripts|mapping-tag|CFFileServlet)/.*')"
-					+ " and not path-prefix-nocase(/tuckey-status)"
-					+ " and not path-nocase(/pms)"
-					+ " and not path-nocase(/favicon.ico)"
-					+ " and not is-file"
-					+ " and not is-directory -> rewrite( '/index.cfm%{REQUEST_URL}' )", Server.getClassLoader());
+                        "not regex-nocase('^/(flex2gateway|flashservices/gateway|messagebroker|lucee|rest|cfide|CFIDE|cfformgateway|jrunscripts|cf_scripts|mapping-tag|CFFileServlet)/.*')"
+                                + " and not path-prefix-nocase(/tuckey-status)"
+                                + " and not path-nocase(/pms)"
+                                + " and not path-nocase(/favicon.ico)"
+                                + " and not is-file"
+                                + " and not is-directory -> rewrite( '/index.cfm%{DECODED_REQUEST_PATH}' )",
+                        Server.getClassLoader());
                 return Handlers.predicates(ph, toWrap);
             }
         };

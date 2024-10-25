@@ -1,1 +1,2 @@
 runwar.undertow.attribute.MapAttribute$Builder
+runwar.undertow.attribute.DecodedRequestPathAttribute$Builder

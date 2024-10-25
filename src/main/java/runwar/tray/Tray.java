@@ -4,53 +4,58 @@ import static runwar.LaunchUtil.displayMessage;
 import static runwar.LaunchUtil.getResourceAsString;
 import static runwar.LaunchUtil.openURL;
 import static runwar.LaunchUtil.readFile;
+import static runwar.util.Reflection.invoke;
+import static runwar.util.Reflection.method;
 
-import java.awt.*;
+import java.awt.BorderLayout;
+import java.awt.Dimension;
+import java.awt.GraphicsEnvironment;
+import java.awt.Image;
+import java.awt.Toolkit;
 import java.awt.event.ActionEvent;
 import java.awt.event.ActionListener;
-import java.io.*;
+import java.io.BufferedReader;
+import java.io.File;
+import java.io.FileInputStream;
+import java.io.FileNotFoundException;
+import java.io.IOException;
+import java.io.InputStream;
+import java.io.InputStreamReader;
+import java.lang.reflect.Method;
 import java.net.URL;
 import java.util.HashMap;
+import java.util.concurrent.ExecutorService;
+import java.util.concurrent.Executors;
+import java.util.concurrent.Future;
+import java.util.concurrent.TimeUnit;
+import java.util.function.Consumer;
 import java.util.zip.ZipEntry;
 import java.util.zip.ZipFile;
 
 import javax.imageio.ImageIO;
+import javax.swing.JButton;
+import javax.swing.JFrame;
+import javax.swing.JOptionPane;
+import javax.swing.JScrollPane;
+import javax.swing.JTextArea;
+
+import dorkbox.notify.Notify;
+import dorkbox.notify.Pos;
 import dorkbox.systemTray.Checkbox;
 import dorkbox.systemTray.Menu;
 import dorkbox.systemTray.MenuItem;
 import dorkbox.systemTray.Separator;
 import dorkbox.systemTray.SystemTray;
 import dorkbox.util.OS;
-import javax.swing.JOptionPane;
-import javax.swing.JScrollPane;
-import javax.swing.JTextArea;
-import dorkbox.notify.Notify;
-import dorkbox.notify.Pos;
-import java.util.concurrent.ExecutorService;
-import java.util.concurrent.Executors;
-import java.util.concurrent.Future;
-import java.util.concurrent.TimeUnit;
-import java.util.function.Consumer;
-import javax.swing.JButton;
-import javax.swing.JPanel;
 import net.minidev.json.JSONArray;
 import net.minidev.json.JSONObject;
 import net.minidev.json.JSONValue;
 import runwar.LaunchUtil;
 import runwar.Server;
 import runwar.Start;
-import runwar.gui.JsonForm;
 import runwar.logging.RunwarLogger;
 import runwar.options.ServerOptions;
-import runwar.options.ServerOptions;
 import runwar.util.Utils;
-import javax.swing.JFileChooser;
-import javax.swing.JFrame;
-import runwar.gui.SubmitActionlistioner;
-
-import java.lang.reflect.Method;
-import static runwar.util.Reflection.invoke;
-import static runwar.util.Reflection.method;
 
 public class Tray {
 
@@ -74,17 +79,17 @@ public class Tray {
         if (trayIsHooked) {
             return;
         }
-//        available 3.13+
+        // available 3.13+
         SystemTray.AUTO_SIZE = true;
         SystemTray.FORCE_GTK2 = true;
         SystemTray.AUTO_FIX_INCONSISTENCIES = true;
-        RunwarLogger.LOG.trace("SystemTray Version: " + SystemTray.getVersion() );
-        if( server.getServerOptions().logLevel().toUpperCase().equals( "TRACE" ) ) {
+        RunwarLogger.LOG.trace("SystemTray Version: " + SystemTray.getVersion());
+        if (server.getServerOptions().logLevel().toUpperCase().equals("TRACE")) {
             RunwarLogger.LOG.trace("Settting SystemTray.DEBUG = true");
             SystemTray.DEBUG = true;
         }
         System.setProperty("SWT_GTK3", "0");
-//        SystemTray.FORCE_TRAY_TYPE = TrayType.;
+        // SystemTray.FORCE_TRAY_TYPE = TrayType.;
         if (GraphicsEnvironment.isHeadless()) {
             RunwarLogger.LOG.debug("Server is in headless mode, System Tray is not supported");
             return;
@@ -103,8 +108,7 @@ public class Tray {
 
         ServerOptions serverOptions = server.getServerOptions();
         String iconImage = serverOptions.iconImage();
-       // String host = serverOptions.host();
-      //  int portNumber = serverOptions.getSites().get(0).httpPort();
+
         final int stopSocket = serverOptions.stopPort();
         String processName = serverOptions.processName();
         String PID = server.getPID();
@@ -118,14 +122,14 @@ public class Tray {
         variableMap.put("logDir", warpath);
         variableMap.put("app.logDir", warpath);
         variableMap.put("web.webroot", warpath);
-      //  variableMap.put("runwar.port", Integer.toString(portNumber));
-       // variableMap.put("web.http.port", Integer.toString(portNumber));
-       // variableMap.put("web.ajp.port", Integer.toString(portNumber));
+        // variableMap.put("runwar.port", Integer.toString(portNumber));
+        // variableMap.put("web.http.port", Integer.toString(portNumber));
+        // variableMap.put("web.ajp.port", Integer.toString(portNumber));
         variableMap.put("runwar.processName", processName);
         variableMap.put("processName", processName);
         variableMap.put("runwar.PID", PID);
-       // variableMap.put("runwar.host", host);
-       // variableMap.put("web.host", host);
+        // variableMap.put("runwar.host", host);
+        // variableMap.put("web.host", host);
         variableMap.put("runwar.stopsocket", Integer.toString(stopSocket));
 
         String trayConfigJSON;
@@ -140,7 +144,8 @@ public class Tray {
         trayIsHooked = true;
     }
 
-    private void instantiateMenu(String trayConfigJSON, String statusText, String iconImage, HashMap<String, String> variableMap, Server server) {
+    private void instantiateMenu(String trayConfigJSON, String statusText, String iconImage,
+            HashMap<String, String> variableMap, Server server) {
         JSONObject menu;
         setVariableMap(variableMap);
         menu = getTrayConfig(trayConfigJSON, statusText, variableMap);
@@ -167,11 +172,12 @@ public class Tray {
             if (Utils.getIgnoreCase(itemInfo, "image") != null) {
                 is = getImageInputStream(Utils.getIgnoreCase(itemInfo, "image").toString());
             } else {
-                //check if property action is used
+                // check if property action is used
                 if (Utils.getIgnoreCase(itemInfo, "action") != null) {
-                    //set Defaults
+                    // set Defaults
                     try {
-                        if (Utils.getIgnoreCase(itemInfo, "command") != null && Utils.getIgnoreCase(itemInfo, "command").toString().toLowerCase().startsWith("box ")) {
+                        if (Utils.getIgnoreCase(itemInfo, "command") != null && Utils.getIgnoreCase(itemInfo, "command")
+                                .toString().toLowerCase().startsWith("box ")) {
                             is = getClass().getResourceAsStream("/box.png");
                         } else {
                             switch ((String) Utils.getIgnoreCase(itemInfo, "action")) {
@@ -210,11 +216,12 @@ public class Tray {
                     menuItem = new MenuItem(label, is, new ExitAction(server));
                     menuItem.setShortcut('s');
                 } else if (action.equalsIgnoreCase("restartserver")) {
-                    //menuItem = new MenuItem(label, is, new RestartAction(server));
+                    // menuItem = new MenuItem(label, is, new RestartAction(server));
                     String command = "box server restart";
                     String workingDirectory = server.getServerOptions().warUriString();
                     String shell = Utils.availableShellPick();
-                    menuItem = new MenuItem(label, is, new RunShellCommandAction(command, workingDirectory, false, shell));
+                    menuItem = new MenuItem(label, is,
+                            new RunShellCommandAction(command, workingDirectory, false, shell));
                     menuItem.setShortcut('r');
                 } else if (action.equalsIgnoreCase("getversion")) {
                     menuItem = new MenuItem("Version: " + Server.getVersion(), is, new GetVersionAction());
@@ -229,7 +236,8 @@ public class Tray {
                     menuItem.setShortcut('b');
                 } else if (action.equalsIgnoreCase("run")) {
                     String command = getString(itemInfo, "command", "");
-                    String workingDirectory = getString(itemInfo, "workingDirectory", server.getServerOptions().warUriString());
+                    String workingDirectory = getString(itemInfo, "workingDirectory",
+                            server.getServerOptions().warUriString());
                     String shell = getString(itemInfo, "shell", Utils.availableShellPick());
                     Boolean waitResponse = true;
                     try {
@@ -238,12 +246,15 @@ public class Tray {
                         RunwarLogger.LOG.error("Invalid waitResponse value");
                         waitResponse = true;
                     }
-                    menuItem = new MenuItem(label, is, new RunShellCommandAction(command, workingDirectory, waitResponse, shell));
+                    menuItem = new MenuItem(label, is,
+                            new RunShellCommandAction(command, workingDirectory, waitResponse, shell));
                 } else if (action.equalsIgnoreCase("runAsync")) {
                     String command = getString(itemInfo, "command", "");
-                    String workingDirectory = getString(itemInfo, "workingDirectory", server.getServerOptions().warUriString());
+                    String workingDirectory = getString(itemInfo, "workingDirectory",
+                            server.getServerOptions().warUriString());
                     String shell = getString(itemInfo, "shell", Utils.availableShellPick());
-                    menuItem = new MenuItem(label, is, new RunShellCommandAction(command, workingDirectory, false, shell));
+                    menuItem = new MenuItem(label, is,
+                            new RunShellCommandAction(command, workingDirectory, false, shell));
                 } else {
                     RunwarLogger.LOG.error("Unknown menu item action \"" + action + "\" for \"" + label + "\"");
                 }
@@ -287,7 +298,8 @@ public class Tray {
         String title = getString(config, "title", defaultTitle);
         config.put("title", title);
         String tooltip = getString(config, "tooltip", defaultTitle);
-        // SystemTray limits tooltip to 64, so enforce that and maybe clean up a cut-off word
+        // SystemTray limits tooltip to 64, so enforce that and maybe clean up a cut-off
+        // word
         if (tooltip.length() > 64) {
             tooltip = tooltip.substring(0, 61);
             tooltip = tooltip.substring(0, Math.min(tooltip.length(), tooltip.lastIndexOf(" "))) + "...";
@@ -324,7 +336,8 @@ public class Tray {
     }
 
     private static String getString(JSONObject menu, String key, String defaultValue) {
-        String value = Utils.getIgnoreCase(menu, key) != null ? Utils.getIgnoreCase(menu, key).toString() : defaultValue;
+        String value = Utils.getIgnoreCase(menu, key) != null ? Utils.getIgnoreCase(menu, key).toString()
+                : defaultValue;
         return replaceMenuTokens(value);
     }
 
@@ -472,7 +485,7 @@ public class Tray {
         }
         return null;
     }
-/////
+    /////
 
     private static void showDialog(String content) {
         final JTextArea jta = new JTextArea(content);
@@ -511,22 +524,22 @@ public class Tray {
         private String workingDirectory;
         private boolean waitResponse;
 
-        String[] shells = new String[]{"/bin/bash", "/usr/bin/bash",
-            "/bin/pfbash", "/usr/bin/pfbash",
-            "/bin/csh", "/usr/bin/csh",
-            "/bin/pfcsh", "/usr/bin/pfcsh",
-            "/bin/jsh", "/usr/bin/jsh",
-            "/bin/ksh", "/usr/bin/ksh",
-            "/bin/pfksh", "/usr/bin/pfksh",
-            "/bin/ksh93", "/usr/bin/ksh93",
-            "/bin/pfksh93", "/usr/bin/pfksh93",
-            "/bin/pfsh", "/usr/bin/pfsh",
-            "/bin/tcsh", "/usr/bin/tcsh",
-            "/bin/pftcsh", "/usr/bin/pftcsh",
-            "/usr/xpg4/bin/sh", "/usr/xp4/bin/pfsh",
-            "/bin/zsh", "/usr/bin/zsh",
-            "/bin/pfzsh", "/usr/bin/pfzsh",
-            "/bin/sh", "/usr/bin/sh",};
+        String[] shells = new String[] { "/bin/bash", "/usr/bin/bash",
+                "/bin/pfbash", "/usr/bin/pfbash",
+                "/bin/csh", "/usr/bin/csh",
+                "/bin/pfcsh", "/usr/bin/pfcsh",
+                "/bin/jsh", "/usr/bin/jsh",
+                "/bin/ksh", "/usr/bin/ksh",
+                "/bin/pfksh", "/usr/bin/pfksh",
+                "/bin/ksh93", "/usr/bin/ksh93",
+                "/bin/pfksh93", "/usr/bin/pfksh93",
+                "/bin/pfsh", "/usr/bin/pfsh",
+                "/bin/tcsh", "/usr/bin/tcsh",
+                "/bin/pftcsh", "/usr/bin/pftcsh",
+                "/usr/xpg4/bin/sh", "/usr/xp4/bin/pfsh",
+                "/bin/zsh", "/usr/bin/zsh",
+                "/bin/pfzsh", "/usr/bin/pfzsh",
+                "/bin/sh", "/usr/bin/sh", };
 
         RunShellCommandAction(String command, String workingDirectory, Boolean waitResponse, String shell) {
             this.command = command;
@@ -614,8 +627,7 @@ public class Tray {
 
             try {
                 this.jta = new JTextArea("");
-                StreamGobbler streamGobbler
-                        = new StreamGobbler(process.getInputStream(), this::printString);
+                StreamGobbler streamGobbler = new StreamGobbler(process.getInputStream(), this::printString);
                 this.service = Executors.newSingleThreadExecutor();
                 this.jsp = new JScrollPane(jta) {
                     @Override
@@ -705,7 +717,8 @@ public class Tray {
                 }
                 if (tsk != null) {
                     tsk.cancel(true);
-                };
+                }
+                ;
             } catch (InterruptedException ex) {
                 RunwarLogger.LOG.error("An Error Occurred trying to stop command :" + this.title, ex);
             }
@@ -744,7 +757,8 @@ public class Tray {
             try {
                 RunwarLogger.LOG.info("Exiting...");
                 server.stopServer();
-                String message = "Server shut down " + (server.serverWentDown() ? "" : "un") + "successfully, shutting down tray";
+                String message = "Server shut down " + (server.serverWentDown() ? "" : "un")
+                        + "successfully, shutting down tray";
                 RunwarLogger.LOG.debug(message);
                 if (systemTray != null) {
                     try {
@@ -826,7 +840,7 @@ public class Tray {
             try {
                 LaunchUtil.browseDirectory(path);
             } catch (Exception ex) {
-                if (!LaunchUtil.isLinux() || !LaunchUtil.execute(new String[]{"xdg-open", path})) {
+                if (!LaunchUtil.isLinux() || !LaunchUtil.execute(new String[] { "xdg-open", path })) {
                     displayMessage("Error", "Sorry, unable to open the file browser: " + ex.getLocalizedMessage());
                 }
             }

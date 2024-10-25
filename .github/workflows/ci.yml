@@ -34,8 +34,13 @@ jobs:
       uses: actions/setup-java@v2
       with:
         java-version: '11'
-        distribution: 'adopt'
-
+        distribution: 'temurin'
+  
+    - name: Create symlink to Java home
+      run: |
+        mkdir -p gradle/jvm/11
+        ln -s $JAVA_HOME gradle/jvm/11/latest
+        
     # Do the build
     - name: Build with Gradle
       run: ./gradlew --refresh-dependencies

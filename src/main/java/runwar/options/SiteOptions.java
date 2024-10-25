@@ -7,17 +7,17 @@ import java.util.Map;
 
 import net.minidev.json.JSONArray;
 import net.minidev.json.JSONObject;
-import runwar.options.ServerOptions;
 
 public class SiteOptions {
 
     private ServerOptions serverOptions;
 
-    private String host = "127.0.0.1", logAccessBaseFileName = "access", cfmlDirs, siteName = "default";
+    private String host = "127.0.0.1", logAccessBaseFileName = "access", cfmlDirs, siteName = "default",
+            webSocketURI = "/ws", webSocketListener = "/WebSocket.cfc";
 
     private int portNumber = 8088, ajpPort = 8009, sslPort = 1443;
 
-    private boolean enableAJP = false, enableSSL = false, enableHTTP = true;
+    private boolean enableAJP = false, enableSSL = false, enableHTTP = true, webSocketEnable = false;
 
     private boolean directoryListingEnable = true, logAccessEnable = false;
 
@@ -87,7 +87,7 @@ public class SiteOptions {
 
     private final Map<String, String> mimeTypes = new HashMap<String, String>();
 
-    private String servletPassPredicate = "regex( '^/(.+?\\.cf[cm])(/.*)?$' )";
+    private String servletPassPredicate = "regex( '^/(.+?\\.cf[cms])(/.*)?$' ) or regex( '^/(.+?\\.bx[sm]{0,1})(/.*)?$' )";
 
     public ServerOptions getServerOptions() {
         return serverOptions;
@@ -95,6 +95,33 @@ public class SiteOptions {
 
     public SiteOptions setServerOptions(ServerOptions serverOptions) {
         this.serverOptions = serverOptions;
+        return this;
+    }
+
+    public String webSocketURI() {
+        return webSocketURI;
+    }
+
+    public SiteOptions webSocketURI(String webSocketURI) {
+        this.webSocketURI = webSocketURI;
+        return this;
+    }
+
+    public String webSocketListener() {
+        return webSocketListener;
+    }
+
+    public SiteOptions webSocketListener(String webSocketListener) {
+        this.webSocketListener = webSocketListener;
+        return this;
+    }
+
+    public boolean webSocketEnable() {
+        return webSocketEnable;
+    }
+
+    public SiteOptions webSocketEnable(boolean webSocketEnable) {
+        this.webSocketEnable = webSocketEnable;
         return this;
     }
 
@@ -287,18 +314,6 @@ public class SiteOptions {
         return this;
     }
 
-    public SiteOptions sslCertificate(File file) {
-        this.sslCertificate = file;
-        return this;
-    }
-
-    public File sslCertificate() {
-        if (sslCertificate != null && !sslCertificate.exists()) {
-            throw new IllegalArgumentException("Certificate file does not exist: " + sslCertificate.getAbsolutePath());
-        }
-        return this.sslCertificate;
-    }
-
     public SiteOptions clientCertNegotiation(String clientCertNegotiation) {
         this.clientCertNegotiation = clientCertNegotiation.toUpperCase();
         return this;
@@ -353,24 +368,6 @@ public class SiteOptions {
         return this.clientCertIssuerDNs;
     }
 
-    public SiteOptions sslKey(File file) {
-        this.sslKey = file;
-        return this;
-    }
-
-    public File sslKey() {
-        return this.sslKey;
-    }
-
-    public SiteOptions sslKeyPass(char[] pass) {
-        this.sslKeyPass = pass;
-        return this;
-    }
-
-    public char[] sslKeyPass() {
-        return this.sslKeyPass;
-    }
-
     public SiteOptions transferMinSize(Long minSize) {
         if (minSize == -1L) {
             // Effectivley turns it off
@@ -416,7 +413,7 @@ public class SiteOptions {
 
         for (String key : errorpages.keySet()) {
             String strCode = key.toString().trim();
-            Integer code = strCode.toLowerCase() == "default" ? 1 : Integer.parseInt(strCode);
+            Integer code = strCode.toLowerCase().equals("default") ? 1 : Integer.parseInt(strCode);
             String location = errorpages.get(key).toString();
             location = location.startsWith("/") ? location : "/" + location;
             this.errorPages.put(code, location);
