@@ -210,16 +210,17 @@ public class SiteDeployment {
 
             @Override
             public void handleRequest(final HttpServerExchange exchange) throws Exception {
-
+                String CononicalURI = CanonicalPathUtils.canonicalize(exchange.getRelativePath());
                 Resource resource = resourceManager
-                        .getResource(CanonicalPathUtils.canonicalize(exchange.getRelativePath()));
+                        .getResource(CononicalURI);
                 if (resource != null && !resource.isDirectory()) {
                     String ext = resource.getFile().getName().toLowerCase();
                     if (ext.contains(".")) {
                         ext = ext.substring(ext.lastIndexOf(".") + 1);
                     }
 
-                    if (!extSet.contains(ext)) {
+                    // Whitelist the /.well-known/ directory
+                    if (!CononicalURI.startsWith("/.well-known/") && !extSet.contains(ext)) {
                         LOG.debug(
                                 "Blocking access to [" + exchange.getRelativePath() + "] based on allowed extensions.");
                         exchange.setStatusCode(403);
