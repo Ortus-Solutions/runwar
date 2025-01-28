@@ -121,7 +121,7 @@ public class SiteDeployment {
 
         // Used to provide a hint to each warmup handler instance what site name it is
         // part of
-        WarmUpServer.currentSiteName = siteOptions.siteName();
+        WarmUpServer.currentSite = siteOptions;
 
         final PathHandler pathHandler = new PathHandler(Handlers.redirect(serverOptions.contextPath())) {
             private final HttpString HTTPONLY = new HttpString("HttpOnly");

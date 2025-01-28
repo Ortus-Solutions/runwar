@@ -21,6 +21,7 @@ import io.undertow.server.HttpServerExchange;
 import io.undertow.server.handlers.ResponseCodeHandler;
 import io.undertow.server.handlers.builder.HandlerBuilder;
 import io.undertow.util.SameThreadExecutor;
+import runwar.options.SiteOptions;
 
 /**
  * A {@link HttpHandler} that warms the server up by hitting 1 or more URLs.
@@ -53,7 +54,7 @@ public final class WarmUpServer implements HttpHandler {
     /**
      * * The current site name, used on bootstrap to know what site we belong to
      */
-    public static String currentSiteName = "default";
+    public static SiteOptions currentSite = null;
 
     /**
      * If true, requests will be blocked until the server is warm.
@@ -101,7 +102,7 @@ public final class WarmUpServer implements HttpHandler {
     /**
      * The name of the site this handler is warming up
      */
-    private String thisSiteName = currentSiteName;
+    private String thisSiteName = currentSite.siteName();
 
     /**
      * The listener that will be attached to each request to check if queued
@@ -132,6 +133,24 @@ public final class WarmUpServer implements HttpHandler {
             Integer timeoutSeconds) {
         this.next = next;
         this.urls = urls;
+        if (currentSite != null) {
+            String baseURL = currentSite.defaultBaseURL();
+            // ensure no trailing slash
+            if (baseURL.endsWith("/")) {
+                baseURL = baseURL.substring(0, baseURL.length() - 1);
+            }
+            // Update any URLs not starting with http to use site.defaultBaseURL()
+            for (int i = 0; i < urls.length; i++) {
+                if (!urls[i].toLowerCase().startsWith("http://") && !urls[i].toLowerCase().startsWith("https://")) {
+                    // ensure leading slash
+                    if (!urls[i].startsWith("/")) {
+                        urls[i] = "/" + urls[i];
+                    }
+                    // Append base URL to relative URI
+                    urls[i] = currentSite.defaultBaseURL() + urls[i];
+                }
+            }
+        }
         this.requestStrategy = requestStrategy;
         this.async = async;
         this.timeoutMS = timeoutSeconds.longValue() * 1000L;
