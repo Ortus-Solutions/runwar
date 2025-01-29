@@ -458,6 +458,10 @@ public class ConfigParser {
                 site.proxyPeerAddressEnable(siteConfig.getOptionBoolean("useProxyForwardedIP"));
             }
 
+            if (siteConfig.hasOption("defaultBaseURL")) {
+                site.defaultBaseURL(siteConfig.getOptionValue("defaultBaseURL"));
+            }
+
             serverOptions.addSite(site);
         }
 

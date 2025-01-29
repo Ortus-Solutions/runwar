@@ -57,6 +57,7 @@ import runwar.undertow.RequestDebugHandler;
 import runwar.undertow.SSLCertHeaderHandler;
 import runwar.undertow.LifecyleHandler;
 import runwar.undertow.WelcomeFileHandler;
+import runwar.undertow.handler.WarmUpServer;
 import runwar.util.ClassLoaderUtils;
 import runwar.util.RequestDumper;
 import runwar.Server;
@@ -69,9 +70,9 @@ import java.lang.reflect.Method;
 import java.net.*;
 import java.nio.file.Path;
 import java.nio.file.Paths;
-import java.util.List;
 import java.util.concurrent.ConcurrentHashMap;
 import java.util.*;
+import java.util.List;
 import javax.servlet.Servlet;
 import javax.servlet.http.HttpServletResponse;
 import javax.servlet.http.HttpServletRequest;
@@ -117,6 +118,10 @@ public class SiteDeployment {
 
     private HttpHandler buildSiteHandlerChain(HttpHandler servletInitialHandler, ServerOptions serverOptions)
             throws Exception {
+
+        // Used to provide a hint to each warmup handler instance what site name it is
+        // part of
+        WarmUpServer.currentSite = siteOptions;
 
         final PathHandler pathHandler = new PathHandler(Handlers.redirect(serverOptions.contextPath())) {
             private final HttpString HTTPONLY = new HttpString("HttpOnly");
@@ -210,16 +215,17 @@ public class SiteDeployment {
 
             @Override
             public void handleRequest(final HttpServerExchange exchange) throws Exception {
-
+                String CononicalURI = CanonicalPathUtils.canonicalize(exchange.getRelativePath());
                 Resource resource = resourceManager
-                        .getResource(CanonicalPathUtils.canonicalize(exchange.getRelativePath()));
+                        .getResource(CononicalURI);
                 if (resource != null && !resource.isDirectory()) {
                     String ext = resource.getFile().getName().toLowerCase();
                     if (ext.contains(".")) {
                         ext = ext.substring(ext.lastIndexOf(".") + 1);
                     }
 
-                    if (!extSet.contains(ext)) {
+                    // Whitelist the /.well-known/ directory
+                    if (!CononicalURI.startsWith("/.well-known/") && !extSet.contains(ext)) {
                         LOG.debug(
                                 "Blocking access to [" + exchange.getRelativePath() + "] based on allowed extensions.");
                         exchange.setStatusCode(403);

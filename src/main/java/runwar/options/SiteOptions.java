@@ -89,12 +89,23 @@ public class SiteOptions {
 
     private String servletPassPredicate = "regex( '^/(.+?\\.cf[cms])(/.*)?$' ) or regex( '^/(.+?\\.bx[sm]{0,1})(/.*)?$' )";
 
+    private String defaultBaseURL = "";
+
     public ServerOptions getServerOptions() {
         return serverOptions;
     }
 
     public SiteOptions setServerOptions(ServerOptions serverOptions) {
         this.serverOptions = serverOptions;
+        return this;
+    }
+
+    public String defaultBaseURL() {
+        return defaultBaseURL;
+    }
+
+    public SiteOptions defaultBaseURL(String defaultBaseURL) {
+        this.defaultBaseURL = defaultBaseURL;
         return this;
     }
 

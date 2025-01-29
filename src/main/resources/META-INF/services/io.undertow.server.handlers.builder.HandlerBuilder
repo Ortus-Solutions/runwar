@@ -5,3 +5,4 @@ runwar.undertow.handler.ProxyHandlerBuilder
 runwar.undertow.handler.ProxyHandlerBuilderShort
 runwar.undertow.handler.FrameworkRewritesBuilder
 runwar.undertow.handler.RewriteMapHandler$Builder
+runwar.undertow.handler.WarmUpServer$Builder

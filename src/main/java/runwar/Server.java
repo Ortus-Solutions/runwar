@@ -55,6 +55,7 @@ import runwar.undertow.ListenerManager;
 import runwar.undertow.SSLCertHeaderHandler;
 import runwar.undertow.SiteDeployment;
 import runwar.undertow.SiteDeploymentManager;
+import runwar.undertow.handler.WarmUpServer;
 import runwar.util.ClassLoaderUtils;
 import runwar.util.Utils;
 
@@ -425,6 +426,9 @@ public class Server {
         try {
 
             undertow.start();
+
+            LOG.trace("Firing any warmup handlers");
+            WarmUpServer.triggerWarmups();
 
         } catch (Exception any) {
             if (any.getCause() instanceof java.net.SocketException
