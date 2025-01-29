@@ -16,7 +16,7 @@ apply plugin: 'java'
 
 group = 'org.cfmlprojects'
 description = 'RunWar Gradle build script'
-archivesBaseName = 'runwar'
+archivesBaseName = 'runwar-legacy'
 apply from: 'gradle/config.gradle'
 
 sourceCompatibility = 1.8
@@ -124,7 +124,7 @@ task gitChangelogTask() {
         GitChangelogApi builder;
         builder = gitChangelogApiBuilder()
 
-        println builder.withFromRef("master")
+        println builder.withFromRef("master-legacy")
                 .withToRef("HEAD")
                 .withGitHubApi("https://api.github.com/repos/Ortus-Solutions/runwar")
                 .withRemoveIssueFromMessageArgument(false)
