@@ -29,7 +29,7 @@ import java.util.Timer;
 import java.util.TimerTask;
 import java.util.regex.Pattern;
 
-import javax.servlet.Servlet;
+import jakarta.servlet.Servlet;
 
 import org.xnio.Option;
 import org.xnio.OptionMap;

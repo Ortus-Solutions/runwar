@@ -13,8 +13,8 @@ import java.util.List;
 import java.util.Map;
 import java.util.Arrays;
 
-import javax.servlet.DispatcherType;
-import javax.servlet.Filter;
+import jakarta.servlet.DispatcherType;
+import jakarta.servlet.Filter;
 
 import io.undertow.predicate.Predicates;
 import io.undertow.server.handlers.cache.CacheHandler;
@@ -25,6 +25,7 @@ import io.undertow.servlet.handlers.DefaultServlet;
 import io.undertow.util.MimeMappings;
 import runwar.options.ServerOptions;
 import runwar.undertow.WebXMLParser;
+import runwar.servlet.RegexPathInfoFilter;
 
 public class RunwarConfigurer {
 
@@ -180,15 +181,7 @@ public class RunwarConfigurer {
     @SuppressWarnings({ "unchecked" })
     private void configurePathInfoFilter(DeploymentInfo servletBuilder) throws ClassNotFoundException {
         if (serverOptions.filterPathInfoEnable()) {
-            Class<Filter> regexPathInfoFilter;
-            try {
-                regexPathInfoFilter = (Class<Filter>) getClassLoader()
-                        .loadClass("org.cfmlprojects.regexpathinfofilter.RegexPathInfoFilter");
-            } catch (java.lang.ClassNotFoundException e) {
-                regexPathInfoFilter = (Class<Filter>) Server.class.getClassLoader()
-                        .loadClass("org.cfmlprojects.regexpathinfofilter.RegexPathInfoFilter");
-            }
-            FilterInfo filterInfo = new FilterInfo("RegexPathInfoFilter", regexPathInfoFilter);
+            FilterInfo filterInfo = new FilterInfo("RegexPathInfoFilter", runwar.servlet.RegexPathInfoFilter.class);
             filterInfo.addInitParam("regex", "^(/.+?\\.cf[cm]|/.+?\\.bx[sm])(/.*)");
             servletBuilder.addFilter(filterInfo);
             servletBuilder.addFilterUrlMapping("RegexPathInfoFilter", "/*", DispatcherType.REQUEST);

@@ -10,8 +10,8 @@ import java.io.FileNotFoundException;
 import java.io.InputStream;
 import java.util.ArrayList;
 import java.util.List;
-import javax.servlet.FilterConfig;
-import javax.servlet.ServletException;
+import jakarta.servlet.FilterConfig;
+import jakarta.servlet.ServletException;
 import org.jboss.logging.Logger;
 import org.tuckey.web.filters.urlrewrite.Conf;
 import org.tuckey.web.filters.urlrewrite.UrlRewriter;
@@ -22,7 +22,8 @@ import org.tuckey.web.filters.urlrewrite.UrlRewriter;
  */
 public class UrlRewriteFilter extends org.tuckey.web.filters.urlrewrite.UrlRewriteFilter {
 
-    Logger LOG = Logger.getLogger("runwar.server"); 
+    Logger LOG = Logger.getLogger("runwar.server");
+
     @Override
     public void loadUrlRewriter(FilterConfig filterConfig) throws ServletException {
         try {
@@ -30,7 +31,7 @@ public class UrlRewriteFilter extends org.tuckey.web.filters.urlrewrite.UrlRewri
             LOG.trace("Config rewrite file:" + confPathStr);
             InputStream inputStream = new FileInputStream(confPathStr);
             boolean type = true;
-            if(confPathStr.endsWith("xml")){
+            if (confPathStr.endsWith("xml")) {
                 type = false;
             }
             Conf conf1 = new Conf(filterConfig.getServletContext(), inputStream, confPathStr, null, type);
