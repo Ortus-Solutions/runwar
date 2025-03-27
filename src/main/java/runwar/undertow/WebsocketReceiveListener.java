@@ -147,6 +147,8 @@ public class WebsocketReceiveListener extends AbstractReceiveListener {
             HttpServerExchange newExchange = new HttpServerExchange(connection);
             newExchange.putAttachment(SiteDeploymentManager.SITE_DEPLOYMENT_KEY,
                     initialExchange.getAttachment(SiteDeploymentManager.SITE_DEPLOYMENT_KEY));
+            newExchange.putAttachment(SiteDeploymentManager.DEPLOYMENT_KEY,
+                    initialExchange.getAttachment(SiteDeploymentManager.DEPLOYMENT_KEY));
 
             // Put the details on the new exchange so we can access them in our CF code
             newExchange.putAttachment(WEBSOCKET_REQUEST_DETAILS, requestDetails);

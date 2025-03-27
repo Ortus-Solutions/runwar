@@ -7,10 +7,11 @@ import java.util.logging.Level;
 import java.util.logging.Logger;
 import java.util.logging.SimpleFormatter;
 
-import javax.servlet.ServletConfig;
-import javax.servlet.ServletRequest;
-import javax.servlet.ServletResponse;
-import javax.servlet.http.HttpServletRequest;
+import jakarta.servlet.ServletConfig;
+import jakarta.servlet.ServletRequest;
+import jakarta.servlet.ServletResponse;
+import jakarta.servlet.http.HttpServletRequest;
+
 /*
   A simple request logger 
   <rule enable="true">
@@ -35,47 +36,48 @@ import javax.servlet.http.HttpServletRequest;
  */
 public class LogRequest {
 
-    private String logLevel;
-	private String logFilePath;
-    static final Logger log = Logger.getLogger(LogRequest.class.getName());
-    
-    public void run(ServletRequest request, ServletResponse response) {
-        if (logLevel != null) {
-        	HttpServletRequest httpRequest = (HttpServletRequest) request;
-        	String remoteAddress =  request.getRemoteAddr();
-            String uri = httpRequest.getRequestURI();
-            String protocol = request.getProtocol();
-            String logString = "*URI*:" + uri + " *REMOTEADDRESS*:" + remoteAddress + " *PROTOCOL*: " + protocol + " *METHOD*:" + httpRequest.getMethod() + " ";
-            Enumeration<?> headerNames = httpRequest.getHeaderNames();
-            while(headerNames.hasMoreElements()) {
-              String headerName = (String)headerNames.nextElement();
-              logString += headerName.toUpperCase() + ": ";
-              logString += httpRequest.getHeader(headerName) + " ";
-            }
-            log.log(Level.parse(logLevel),logString);
-            }
-    }
+  private String logLevel;
+  private String logFilePath;
+  static final Logger log = Logger.getLogger(LogRequest.class.getName());
 
-    public void init(ServletConfig config) {
-    	this.logLevel = config.getInitParameter("logLevel");
-    	this.logFilePath = config.getInitParameter("logFilePath");
-    	boolean append = true;
-        FileHandler handler;
-		try {
-			handler = new FileHandler(this.logFilePath, append);
-			handler.setFormatter(new SimpleFormatter());
-			log.addHandler(handler);
-		} catch (SecurityException e) {
-			// TODO Auto-generated catch block
-			e.printStackTrace();
-		} catch (IOException e) {
-			// TODO Auto-generated catch block
-			e.printStackTrace();
-		}
-        // Add to the desired logger
+  public void run(ServletRequest request, ServletResponse response) {
+    if (logLevel != null) {
+      HttpServletRequest httpRequest = (HttpServletRequest) request;
+      String remoteAddress = request.getRemoteAddr();
+      String uri = httpRequest.getRequestURI();
+      String protocol = request.getProtocol();
+      String logString = "*URI*:" + uri + " *REMOTEADDRESS*:" + remoteAddress + " *PROTOCOL*: " + protocol
+          + " *METHOD*:" + httpRequest.getMethod() + " ";
+      Enumeration<?> headerNames = httpRequest.getHeaderNames();
+      while (headerNames.hasMoreElements()) {
+        String headerName = (String) headerNames.nextElement();
+        logString += headerName.toUpperCase() + ": ";
+        logString += httpRequest.getHeader(headerName) + " ";
+      }
+      log.log(Level.parse(logLevel), logString);
     }
+  }
 
-    public void destroy() {
+  public void init(ServletConfig config) {
+    this.logLevel = config.getInitParameter("logLevel");
+    this.logFilePath = config.getInitParameter("logFilePath");
+    boolean append = true;
+    FileHandler handler;
+    try {
+      handler = new FileHandler(this.logFilePath, append);
+      handler.setFormatter(new SimpleFormatter());
+      log.addHandler(handler);
+    } catch (SecurityException e) {
+      // TODO Auto-generated catch block
+      e.printStackTrace();
+    } catch (IOException e) {
+      // TODO Auto-generated catch block
+      e.printStackTrace();
     }
+    // Add to the desired logger
+  }
+
+  public void destroy() {
+  }
 
 }

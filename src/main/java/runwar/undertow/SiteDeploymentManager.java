@@ -74,10 +74,10 @@ import java.nio.file.Paths;
 import java.util.List;
 import java.util.concurrent.ConcurrentHashMap;
 import java.util.*;
-import javax.servlet.Servlet;
-import javax.servlet.http.HttpServletResponse;
-import javax.servlet.http.HttpServletRequest;
-import javax.servlet.ServletRequest;
+import jakarta.servlet.Servlet;
+import jakarta.servlet.http.HttpServletResponse;
+import jakarta.servlet.http.HttpServletRequest;
+import jakarta.servlet.ServletRequest;
 import java.util.regex.Matcher;
 import java.util.regex.Pattern;
 
