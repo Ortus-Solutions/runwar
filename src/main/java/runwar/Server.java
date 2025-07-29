@@ -514,7 +514,7 @@ public class Server {
                     try {
                         if (!getServerState().equals(ServerState.STOPPING)
                                 && !getServerState().equals(ServerState.STOPPED)) {
-                            stopServer();
+                            stopServer(false);
                         }
                         if (mainThread.isAlive()) {
                             LOG.trace("Shutdown hook joining main thread");
@@ -532,6 +532,10 @@ public class Server {
     }
 
     public void stopServer() {
+        stopServer(true);
+    }
+
+    public void stopServer(boolean exit) {
         int exitCode = 0;
         if (shutDownThread != null && Thread.currentThread() != shutDownThread) {
             LOG.debug("Removed shutdown hook");
@@ -604,7 +608,7 @@ public class Server {
                     stopMonitor.interrupt();
                 }
 
-                if (exitCode != 0) {
+                if (exit && exitCode != 0) {
                     System.exit(exitCode);
                 }
                 LOG.info("Stopped server");
