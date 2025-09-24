@@ -13,6 +13,7 @@ import io.undertow.server.handlers.builder.PredicatedHandlersParser;
 import io.undertow.server.handlers.builder.HandlerBuilder;
 
 import java.util.Collections;
+import java.util.HashMap;
 import java.util.Map;
 import java.util.Set;
 import java.util.List;
@@ -20,6 +21,10 @@ import java.util.List;
 import runwar.Server;
 
 /**
+ * Framework rewrite handler builder that provides URL rewriting capabilities
+ * for framework requests. This handler will rewrite non-file, non-directory
+ * requests to a configurable rewrite file.
+ * 
  * @author Brad Wood
  */
 public class FrameworkRewritesBuilder implements HandlerBuilder {
@@ -27,8 +32,15 @@ public class FrameworkRewritesBuilder implements HandlerBuilder {
         return "framework-rewrite";
     }
 
+    /**
+     * Returns the parameters supported by this handler builder.
+     * 
+     * @return Map of parameter names to their expected types
+     */
     public Map<String, Class<?>> parameters() {
-        return Collections.emptyMap();
+        Map<String, Class<?>> params = new HashMap<>();
+        params.put("rewriteFile", String.class);
+        return params;
     }
 
     public Set<String> requiredParameters() {
@@ -39,7 +51,17 @@ public class FrameworkRewritesBuilder implements HandlerBuilder {
         return null;
     }
 
+    /**
+     * Builds the handler wrapper with the given configuration.
+     * 
+     * @param config Configuration map containing optional 'rewriteFile' parameter.
+     *               If 'rewriteFile' is not provided, defaults to 'index.cfm'.
+     * @return HandlerWrapper that provides framework rewriting functionality
+     */
     public HandlerWrapper build(final Map<String, Object> config) {
+        // Get the rewriteFile parameter, defaulting to "index.cfm" if not provided
+        final String rewriteFile = config.get("rewriteFile") != null ? 
+            (String) config.get("rewriteFile") : "index.cfm";
 
         return new HandlerWrapper() {
             @Override
@@ -50,7 +72,7 @@ public class FrameworkRewritesBuilder implements HandlerBuilder {
                                 + " and not path-nocase(/pms)"
                                 + " and not path-nocase(/favicon.ico)"
                                 + " and not is-file"
-                                + " and not is-directory -> rewrite( '/index.cfm%{DECODED_REQUEST_PATH}' )",
+                                + " and not is-directory -> rewrite( '/" + rewriteFile + "%{DECODED_REQUEST_PATH}' )",
                         Server.getClassLoader());
                 return Handlers.predicates(ph, toWrap);
             }
