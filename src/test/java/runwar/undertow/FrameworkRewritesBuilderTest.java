@@ -38,6 +38,13 @@ public class FrameworkRewritesBuilderTest {
     }
 
     @Test
+    @DisplayName("Should have rewriteFile as default parameter")
+    void shouldHaveRewriteFileAsDefaultParameter() {
+        FrameworkRewritesBuilder builder = new FrameworkRewritesBuilder();
+        assertEquals("rewriteFile", builder.defaultParameter());
+    }
+
+    @Test
     @DisplayName("Should create handler wrapper with default rewrite file")
     void shouldCreateHandlerWrapperWithDefaultRewriteFile() {
         FrameworkRewritesBuilder builder = new FrameworkRewritesBuilder();

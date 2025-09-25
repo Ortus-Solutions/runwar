@@ -49,7 +49,7 @@ public class FrameworkRewritesBuilder implements HandlerBuilder {
     }
 
     public String defaultParameter() {
-        return null;
+        return "rewriteFile";
     }
 
     /**
