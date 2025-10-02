@@ -93,7 +93,9 @@ public class WebsocketReceiveListener extends AbstractReceiveListener {
         this.channel = channel;
 
         String subProtocols = channel.getSubProtocol();
+        System.out.println("Subprotocols: " + subProtocols);
         if (subProtocols != null && subProtocols.toLowerCase().contains("stomp")) {
+            System.out.println("STOMP protocol detected");
             isSTOMP = true;
         }
 
@@ -121,10 +123,11 @@ public class WebsocketReceiveListener extends AbstractReceiveListener {
     protected void onFullTextMessage(WebSocketChannel channel, BufferedTextMessage message)
             throws IOException {
         String data = message.getData();
-
+        System.out.println("Received text message: [" + data + "]");
         // handle STOMP heartbeats
         if (isSTOMP && data.isBlank()) {
             synchronized (channel) {
+                System.out.println("Sending STOMP heartbeat");
                 WebSockets.sendText("\n", channel, null);
             }
         } else {
