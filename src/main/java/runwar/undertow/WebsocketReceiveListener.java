@@ -66,6 +66,7 @@ import runwar.options.SiteOptions;
 import io.undertow.websockets.core.WebSocketChannel;
 import io.undertow.websockets.core.WebSocketFrameType;
 import io.undertow.websockets.core.StreamSinkFrameChannel;
+import io.undertow.websockets.core.WebSockets;
 
 @SuppressWarnings("deprecation")
 public class WebsocketReceiveListener extends AbstractReceiveListener {
@@ -92,7 +93,7 @@ public class WebsocketReceiveListener extends AbstractReceiveListener {
         this.channel = channel;
 
         String subProtocols = channel.getSubProtocol();
-        if (subProtocols != null && subProtocols.containsIgnoreCase("stomp")) {
+        if (subProtocols != null && subProtocols.toLowerCase().contains("stomp")) {
             isSTOMP = true;
         }
 
