@@ -40,7 +40,7 @@ public class FrameworkRewritesBuilder implements HandlerBuilder {
      */
     public Map<String, Class<?>> parameters() {
         Map<String, Class<?>> params = new HashMap<>();
-        params.put( "rewriteFile", String.class );
+        params.put("rewriteFile", String.class);
         return params;
     }
 
@@ -60,23 +60,57 @@ public class FrameworkRewritesBuilder implements HandlerBuilder {
      * 
      * @return HandlerWrapper that provides framework rewriting functionality
      */
-    public HandlerWrapper build( final Map<String, Object> config ) {
+    public HandlerWrapper build(final Map<String, Object> config) {
         // Get the rewriteFile parameter, defaulting to "index.cfm" if not provided
-        final String rewriteFile = config.get( "rewriteFile" ) != null ? ( String ) config.get( "rewriteFile" ) : "index.cfm";
+        final String rewriteFile = config.get("rewriteFile") != null ? (String) config.get("rewriteFile") : "index.cfm";
+        // extract file extension including period from rewrite file
+        int dotLocation = rewriteFile.lastIndexOf('.');
+        final String rewriteFileExtension;
+        final String classExt;
+        final String scriptExt;
+        if (dotLocation < 0) {
+            rewriteFileExtension = null;
+            classExt = null;
+            scriptExt = null;
+        } else {
+            rewriteFileExtension = fileName.substring(dotLocation);
+            if (rewriteFileExtension.equalsIgnoreCase(".cfm")) {
+                classExt = ".cfc";
+                scriptExt = ".cfs";
+            } else if (rewriteFileExtension.equalsIgnoreCase(".cfs")) {
+                classExt = ".cfc";
+                scriptExt = ".cfm";
+            } else {
+                classExt = ".bx";
+                scriptExt = ".bxs";
+            }
+        }
 
         return new HandlerWrapper() {
 
             @Override
-            public HttpHandler wrap( HttpHandler toWrap ) {
+            public HttpHandler wrap(HttpHandler toWrap) {
                 List<PredicatedHandler> ph = PredicatedHandlersParser.parse(
-                    "not regex-nocase('^/(flex2gateway|flashservices/gateway|messagebroker|lucee|rest|cfide|CFIDE|cfformgateway|jrunscripts|cf_scripts|mapping-tag|CFFileServlet)/.*')"
-                        + " and not path-prefix-nocase(/tuckey-status)"
-                        + " and not path-nocase(/pms)"
-                        + " and not path-nocase(/favicon.ico)"
-                        + " and not is-file"
-                        + " and not is-directory -> rewrite( '/" + rewriteFile + "%{DECODED_REQUEST_PATH}' )",
-                    Server.getClassLoader() );
-                return Handlers.predicates( ph, toWrap );
+                        "not regex-nocase('^/(flex2gateway|flashservices/gateway|messagebroker|lucee|rest|cfide|CFIDE|cfformgateway|jrunscripts|cf_scripts|mapping-tag|CFFileServlet)/.*')"
+                                + " and not path-prefix-nocase(/tuckey-status)"
+                                + " and not path-nocase(/pms)"
+                                + " and not path-nocase(/favicon.ico)"
+                // In the unlikely event that the rewrite file has no extension, ignore
+                // otherwise, don't rewrite requests that already target the rewrite file
+                // extension, even if they don't exist on disk. (Likely a CF mapping)
+                                + (rewriteFileExtension != null
+                                        ? " and not path-suffix-nocase( '" + rewriteFileExtension + "' )"
+                                        : "")
+                                + (classExt != null
+                                        ? " and not path-suffix-nocase( '" + classExt + "' )"
+                                        : "")
+                                + (scriptExt != null
+                                        ? " and not path-suffix-nocase( '" + scriptExt + "' )"
+                                        : "")
+                                + " and not is-file"
+                                + " and not is-directory -> rewrite( '/" + rewriteFile + "%{DECODED_REQUEST_PATH}' )",
+                        Server.getClassLoader());
+                return Handlers.predicates(ph, toWrap);
             }
         };
     }
