@@ -73,7 +73,7 @@ public class FrameworkRewritesBuilder implements HandlerBuilder {
             classExt = null;
             scriptExt = null;
         } else {
-            rewriteFileExtension = fileName.substring(dotLocation);
+            rewriteFileExtension = rewriteFile.substring(dotLocation);
             if (rewriteFileExtension.equalsIgnoreCase(".cfm")) {
                 classExt = ".cfc";
                 scriptExt = ".cfs";
