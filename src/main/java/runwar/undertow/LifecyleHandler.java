@@ -121,12 +121,14 @@ public class LifecyleHandler implements HttpHandler {
                                 attrs.put(RequestDispatcher.ERROR_MESSAGE, StatusCodes.getReason( exchange.getStatusCode() ));
                             }
                             attrs.put(RequestDispatcher.ERROR_STATUS_CODE, String.valueOf( exchange.getStatusCode() ));
+                            attrs.put("original.http.method", String.valueOf( exchange.getRequestMethod() ));
 
 
                             // If we keep the error status and our error handler is a .cfm, the servlet will reject request
                             // It's up to any CFML custom error handlers to set their own status code
                             exchange.setStatusCode(200);
                             ExchangeAttributes.relativePath().writeAttribute( exchange, customErrorPage );
+                            exchange.setRequestMethod( io.undertow.util.Methods.GET );
                             exchange.getAttachment(SiteDeploymentManager.SITE_DEPLOYMENT_KEY).processRequest( exchange );
 
                             exchange.endExchange();
