@@ -21,15 +21,18 @@ ext {
         rev=data[1]
         try{
             masterRevision = git.resolve.toCommit(git.resolve.toBranch('origin/master')).id
+            masterLegacyRevision = git.resolve.toCommit(git.resolve.toBranch('origin/master-legacy')).id
         } catch (Exception e) {
             println "Unable to get origin/master info:"
             masterRevision = data[2]
+            masterLegacyRevision = data[2]
             println "Last master revision known:" + masterRevision
         }
         println "Git Info:"
         println "Current Revision:"+ revision
         println "Master Revision:"+ masterRevision
-        isSnapshot = masterRevision != revision
+        println "Master Legacy Revision:"+ masterLegacyRevision
+        isSnapshot = masterRevision != revision && masterLegacyRevision != revision
         println "Building SNAPSHOT:"+isSnapshot
         //      isSnapshot = describedCommit.matches(".*-[0-9]+-g[0-9a-f]{7}")
         //      version = describedCommit.replaceAll("(.*)-[0-9]+-g[0-9a-f]{7}(.*)", '$1$2') + (isSnapshot ? "-SNAPSHOT" : "")

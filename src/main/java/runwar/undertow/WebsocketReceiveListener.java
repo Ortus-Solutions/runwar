@@ -66,6 +66,7 @@ import runwar.options.SiteOptions;
 import io.undertow.websockets.core.WebSocketChannel;
 import io.undertow.websockets.core.WebSocketFrameType;
 import io.undertow.websockets.core.StreamSinkFrameChannel;
+import io.undertow.websockets.core.WebSockets;
 
 @SuppressWarnings("deprecation")
 public class WebsocketReceiveListener extends AbstractReceiveListener {
@@ -76,6 +77,7 @@ public class WebsocketReceiveListener extends AbstractReceiveListener {
     private ServerOptions serverOptions;
     private SiteOptions siteOptions;
     private WebSocketChannel channel;
+    private boolean isSTOMP = false;
 
     /**
      * constructor
@@ -89,6 +91,11 @@ public class WebsocketReceiveListener extends AbstractReceiveListener {
         this.serverOptions = serverOptions;
         this.siteOptions = siteOptions;
         this.channel = channel;
+
+        String subProtocols = channel.getSubProtocol();
+        if (subProtocols != null && subProtocols.toLowerCase().contains("stomp")) {
+            isSTOMP = true;
+        }
 
         dispatchRequest("onConnect", List.of(channel));
     }
@@ -113,7 +120,17 @@ public class WebsocketReceiveListener extends AbstractReceiveListener {
     @Override
     protected void onFullTextMessage(WebSocketChannel channel, BufferedTextMessage message)
             throws IOException {
-        dispatchRequest("onFullTextMessage", List.of(message.getData(), channel));
+        String data = message.getData();
+
+        // handle STOMP heartbeats
+        if (isSTOMP && data.isBlank()) {
+            synchronized (channel) {
+                WebSockets.sendText("\n", channel, null);
+            }
+        } else {
+            dispatchRequest("onFullTextMessage", List.of(data, channel));
+        }
+
     }
 
     protected void onFullBinaryMessage(final WebSocketChannel channel, BufferedBinaryMessage message)

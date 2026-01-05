@@ -63,6 +63,11 @@ import runwar.util.Utils;
 public class Server {
 
     public static String processName = "Starting Server...";
+    /**
+     * used to track if Undertow actually started or not. Calling server.stop() can
+     * hang otherwise
+     */
+    public static volatile boolean undertowStarted = false;
 
     private static final ThreadLocal<HttpServerExchange> currentExchange = new ThreadLocal<HttpServerExchange>();
     private static final ThreadLocal<String> currentDeploymentKey = new ThreadLocal<String>();
@@ -426,6 +431,7 @@ public class Server {
         try {
 
             undertow.start();
+            undertowStarted = true;
 
             LOG.trace("Firing any warmup handlers");
             WarmUpServer.triggerWarmups();
@@ -508,7 +514,7 @@ public class Server {
                     try {
                         if (!getServerState().equals(ServerState.STOPPING)
                                 && !getServerState().equals(ServerState.STOPPED)) {
-                            stopServer();
+                            stopServer(false);
                         }
                         if (mainThread.isAlive()) {
                             LOG.trace("Shutdown hook joining main thread");
@@ -526,6 +532,10 @@ public class Server {
     }
 
     public void stopServer() {
+        stopServer(true);
+    }
+
+    public void stopServer(boolean exit) {
         int exitCode = 0;
         if (shutDownThread != null && Thread.currentThread() != shutDownThread) {
             LOG.debug("Removed shutdown hook");
@@ -547,24 +557,29 @@ public class Server {
                     if (serverOptions.mariaDB4jEnable()) {
                         mariadb4jManager.stop();
                     }
-                    if (siteDeploymentManager.getDeployments() != null) {
-                        try {
-                            for (Map.Entry<String, SiteDeployment> deployment : siteDeploymentManager.getDeployments()
-                                    .entrySet()) {
-                                deployment.getValue().stop();
-                            }
+                    if (undertowStarted) {
+                        if (siteDeploymentManager.getDeployments() != null) {
+                            try {
+                                for (Map.Entry<String, SiteDeployment> deployment : siteDeploymentManager
+                                        .getDeployments()
+                                        .entrySet()) {
+                                    deployment.getValue().stop();
+                                }
 
-                            if (undertow != null) {
-                                undertow.stop();
+                                if (undertow != null) {
+                                    undertow.stop();
+                                }
+                                // Thread.sleep(1000);
+                            } catch (Exception notRunning) {
+                                LOG.error("*** server did not appear to be running", notRunning);
+                                LOG.info(bar);
                             }
-                            // Thread.sleep(1000);
-                        } catch (Exception notRunning) {
-                            LOG.error("*** server did not appear to be running", notRunning);
-                            LOG.info(bar);
                         }
+                        LOG.debug("All deployments undeployed and underlying Undertow servers stopped");
+                    } else {
+                        LOG.debug("Undertow never fully started, marking as stopped.");
                     }
                     setServerState(ServerState.STOPPED);
-                    LOG.debug("All deployments undeployed and underlying Undertow servers stopped");
 
                 } catch (Exception e) {
                     e.printStackTrace();
@@ -593,7 +608,7 @@ public class Server {
                     stopMonitor.interrupt();
                 }
 
-                if (exitCode != 0) {
+                if (exit && exitCode != 0) {
                     System.exit(exitCode);
                 }
                 LOG.info("Stopped server");
