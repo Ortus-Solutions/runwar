@@ -10,7 +10,7 @@ configurations {
 }
 
 ext {
-    undertowVersion = '2.3.39.Final'
+    undertowVersion = '2.3.21.Final'
     //urlRewriteVersion = '5.0.2-SNAPSHOT'
     urlRewriteVersion = '5.1.3'
     proguardVersion = '6.0.2'
