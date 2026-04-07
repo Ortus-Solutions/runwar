@@ -274,6 +274,8 @@ public class ConfigParser {
             serverOptions.browser(serverConfig.getOptionValue("preferredBrowser"));
         }
 
+        // Default this here since Undertow has changed to a super small 2MB default.  The user can still override.
+        runwar.util.Reflection.setOptionMapValue( serverConfig.xnioOptions(),  Options.class, "MAX_ENTITY_SIZE", "209715200" );
         if (serverConfig.hasOption("runwarXNIOOptions")) {
             serverOptions.xnioOptions(serverConfig.getOptionObject("runwarXNIOOptions"));
         }
