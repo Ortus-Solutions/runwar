@@ -324,6 +324,18 @@ public class ConfigParser {
             if (siteConfig.hasOption("servletPassPredicate")) {
                 site.servletPassPredicate(siteConfig.getOptionValue("servletPassPredicate"));
             }
+            // If REST is enabled
+            if( serverOptions.servletRestMappings().length > 0 ) {
+                // Then add the rest mapping to our servlet pass predicate
+                String passPredicate = "( "  + site.servletPassPredicate() + ")";
+                for (String path : serverOptions.servletRestMappings()) {
+                    path = path.replace("*", "");
+                    if( !path.startsWith("/") ) {
+                        path = "/" + path;
+                    }
+                    passPredicate += " or path-prefix-nocase( '" + path + "' )";
+                }
+            }
 
             if (siteConfig.hasOption("directoryBrowsing")) {
                 site.directoryListingEnable(siteConfig.getOptionBoolean("directoryBrowsing"));

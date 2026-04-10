@@ -5,6 +5,7 @@ import static runwar.logging.RunwarLogger.LOG;
 
 import java.io.File;
 import java.io.IOException;
+import java.io.ObjectInputFilter.FilterInfo;
 import java.net.URL;
 import java.util.ArrayList;
 import java.util.BitSet;
@@ -315,7 +316,8 @@ public class RunwarConfigurer {
                 // LOG.trace("Checking servlet named: " + restServlet.getName() + " to see if
                 // it's a REST servlet.");
                 if (restServlet.getName().toLowerCase().equals("restservlet")
-                        || restServlet.getName().toLowerCase().equals("cfrestservlet")) {
+                        || restServlet.getName().toLowerCase().equals("cfrestservlet")
+                        || restServlet.getName().toLowerCase().equals("boxlangservlet") ) {
                     for (String path : serverOptions.servletRestMappings()) {
                         restServlet.addMapping(path);
                         LOG.debug("  Added rest mapping: " + path + " to " + restServlet.getName());
