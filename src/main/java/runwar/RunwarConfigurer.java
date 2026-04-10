@@ -5,7 +5,6 @@ import static runwar.logging.RunwarLogger.LOG;
 
 import java.io.File;
 import java.io.IOException;
-import java.io.ObjectInputFilter.FilterInfo;
 import java.net.URL;
 import java.util.ArrayList;
 import java.util.BitSet;
