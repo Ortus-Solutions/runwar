@@ -315,7 +315,8 @@ public class RunwarConfigurer {
                 // LOG.trace("Checking servlet named: " + restServlet.getName() + " to see if
                 // it's a REST servlet.");
                 if (restServlet.getName().toLowerCase().equals("restservlet")
-                        || restServlet.getName().toLowerCase().equals("cfrestservlet")) {
+                        || restServlet.getName().toLowerCase().equals("cfrestservlet")
+                        || restServlet.getName().toLowerCase().equals("boxlangservlet") ) {
                     for (String path : serverOptions.servletRestMappings()) {
                         restServlet.addMapping(path);
                         LOG.debug("  Added rest mapping: " + path + " to " + restServlet.getName());
