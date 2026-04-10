@@ -335,6 +335,7 @@ public class ConfigParser {
                     }
                     passPredicate += " or path-prefix-nocase( '" + path + "' )";
                 }
+                site.servletPassPredicate( passPredicate );
             }
 
             if (siteConfig.hasOption("directoryBrowsing")) {
