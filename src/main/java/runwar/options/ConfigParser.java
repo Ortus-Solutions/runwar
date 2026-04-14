@@ -12,6 +12,7 @@ import java.util.stream.Collectors;
 
 import org.xnio.OptionMap;
 import org.xnio.Options;
+import io.undertow.UndertowOptions;
 
 import net.minidev.json.JSONArray;
 import net.minidev.json.JSONObject;
@@ -277,12 +278,12 @@ public class ConfigParser {
             serverOptions.browser(serverConfig.getOptionValue("preferredBrowser"));
         }
 
-        // Default this here since Undertow has changed to a super small 2MB default.  The user can still override.
-        runwar.util.Reflection.setOptionMapValue( serverOptions.xnioOptions(),  Options.class, "MAX_ENTITY_SIZE", "209715200" );
         if (serverConfig.hasOption("runwarXNIOOptions")) {
             serverOptions.xnioOptions(serverConfig.getOptionObject("runwarXNIOOptions"));
         }
 
+        // Default this here since Undertow has changed to a super small 2MB default.  The user can still override.
+        runwar.util.Reflection.setOptionMapValue( serverOptions.undertowOptions(),  UndertowOptions.class, "MAX_ENTITY_SIZE", "209715200" );
         if (serverConfig.hasOption("runwarUndertowOptions")) {
             serverOptions.undertowOptions(serverConfig.getOptionObject("runwarUndertowOptions"));
         }
