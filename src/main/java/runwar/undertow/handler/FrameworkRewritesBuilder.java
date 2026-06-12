@@ -63,28 +63,6 @@ public class FrameworkRewritesBuilder implements HandlerBuilder {
     public HandlerWrapper build(final Map<String, Object> config) {
         // Get the rewriteFile parameter, defaulting to "index.cfm" if not provided
         final String rewriteFile = config.get("rewriteFile") != null ? (String) config.get("rewriteFile") : "index.cfm";
-        // extract file extension including period from rewrite file
-        int dotLocation = rewriteFile.lastIndexOf('.');
-        final String rewriteFileExtension;
-        final String classExt;
-        final String scriptExt;
-        if (dotLocation < 0) {
-            rewriteFileExtension = null;
-            classExt = null;
-            scriptExt = null;
-        } else {
-            rewriteFileExtension = rewriteFile.substring(dotLocation);
-            if (rewriteFileExtension.equalsIgnoreCase(".cfm")) {
-                classExt = ".cfc";
-                scriptExt = ".cfs";
-            } else if (rewriteFileExtension.equalsIgnoreCase(".cfs")) {
-                classExt = ".cfc";
-                scriptExt = ".cfm";
-            } else {
-                classExt = ".bx";
-                scriptExt = ".bxs";
-            }
-        }
 
         return new HandlerWrapper() {
 
@@ -95,18 +73,12 @@ public class FrameworkRewritesBuilder implements HandlerBuilder {
                                 + " and not path-prefix-nocase(/tuckey-status)"
                                 + " and not path-nocase(/pms)"
                                 + " and not path-nocase(/favicon.ico)"
-                // In the unlikely event that the rewrite file has no extension, ignore
-                // otherwise, don't rewrite requests that already target the rewrite file
-                // extension, even if they don't exist on disk. (Likely a CF mapping)
-                                + (rewriteFileExtension != null
-                                        ? " and not path-suffix-nocase( '" + rewriteFileExtension + "' )"
-                                        : "")
-                                + (classExt != null
-                                        ? " and not path-suffix-nocase( '" + classExt + "' )"
-                                        : "")
-                                + (scriptExt != null
-                                        ? " and not path-suffix-nocase( '" + scriptExt + "' )"
-                                        : "")
+                                + " and not path-suffix-nocase( '.cfm' )"
+                                + " and not path-suffix-nocase( '.cfc' )"
+                                + " and not path-suffix-nocase( '.cfs' )"
+                                + " and not path-suffix-nocase( '.bxm' )"
+                                + " and not path-suffix-nocase( '.bx' )"
+                                + " and not path-suffix-nocase( '.bxs' )"
                                 + " and not is-file"
                                 + " and not is-directory -> rewrite( '/" + rewriteFile + "%{DECODED_REQUEST_PATH}' )",
                         Server.getClassLoader());
