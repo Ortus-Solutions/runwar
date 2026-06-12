@@ -73,6 +73,9 @@ public class FrameworkRewritesBuilder implements HandlerBuilder {
                         + " and not path-prefix-nocase(/tuckey-status)"
                         + " and not path-nocase(/pms)"
                         + " and not path-nocase(/favicon.ico)"
+                        + " and not path-suffix-nocase( '.cfm' )"
+                        + " and not path-suffix-nocase( '.cfc' )"
+                        + " and not path-suffix-nocase( '.cfs' )"
                         + " and not is-file"
                         + " and not is-directory -> rewrite( '/" + rewriteFile + "%{DECODED_REQUEST_PATH}' )",
                     Server.getClassLoader() );
