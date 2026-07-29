@@ -1,6 +1,8 @@
 package runwar.servlet;
 
 import java.io.IOException;
+import java.io.UnsupportedEncodingException;
+import java.net.URLDecoder;
 import java.util.logging.Level;
 import java.util.logging.Logger;
 import java.util.regex.Matcher;
@@ -41,7 +43,7 @@ public class RegexPathInfoFilter implements Filter {
 		if (matcher.matches()) {
 			final String contextPath = ((HttpServletRequest) req).getContextPath();
 			final String newURL = matcher.group(1).replaceFirst(contextPath, "");
-			final String path_info = matcher.group(2);
+			final String path_info = decodePathInfo(matcher.group(2));
 
 			logger.log(Level.FINE, requestURI + " matches " + regex + " regex, now: " + newURL + " path_info: "
 					+ path_info);
@@ -55,6 +57,15 @@ public class RegexPathInfoFilter implements Filter {
 			req.getRequestDispatcher(newURL).forward(wrapped, res);
 		} else {
 			chain.doFilter(req, res);
+		}
+	}
+
+	private String decodePathInfo(String pathInfo) {
+		try {
+			// URLDecoder treats '+' as a space, but '+' is a literal character in URI paths.
+			return URLDecoder.decode(pathInfo.replace("+", "%2B"), "UTF-8");
+		} catch (IllegalArgumentException | UnsupportedEncodingException e) {
+			return pathInfo;
 		}
 	}
 
