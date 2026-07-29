@@ -92,7 +92,7 @@ dependencies {
     compile("cfmlprojects:urlrewritefilter:${project.urlRewriteVersion}")
 
     // regexpathinfofilter lets us handle *.cfm/* paths
-    compile("org.cfmlprojects:regexpathinfofilter:1.0.3")
+    compile("org.cfmlprojects:regexpathinfofilter:1.0.4")
 
     // TODO: Test new 5.x version.  Used by SystemTray, I think
     compile("net.java.dev.jna:jna:4.5.2")
