@@ -1,7 +1,5 @@
-# This workflow uses actions that are not certified by GitHub.
-# They are provided by a third-party and are governed by separate terms of service, privacy policy, and support documentation.
-# This workflow will build a package using Gradle and then publish it to GitHub packages when a release is created
-# For more information see: https://github.com/actions/setup-java/blob/main/docs/advanced-usage.md#Publishing-using-gradle
+# This workflow builds Runwar with the CommandBox task runner (build.bx) and publishes the jar
+# to the Ortus downloads bucket.
 
 name: Runwar CI
 
@@ -30,27 +28,32 @@ jobs:
       with:
         fetch-depth: 0
 
-    - name: Set up JDK 11
+    # The task runner compiles with javac (bytecode target 11) and BoxLang needs Java 21+
+    - name: Set up JDK 21
       uses: actions/setup-java@v2
       with:
-        java-version: '11'
+        java-version: '21'
         distribution: 'temurin'
-  
-    - name: Create symlink to Java home
+
+    # Install BoxLang, then the bx-cli module which provides the `box` task runner CLI
+    - name: Install BoxLang and bx-cli
       run: |
-        mkdir -p gradle/jvm/11
-        ln -s $JAVA_HOME gradle/jvm/11/latest
-        
+        /bin/sh -c "$(curl -fsSL https://install.boxlang.io)"
+        boxlang --version
+        install-bx-module bx-cli
+        boxlang cli executable create box "boxlang cli"
+        # module executables (including our `box`) live in the BoxLang home bin directory
+        echo "$HOME/.boxlang/bin" >> $GITHUB_PATH
+
     # Do the build
-    - name: Build with Gradle
-      run: ./gradlew --refresh-dependencies
-
-    # Creating S3 destination folder name based on the version and copying just the jar into temp directory
-    - name: Change folder source
+    - name: Build with the task runner
       run: |
-        echo "folderName=`basename -s .jar dist/libs/runwar-*.jar | sed -e 's/runwar-//'`" >> $GITHUB_ENV
-        mkdir dist/libs/temp && cp dist/libs/runwar-*.jar dist/libs/temp
+        export PATH="$HOME/.boxlang/bin:$PATH"
+        box version
+        box task run build
 
+    # The task lays the jar out at dist/release/<version>/runwar-<version>.jar, which is
+    # exactly the bucket layout, so the upload is a straight sync of that folder
     - name: Upload JAR to S3
     
       # Run the upload on master branch
@@ -63,5 +66,5 @@ jobs:
         AWS_S3_BUCKET: "downloads.ortussolutions.com"
         AWS_ACCESS_KEY_ID: ${{ secrets.AWS_ACCESS_KEY }}
         AWS_SECRET_ACCESS_KEY: ${{ secrets.AWS_ACCESS_SECRET }}
-        SOURCE_DIR: "dist/libs/temp/"
-        DEST_DIR: "cfmlprojects/runwar/${{env.folderName}}"
+        SOURCE_DIR: "dist/release/"
+        DEST_DIR: "cfmlprojects/runwar"

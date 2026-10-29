@@ -93,6 +93,6 @@ Runwar also powers the servers for CommandBox, a CLI, REPL, package manager, and
 
 ## License
 
-Source code for this project is licensed under the [MIT License (MIT)] (http://www.opensource.org/licenses/mit-license.php).
+Source code for this project is licensed under the [Apache License 2.0](https://www.apache.org/licenses/LICENSE-2.0).
 
 
