@@ -41,15 +41,14 @@ jobs:
         /bin/sh -c "$(curl -fsSL https://install.boxlang.io)"
         boxlang --version
         install-bx-module bx-cli
-        boxlang cli executable create box "boxlang cli"
         # module executables (including our `box`) live in the BoxLang home bin directory
         echo "$HOME/.boxlang/bin" >> $GITHUB_PATH
+        export PATH="$HOME/.boxlang/bin:$PATH"
+        box version
 
     # Do the build
     - name: Build with the task runner
       run: |
-        export PATH="$HOME/.boxlang/bin:$PATH"
-        box version
         box task run build
 
     # The task lays the jar out at dist/release/<version>/runwar-<version>.jar, which is
