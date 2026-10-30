@@ -56,15 +56,17 @@ $> java -jar runwar.jar -war "path/to/war" --port 8787 --dirs "virtualdir=/path/
 
 ## Building
 
-To run the build, execute the `gradlew` or `gradlew.bat` gradle wrapper script:
+The build is a CommandBox task runner driven entirely by `box.json`. Run:
 
 ```
-./gradlew
+box task run build
 ```
 
-which will run the `clean` and `shadow` tasks.  Resulting jar is in `./dist/libs/`
+That installs the dependencies declared in `box.json`, compiles `src/main/java` and packages the fat jar. The artifact lands in `./dist/release/<version>/runwar-<version>.jar`, named from the `slug` and `version` in `box.json`.
 
-To fire up a pre-configured IDE for working on the project, execute the `ide` task (`./gradlew ide`).
+Everything the build needs is in `box.json`: the source/class/resource paths, the javac release, the manifest, the fat jar settings and the `preJavaCompile` script that wipes the previous output and writes `runwar/version.properties`.
+
+Requires BoxLang 1.x with the `bx-cli` module (provides `box`), and a JDK 21 runtime to run the build; the jar itself targets Java 11.
 
 ## Testing with VS Code
 
