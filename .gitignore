@@ -8,16 +8,6 @@
 src/test/resources/war/simple.war/WEB-INF/urlrewrite.xml
 src/test/resources/war/simple.war/WEB-INF/logs/
 src/test/resources/work/
-.gradle
-gradle-app.setting
-gradle/jvm
-!gradle-wrapper.jar
-.gradletasknamecache
-.nb-gradle
-
-#ignore the various too-lazy-to-fix-and-lame-anyway bash tests
-gradle/*.sh
-!gradle/jvm-setup.sh
 testwars
 
 #IDE files
