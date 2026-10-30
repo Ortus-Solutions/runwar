@@ -1,7 +1,7 @@
 ﻿{
     "name": "Runwar",
     "slug": "runwar",
-    "version": "6.1.8-SNAPSHOT",
+    "version": "6.1.9-SNAPSHOT",
     "author": "Ortus Solutions",
     "shortDescription": "Run WARs with ease",
     "ProjectURL": "https://github.com/Ortus-Solutions/runwar",
