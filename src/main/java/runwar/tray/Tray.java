@@ -46,7 +46,7 @@ import dorkbox.systemTray.Menu;
 import dorkbox.systemTray.MenuItem;
 import dorkbox.systemTray.Separator;
 import dorkbox.systemTray.SystemTray;
-import dorkbox.util.OS;
+import dorkbox.os.OS;
 import net.minidev.json.JSONArray;
 import net.minidev.json.JSONObject;
 import net.minidev.json.JSONValue;
@@ -598,7 +598,7 @@ public class Tray {
                 }
 
                 // Consistent with server popups
-                Pos position = OS.isMacOsX() ? Pos.TOP_RIGHT : Pos.BOTTOM_RIGHT;
+                Pos position = OS.INSTANCE.isMacOsX() ? Pos.TOP_RIGHT : Pos.BOTTOM_RIGHT;
                 Notify.create()
                         .title("Run Command")
                         .text("Executed " + command)

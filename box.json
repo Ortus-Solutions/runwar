@@ -1,7 +1,7 @@
 ﻿{
     "name": "Runwar",
     "slug": "runwar",
-    "version": "6.1.9-SNAPSHOT",
+    "version": "6.2.0-SNAPSHOT",
     "author": "Ortus Solutions",
     "shortDescription": "Run WARs with ease",
     "ProjectURL": "https://github.com/Ortus-Solutions/runwar",
@@ -20,8 +20,7 @@
         "io.undertow:undertow-servlet": "maven:io.undertow:undertow-servlet:2.3.27.Final",
         "jakarta.servlet.jsp:jakarta.servlet.jsp-api": "maven:jakarta.servlet.jsp:jakarta.servlet.jsp-api:3.1.1",
         "jakarta.el:jakarta.el-api": "maven:jakarta.el:jakarta.el-api:4.0.0",
-        "com.dorkbox:Notify": "maven:com.dorkbox:Notify:3.7",
-        "com.dorkbox:SystemTray": "maven:com.dorkbox:SystemTray:3.17",
+        "systemtray-4.5": "jar:https://downloads.ortussolutions.com/dorkbox/systemtray/4.5/systemtray-4.5.jar",
         "net.minidev:json-smart-mini": "maven:net.minidev:json-smart-mini:1.3.2",
         "org.jooq:joox-java-6": "maven:org.jooq:joox-java-6:1.6.2",
         "org.apache.logging.log4j:log4j-slf4j-impl": "maven:org.apache.logging.log4j:log4j-slf4j-impl:2.26.1",
@@ -31,10 +30,11 @@
         "org.jboss.logging:jboss-logging": "maven:org.jboss.logging:jboss-logging:3.6.3.Final",
         "org.jboss.logging:jboss-logging-annotations": "maven:org.jboss.logging:jboss-logging-annotations:3.0.4.Final",
         "org.tuckey:urlrewritefilter": "maven:org.tuckey:urlrewritefilter:5.1.3",
-        "net.java.dev.jna:jna": "maven:net.java.dev.jna:jna:4.5.2",
-        "net.java.dev.jna:jna-platform": "maven:net.java.dev.jna:jna-platform:4.5.2",
         "org.bouncycastle:bcpkix-jdk15on": "maven:org.bouncycastle:bcpkix-jdk15on:1.70",
         "com.jcabi:jcabi-log": "maven:com.jcabi:jcabi-log:0.24.3"
+    },
+    "installPaths": {
+        "systemtray-4.5": "dist/dependencies"
     },
     "scripts": {
         "preJavaCompile": [
