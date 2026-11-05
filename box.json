@@ -33,9 +33,6 @@
         "org.bouncycastle:bcpkix-jdk15on": "maven:org.bouncycastle:bcpkix-jdk15on:1.70",
         "com.jcabi:jcabi-log": "maven:com.jcabi:jcabi-log:0.24.3"
     },
-    "installPaths": {
-        "systemtray-4.5": "dist/dependencies"
-    },
     "scripts": {
         "preJavaCompile": [
             "delete 'dist/classes,dist/generated-resources,dist/release' --force --recurse",
@@ -50,7 +47,7 @@
             "src/main/resources",
             "dist/generated-resources"
         ],
-        "classPath": "dist/dependencies",
+        "classPath": "dist/dependencies,lib",
         "compileOptions": {
             "release": "11",
             "encoding": "UTF-8"
