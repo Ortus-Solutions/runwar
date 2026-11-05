@@ -52,6 +52,9 @@
             "release": "11",
             "encoding": "UTF-8"
         },
+        "fatJarOptions": {
+            "duplicatePolicy": "first"
+        },
         "jar": true,
         "fatJar": true,
         "manifest": {
