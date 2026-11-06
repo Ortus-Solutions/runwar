@@ -40,10 +40,10 @@
         ]
     },
     "java": {
-        "source": "src/main/java",
-        "classes": "dist/classes",
-        "libsDir": "dist/release/${@version}",
-        "resources": [
+        "sourcePath": "src/main/java",
+        "classesDirectory": "dist/classes",
+        "libsDirectory": "dist/release/${@version}",
+        "resourcesDirectory": [
             "src/main/resources",
             "dist/generated-resources"
         ],

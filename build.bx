@@ -2,9 +2,9 @@
  * Runwar build task runner.
  *
  * Everything about the build lives in box.json - the version, the dependency list, the java
- * compile settings (source, classes, libsDir, resources, manifest, fat jar) and the package
+ * compile settings (sourcePath, classesDirectory, libsDirectory, resourcesDirectory, manifest, fat jar) and the package
  * scripts that wipe the last build's output and write the version file. This task installs the
- * dependencies and runs the compile; the jar lands in the release folder because java.libsDir
+ * dependencies and runs the compile; the jar lands in the release folder because java.libsDirectory
  * points there.
  *
  * Usage:
@@ -19,7 +19,6 @@ class {
 	/** Default target: install dependencies, compile and package. */
 	function run() {
 		command( "install" )
-			.flags( "noSave", "force" )
 			.run();
 
 		command( "java compile" )
