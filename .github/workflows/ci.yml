@@ -42,6 +42,14 @@ jobs:
         echo "deb [signed-by=/usr/share/keyrings/ortussolutions.gpg] https://downloads.ortussolutions.com/debs-be/noarch /" | sudo tee /etc/apt/sources.list.d/commandbox.list
         sudo apt-get update
         sudo apt-get install -y apt-transport-https commandbox
+
+        # box bootstraps BoxLang on its first run. Left on defaults it asks the install script for
+        # /usr/local/boxlang, the script will not write there unprivileged so it quietly installs
+        # to ~/.local/boxlang instead, and box then dies looking for the path it asked for:
+        #   java.nio.file.NoSuchFileException: /usr/local/boxlang/bin/boxlang
+        # Point BOXLANG_INSTALL_HOME somewhere writable so both sides agree where it lands.
+        echo "BOXLANG_INSTALL_HOME=$HOME/.local/boxlang" >> "$GITHUB_ENV"
+
         box version
 
     # Do the build
