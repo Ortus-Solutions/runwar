@@ -37,7 +37,7 @@ import java.util.zip.GZIPInputStream;
 import dorkbox.notify.Notify;
 import dorkbox.notify.Pos;
 import dorkbox.util.ActionHandler;
-import dorkbox.util.OS;
+import dorkbox.os.OS;
 import runwar.logging.LoggerFactory;
 import runwar.logging.RunwarLogger;
 import runwar.options.ServerOptions;
@@ -336,7 +336,7 @@ public class LaunchUtil {
             return;
         }
         try {
-            Pos position = OS.isMacOsX() ? Pos.TOP_RIGHT : Pos.BOTTOM_RIGHT;
+            Pos position = OS.INSTANCE.isMacOsX() ? Pos.TOP_RIGHT : Pos.BOTTOM_RIGHT;
             final Notify notify = Notify.create()
                     .title(title)
                     .text(text)

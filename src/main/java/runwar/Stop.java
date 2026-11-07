@@ -44,7 +44,7 @@ public class Stop {
             }
         } catch (Exception e) {
             e.printStackTrace();
-            System.out.println("Could not stop server.  Are you sure it is running, and listing for stop requests on port "
+            System.out.println("Could not stop server.  Are you sure it is running, and listening for stop requests on port "
                             + socketNumber + "?");
             System.exit(1);
         }
