@@ -47,7 +47,10 @@ jobs:
         # /usr/local/boxlang, the script will not write there unprivileged so it quietly installs
         # to ~/.local/boxlang instead, and box then dies looking for the path it asked for:
         #   java.nio.file.NoSuchFileException: /usr/local/boxlang/bin/boxlang
-        # Point BOXLANG_INSTALL_HOME somewhere writable so both sides agree where it lands.
+        # Point BOXLANG_INSTALL_HOME somewhere writable so both sides agree where it lands. It has
+        # to be exported in this step as well as written to GITHUB_ENV, because GITHUB_ENV only
+        # reaches later steps and `box version` below bootstraps BoxLang right here.
+        export BOXLANG_INSTALL_HOME="$HOME/.local/boxlang"
         echo "BOXLANG_INSTALL_HOME=$HOME/.local/boxlang" >> "$GITHUB_ENV"
 
         box version
