@@ -6,9 +6,9 @@ name: Runwar CI
 # If your target is master or develop branch
 on:
   push:
-    branches: [ master, develop ]
+    branches: [ develop ]
   pull_request:
-    branches: [ master, develop ]
+    branches: [ develop ]
 
   # We get the required keys
   workflow_call:
@@ -55,8 +55,8 @@ jobs:
     # exactly the bucket layout, so the upload is a straight sync of that folder
     - name: Upload JAR to S3
     
-      # Run the upload on master branch
-      if: ${{ github.ref == 'refs/heads/master' || github.ref == 'refs/heads/develop' }}
+      # Run the upload on develop branch
+      if: ${{ github.ref == 'refs/heads/develop' }}
 
       uses: jakejarvis/s3-sync-action@master
       with:
