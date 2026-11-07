@@ -128,6 +128,7 @@ public class Tray {
         variableMap.put("runwar.processName", processName);
         variableMap.put("processName", processName);
         variableMap.put("runwar.PID", PID);
+        variableMap.put("runwar.javaVersion", System.getProperty("java.version"));
         // variableMap.put("runwar.host", host);
         // variableMap.put("web.host", host);
         variableMap.put("runwar.stopsocket", Integer.toString(stopSocket));
